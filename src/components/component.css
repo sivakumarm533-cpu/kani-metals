@@ -1,0 +1,232 @@
+:root {
+  /* Primary Brand */
+  --color-primary: #F36F12;
+  --color-primary-hover: #D95B08;
+  --color-primary-soft: #FFF3E8;
+
+  /* Secondary Brand */
+  --color-secondary: #191B1D;
+  --color-secondary-hover: #303438;
+
+  /* Metallic */
+  --color-metal: #92979B;
+
+  /* Borders */
+  --color-border: #E5E7EB;
+
+  /* Text */
+  --color-text: #191B1D;
+  --color-text-muted: #737980;
+
+  /* Backgrounds */
+  --color-surface: #FFFFFF;
+  --color-background: #F7F8FA;
+
+  /* Status */
+  --color-success: #16A34A;
+  --color-danger: #DC2626;
+  --color-warning: #EAB308;
+}
+
+/* if i want i remove the comment */
+/* :root {
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-soft: #eff6ff;
+  --color-border: #bfdbfe;
+  --color-text: #172554;
+  --color-text-muted: #64748b;
+  --color-surface: #ffffff;
+  --color-background: #f8fbff;
+} */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-width: 320px;
+  color: var(--color-text);
+  background: var(--color-background);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+button {
+  padding: 10px 16px;
+  border: 1px solid var(--color-primary);
+  border-radius: 6px;
+  color: #fff;
+  background: var(--color-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover { background: var(--color-primary-hover); }
+
+/* Shared admin layout */
+.admin-layout { min-height: 100vh; }
+
+.admin-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  height: 68px;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.navbar-brand {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-primary);
+  font-size: 18px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.navbar-logo { display: block; width: auto; max-width: 170px; height: 42px; object-fit: contain; }
+
+.navbar-tools { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.navbar-status { color: var(--color-text-muted); }
+
+.profile-avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  font-weight: 700;
+}
+
+.menu-toggle {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-content: center;
+  gap: 4px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.menu-toggle:hover { background: var(--color-primary-soft); }
+.menu-toggle span { display: block; width: 20px; height: 2px; background: var(--color-primary); }
+
+.admin-body { display: flex; min-height: calc(100vh - 68px); }
+
+.admin-sidebar {
+  flex: 0 0 248px;
+  padding: 20px 14px;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.sidebar-links { display: grid; gap: 6px; list-style: none; }
+
+.sidebar-link {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.sidebar-link:hover,
+.sidebar-link.is-active {
+  border-color: var(--color-border);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.sidebar-link.is-active { font-weight: 700; }
+.sidebar-icon { display: inline-grid; width: 20px; place-items: center; font-size: 18px; }
+.sidebar-heading { margin: 0 0 12px 12px; color: #94a3b8; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+.admin-content { flex: 1; min-width: 0; padding: clamp(20px, 3vw, 40px); }
+
+/* Tablet: keep navigation visible while giving content more room. */
+@media (min-width: 721px) and (max-width: 960px) {
+  .admin-sidebar {
+    position: fixed;
+    top: 68px;
+    bottom: 0;
+    left: 0;
+    z-index: 9;
+    width: 248px;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+    box-shadow: 8px 0 24px rgb(23 37 84 / 10%);
+  }
+  .admin-sidebar.is-open { transform: translateX(0); }
+  .sidebar-link { gap: 9px; padding-inline: 9px; }
+  .admin-navbar { padding-inline: 18px; }
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 68px 0 0;
+    z-index: 8;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgb(15 23 42 / 35%);
+  }
+  .sidebar-backdrop:hover { background: rgb(15 23 42 / 35%); }
+}
+
+/* Wide screens show the sidebar by default; the hamburger can collapse it. */
+@media (min-width: 961px) {
+  .admin-sidebar:not(.is-open) { display: none; }
+}
+
+/* Mobile: sidebar becomes a slide-in drawer. Toggle .is-open from the menu button. */
+@media (max-width: 720px) {
+  .admin-navbar { height: 60px; padding-inline: 16px; }
+  .navbar-brand { font-size: 16px; }
+  .navbar-logo { max-width: 145px; height: 36px; }
+  .navbar-tools { gap: 0.4rem; }
+  .navbar-status { display: none; }
+  .admin-body { min-height: calc(100vh - 60px); }
+  .admin-sidebar {
+    position: fixed;
+    top: 60px;
+    bottom: 0;
+    left: 0;
+    z-index: 9;
+    width: min(280px, 82vw);
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+    box-shadow: 8px 0 24px rgb(23 37 84 / 10%);
+  }
+  .admin-sidebar.is-open { transform: translateX(0); }
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 60px 0 0;
+    z-index: 8;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgb(15 23 42 / 35%);
+  }
+  .sidebar-backdrop:hover { background: rgb(15 23 42 / 35%); }
+  .admin-content { padding: 20px 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}

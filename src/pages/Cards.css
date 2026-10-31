@@ -1,0 +1,75 @@
+.scrap-page { --scrap-card-radius: 14px; }
+
+.scrap-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 28px;
+}
+
+.scrap-card {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--scrap-card-radius);
+  background: var(--color-surface);
+  box-shadow: 0 4px 16px rgb(37 99 235 / 5%);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.scrap-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgb(37 99 235 / 10%);
+}
+
+.scrap-card-image {
+  width: 100%;
+  aspect-ratio: 1.65 / 1;
+  background-color: var(--color-primary-soft);
+  background-repeat: no-repeat;
+  background-size: 300% 200%;
+}
+
+.scrap-card-body { padding: 18px; }
+.scrap-card-grade { margin: 0 0 5px; color: var(--color-primary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.scrap-card-body h2 { margin: 0; color: var(--color-text); font-size: 18px; font-weight: 700; }
+
+.scrap-current-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 17px;
+}
+
+.scrap-current-price > span, .scrap-price-history span { color: var(--color-text-muted); font-size: 12px; }
+.scrap-current-price strong { color: var(--color-primary); font-size: 23px; white-space: nowrap; }
+.scrap-current-price strong small { color: var(--color-text-muted); font-size: 13px; font-weight: 500; }
+
+.scrap-price-history {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.scrap-price-history > div { display: grid; gap: 4px; min-width: 0; }
+.scrap-price-history strong { color: var(--color-text); font-size: 13px; }
+.scrap-price-history small { color: var(--color-text-muted); font-size: 11px; }
+.scrap-new-date strong { color: var(--color-primary); }
+.scrap-note { margin-top: 16px; color: var(--color-text-muted); font-size: 12px; }
+
+@media (max-width: 1000px) {
+  .scrap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .scrap-grid { grid-template-columns: 1fr; gap: 14px; margin-top: 20px; }
+  .scrap-card-image { aspect-ratio: 1.9 / 1; }
+  .scrap-card-body { padding: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrap-card { transition: none; }
+}

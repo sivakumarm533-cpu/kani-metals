@@ -1,0 +1,41 @@
+.page-container { width: min(100%, 1120px); margin: 0 auto; }
+.page-container h1 { margin-top: 5px; color: var(--color-text); font-size: clamp(26px, 3vw, 34px); font-weight: 700; }
+.eyebrow { margin-bottom: 4px; color: var(--color-primary); font-size: 12px; font-weight: 750; letter-spacing: 1px; }
+.page-description { margin-top: 8px; color: var(--color-text-muted); line-height: 1.6; }
+
+.summary-card, .dashboard-card, .inventory-table-wrap, .product-row {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 4px 16px rgb(37 99 235 / 5%);
+}
+.summary-card { display: grid; min-height: 174px; gap: 6px; padding: 20px; }
+.summary-icon, .product-symbol { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 10px; color: var(--color-primary); background: var(--color-primary-soft); font-size: 20px; }
+.summary-card p { margin: 4px 0 0; color: var(--color-text-muted); font-size: 14px; }
+.summary-card strong { color: var(--color-text); font-size: 28px; line-height: 1.1; }
+.summary-card small { color: var(--color-text-muted); }
+.dashboard-card { padding: 22px; }
+.dashboard-card h2 { margin: 0; font-size: 18px; }
+.dashboard-card p { margin: 8px 0 0; color: var(--color-text-muted); line-height: 1.6; }
+
+.inventory-table-wrap { margin-top: 26px; overflow: hidden; padding: 8px 18px; }
+.inventory-table { margin-bottom: 0; }
+.inventory-table th { color: var(--color-text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.inventory-table td { color: var(--color-text); }
+.stock-pill { display: inline-block; padding: 5px 10px; border-radius: 20px; color: #166534; background: #dcfce7; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.stock-pill.is-low { color: #92400e; background: #fef3c7; }
+
+.product-list { display: grid; gap: 12px; margin-top: 26px; }
+.product-row { display: flex; min-width: 0; align-items: center; gap: 15px; padding: 16px; }
+.product-symbol { flex: 0 0 44px; width: 44px; height: 44px; }
+.product-info { min-width: 0; }
+.product-info h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.product-info p { margin: 5px 0 0; color: var(--color-text-muted); font-size: 13px; }
+.product-price { margin-left: auto; color: var(--color-text); font-size: 14px; white-space: nowrap; }
+
+@media (max-width: 520px) {
+  .inventory-table-wrap { padding: 6px 10px; }
+  .inventory-table { font-size: 13px; }
+  .product-row { gap: 10px; padding: 13px; }
+  .product-price { font-size: 12px; }
+}
