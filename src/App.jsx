@@ -7,6 +7,7 @@ import Products from './pages/Products.jsx'
 import Cards from './pages/Cards.jsx'
 import './App.css'
 import './components/component.css'
+import Itemsentry from './pages/Itemsentry.jsx'
 
 function AppLayout() {
   return (
@@ -20,6 +21,7 @@ function AppLayout() {
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/products" element={<Products />} />
             <Route path="/scrap-items" element={<Cards />} />
+            <Route path="/itemsentry" element={<Itemsentry />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

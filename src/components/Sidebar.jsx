@@ -6,6 +6,7 @@ const menuItems = [
   { to: '/inventory', icon: '▤', label: 'Inventory' },
   { to: '/products', icon: '◈', label: 'Products' },
   { to: '/scrap-items', icon: '♻', label: 'Scrap items' },
+  { to: '/itemsentry', icon: '))', label: 'items entry' }
 ]
 
 function Sidebar() {
@@ -35,7 +36,7 @@ function Sidebar() {
       <aside className={`admin-sidebar${isOpen ? ' is-open' : ''}`} aria-label="Main navigation" aria-hidden={!isOpen}>
         <p className="sidebar-heading">MENU</p>
         <nav>
-          <ul className="sidebar-links">
+          <ul className="sidebar-links p-0">
             {menuItems.map((item) => (
               <li key={item.to}>
                 <NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to={item.to} onClick={closeMenu}>
