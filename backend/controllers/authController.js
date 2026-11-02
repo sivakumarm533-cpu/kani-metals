@@ -50,15 +50,19 @@ async function sendOtp(email, purpose, subject, intro) {
   try {
     await transporter.sendMail({ from: `Kani Metals <${process.env.SMTP_USER}>`, to: email, subject, text: `${intro}\n\nYour 6-digit code is ${otp}. It expires in 5 minutes. If you did not request this, ignore this email.` })
   } catch (cause) {
-    await EmailVerification.deleteOne({ email, purpose })
     console.error('OTP email delivery failed:', { code: cause.code, command: cause.command, responseCode: cause.responseCode })
-    const message = cause.code === 'EAUTH'
-      ? 'Gmail rejected the SMTP credentials. Use the authorized Gmail address and its 16-character App Password.'
-      : ['ETIMEDOUT', 'ECONNECTION', 'ENOTFOUND'].includes(cause.code)
-        ? 'Could not connect to Gmail SMTP from the deployed backend. Check the backend host logs or use an HTTP email provider.'
-        : 'Gmail could not send the OTP. Check the backend deployment logs and SMTP environment variables.'
+    const deliveryUncertain = ['ETIMEDOUT', 'ESOCKET', 'ECONNECTION'].includes(cause.code)
+    if (!deliveryUncertain) await EmailVerification.deleteOne({ email, purpose })
+    const message = deliveryUncertain
+      ? 'Gmail timed out while confirming delivery. The OTP may still have arrived; check your inbox and enter it. If no email arrived, wait 60 seconds before requesting another code.'
+      : cause.code === 'EAUTH'
+        ? 'Gmail rejected the SMTP credentials. Use the authorized Gmail address and its 16-character App Password.'
+        : cause.code === 'ENOTFOUND'
+          ? 'The backend could not resolve Gmail SMTP. Check the backend host network and deployment logs.'
+          : 'Gmail could not send the OTP. Check the backend deployment logs and SMTP environment variables.'
     const error = new Error(message)
-    error.statusCode = 503
+    error.statusCode = deliveryUncertain ? 504 : 503
+    if (deliveryUncertain) error.publicCode = 'EMAIL_DELIVERY_UNCERTAIN'
     throw error
   }
 }

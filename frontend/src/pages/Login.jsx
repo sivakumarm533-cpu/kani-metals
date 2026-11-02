@@ -48,7 +48,10 @@ export default function Login() {
   async function sendOtp() {
     setBusy(true); setError(''); setMessage('')
     try { const result = await apiRequest('/auth/send-login-otp', { method: 'POST', body: JSON.stringify({ loginChallenge }) }); setOtpSent(true); setResendSeconds(60); setMessage(result.message) }
-    catch (err) { setError(err.message) } finally { setBusy(false) }
+    catch (err) {
+      if (err.code === 'EMAIL_DELIVERY_UNCERTAIN') { setOtpSent(true); setResendSeconds(60); setMessage(err.message) }
+      else setError(err.message)
+    } finally { setBusy(false) }
   }
 
   async function verifyOtp(event) {

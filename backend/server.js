@@ -45,7 +45,7 @@ app.use((error, _req, res, _next) => {
   console.error(error)
   const status = error.statusCode || (error.name === 'ValidationError' || error.name === 'CastError' ? 400 : error.code === 11000 ? 409 : 500)
   const message = error.statusCode ? error.message : status === 400 ? error.message : 'Server error. Check the backend terminal.'
-  res.status(status).json({ message })
+  res.status(status).json({ message, ...(error.publicCode ? { code: error.publicCode } : {}) })
 })
 
 if (!process.env.VERCEL) {

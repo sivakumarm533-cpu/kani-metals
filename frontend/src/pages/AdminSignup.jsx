@@ -39,7 +39,10 @@ export default function AdminSignup() {
   async function requestCode() {
     setBusy(true); setError(''); setMessage('')
     try { const result = await apiRequest('/auth/send-otp', { method: 'POST', body: JSON.stringify({ email }) }); setMessage(result.message); setPhase('verify'); setResendSeconds(60) }
-    catch (err) { setError(err.message) } finally { setBusy(false) }
+    catch (err) {
+      if (err.code === 'EMAIL_DELIVERY_UNCERTAIN') { setMessage(err.message); setPhase('verify'); setResendSeconds(60) }
+      else setError(err.message)
+    } finally { setBusy(false) }
   }
 
   async function verifyCode(event) {
