@@ -4,14 +4,12 @@ import { apiRequest } from '../services/api.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import './pages.css'
 
-const allowedEmail = 'kanimetal1972@gmail.com'
-
 export default function AdminSignup() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
   const [adminExists, setAdminExists] = useState(null)
   const [phase, setPhase] = useState('request')
-  const [email, setEmail] = useState(allowedEmail)
+  const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [verificationToken, setVerificationToken] = useState('')
   const [name, setName] = useState('')
@@ -26,7 +24,7 @@ export default function AdminSignup() {
     apiRequest('/auth/status')
       .then((status) => {
         if (status.adminExists) navigate('/login', { replace: true })
-        else setAdminExists(false)
+        else { setAdminExists(false); setEmail(status.signupEmail || '') }
       })
       .catch((err) => setError(err.message))
   }, [navigate])

@@ -1,19 +1,19 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 import { randomInt, randomUUID } from 'node:crypto'
 import User from '../models/User.js'
 import EmailVerification from '../models/EmailVerification.js'
 import AuthSession from '../models/AuthSession.js'
 import { getJwtSecret } from '../config/secrets.js'
 
-const allowedAdminEmail = 'kanimetal1972@gmail.com'
+const allowedAdminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase()
 const previousAdminEmail = 'sivakumar.m533@gmail.com'
 const otpLifetimeMs = 5 * 60 * 1000
 const sessionLifetimeMs = 12 * 60 * 60 * 1000
 const emailIsAllowed = (email) => String(email || '').trim().toLowerCase() === allowedAdminEmail
 const canMigrateAdminEmail = (email) => emailIsAllowed(email) || String(email || '').trim().toLowerCase() === previousAdminEmail
-const primaryAdminExists = () => User.exists({ role: 'admin', email: { $in: [allowedAdminEmail, previousAdminEmail] } })
+const primaryAdminExists = () => User.exists({ role: 'admin', email: { $in: [allowedAdminEmail, previousAdminEmail].filter(Boolean) } })
 function demoLoginIsEnabled(req) {
   const clientIp = req.ip || req.socket.remoteAddress
   const isLocal = ['::1', '127.0.0.1', '::ffff:127.0.0.1'].includes(clientIp)
@@ -30,8 +30,10 @@ async function createSession(user) {
 }
 
 async function sendOtp(email, purpose, subject, intro) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_APP_PASSWORD) {
-    const error = new Error('Email verification is not configured. Set SMTP_USER and SMTP_APP_PASSWORD on the backend.')
+  const apiKey = process.env.RESEND_API_KEY
+  const from = process.env.EMAIL_FROM
+  if (!apiKey || !from || !allowedAdminEmail) {
+    const error = new Error('Email verification is not configured. Set RESEND_API_KEY, EMAIL_FROM, and ADMIN_EMAIL on the backend.')
     error.statusCode = 503
     throw error
   }
@@ -46,22 +48,33 @@ async function sendOtp(email, purpose, subject, intro) {
     $set: { codeHash: await bcrypt.hash(otp, 10), attempts: 0, lastSentAt: new Date(), expiresAt: new Date(Date.now() + otpLifetimeMs) },
     $setOnInsert: { email, purpose },
   }, { upsert: true, new: true, setDefaultsOnInsert: true })
-  const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_APP_PASSWORD } })
+  const resend = new Resend(apiKey)
+  const timeoutSignal = AbortSignal.timeout(10_000)
   try {
-    await transporter.sendMail({ from: `Kani Metals <${process.env.SMTP_USER}>`, to: email, subject, text: `${intro}\n\nYour 6-digit code is ${otp}. It expires in 5 minutes. If you did not request this, ignore this email.` })
+    const { data, error: resendError } = await resend.emails.send({
+      from,
+      to: [email],
+      subject,
+      text: `${intro}\n\nYour 6-digit code is ${otp}. It expires in 5 minutes. If you did not request this, ignore this email.`,
+    }, { signal: timeoutSignal })
+    if (resendError || !data?.id) {
+      const deliveryUncertain = timeoutSignal.aborted || resendError?.statusCode == null
+      const error = new Error(deliveryUncertain
+        ? 'Resend timed out while confirming email acceptance. The OTP may still have arrived; check your inbox. If it did not arrive, wait 60 seconds before requesting another code.'
+        : 'Resend could not accept the OTP email. Check the Resend API key, verified sender domain, and backend logs.')
+      error.statusCode = deliveryUncertain ? 504 : 502
+      if (deliveryUncertain) error.publicCode = 'EMAIL_DELIVERY_UNCERTAIN'
+      throw error
+    }
   } catch (cause) {
-    console.error('OTP email delivery failed:', { code: cause.code, command: cause.command, responseCode: cause.responseCode })
-    const deliveryUncertain = ['ETIMEDOUT', 'ESOCKET', 'ECONNECTION'].includes(cause.code)
+    console.error('Resend OTP request failed:', { name: cause.name, statusCode: cause.statusCode })
+    const deliveryUncertain = cause.publicCode === 'EMAIL_DELIVERY_UNCERTAIN' || timeoutSignal.aborted
     if (!deliveryUncertain) await EmailVerification.deleteOne({ email, purpose })
-    const message = deliveryUncertain
-      ? 'Gmail timed out while confirming delivery. The OTP may still have arrived; check your inbox and enter it. If no email arrived, wait 60 seconds before requesting another code.'
-      : cause.code === 'EAUTH'
-        ? 'Gmail rejected the SMTP credentials. Use the authorized Gmail address and its 16-character App Password.'
-        : cause.code === 'ENOTFOUND'
-          ? 'The backend could not resolve Gmail SMTP. Check the backend host network and deployment logs.'
-          : 'Gmail could not send the OTP. Check the backend deployment logs and SMTP environment variables.'
-    const error = new Error(message)
-    error.statusCode = deliveryUncertain ? 504 : 503
+    if (cause.publicCode) throw cause
+    const error = new Error(deliveryUncertain
+      ? 'Resend timed out while confirming email acceptance. The OTP may still have arrived; check your inbox. If it did not arrive, wait 60 seconds before requesting another code.'
+      : 'Resend could not send the OTP email. Check the Resend API key, verified sender domain, and backend logs.')
+    error.statusCode = deliveryUncertain ? 504 : 502
     if (deliveryUncertain) error.publicCode = 'EMAIL_DELIVERY_UNCERTAIN'
     throw error
   }
@@ -90,6 +103,7 @@ export async function authStatus(req, res, next) {
 export async function sendRegistrationOtp(req, res, next) {
   try {
     const email = String(req.body.email || '').trim().toLowerCase()
+    if (!allowedAdminEmail) return res.status(503).json({ message: 'Admin email is not configured on the backend.' })
     if (!emailIsAllowed(email)) return res.status(403).json({ message: 'Admin signup is restricted to the authorized Gmail account.' })
     if (await primaryAdminExists()) return res.status(409).json({ message: 'Initial admin registration is disabled. Sign in instead.' })
     await sendOtp(email, 'registration', 'Kani Metals admin registration code', 'Use this code to verify the authorized admin email.')

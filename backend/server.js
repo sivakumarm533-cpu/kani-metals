@@ -28,8 +28,9 @@ app.get('/api/health', (_req, res) => res.json({
   status: 'ok',
   authConfig: {
     jwtSecretConfigured: Boolean(process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32 && !process.env.JWT_SECRET.toLowerCase().startsWith('replace-')),
-    smtpUserConfigured: Boolean(process.env.SMTP_USER),
-    smtpAppPasswordConfigured: Boolean(process.env.SMTP_APP_PASSWORD),
+    resendApiKeyConfigured: Boolean(process.env.RESEND_API_KEY),
+    emailFromConfigured: Boolean(process.env.EMAIL_FROM),
+    adminEmailConfigured: Boolean(process.env.ADMIN_EMAIL),
   },
 }))
 app.use('/api/auth', authRoutes)
