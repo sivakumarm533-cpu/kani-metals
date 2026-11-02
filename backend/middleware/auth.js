@@ -11,7 +11,7 @@ export async function authenticate(req, res, next) {
     if (!payload.jti) return res.status(401).json({ message: 'This session is no longer valid. Please sign in again.' })
     const session = await AuthSession.findOne({ jti: payload.jti, user: payload.sub, expiresAt: { $gt: new Date() } })
     if (!session) return res.status(401).json({ message: 'This session has ended. Please sign in again.' })
-    const user = await User.findById(payload.sub).select('name email role totpEnabled')
+    const user = await User.findById(payload.sub).select('name email role totpEnabled').select('+profilePicture')
     if (!user) return res.status(401).json({ message: 'This account is no longer available.' })
     if (user.role === 'admin' && !user.totpEnabled) return res.status(403).json({ message: 'Admin authenticator setup is required. Sign in again to enroll.' })
     req.user = user

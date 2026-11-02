@@ -259,7 +259,7 @@ function Itemsentry() {
 
   return (
     <section className="page-container items-entery">
-      {toastMessage && <div className={`app-toast app-toast-${toastType}`} role="status"><i className={`bi ${toastType === "danger" ? "bi-trash3-fill" : toastType === "info" ? "bi-pencil-square" : "bi-check-circle-fill"}`} aria-hidden="true" />{toastMessage}</div>}
+      {toastMessage && <div key={`${toastType}-${toastMessage}`} className={`app-toast app-toast-${toastType}`} role="status"><i className={`bi ${toastType === "danger" ? "bi-trash3-fill" : toastType === "info" ? "bi-pencil-square" : "bi-check-circle-fill"}`} aria-hidden="true" />{toastMessage}</div>}
 
       {/* Step indicator */}
       <div className="billing-steps">

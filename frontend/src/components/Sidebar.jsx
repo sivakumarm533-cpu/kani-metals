@@ -7,7 +7,9 @@ const menuItems = [
   { to: '/inventory', icon: '▤', label: 'Inventory' },
   { to: '/products', icon: '◈', label: 'Products' },
   { to: '/scrap-items', icon: '♻', label: 'Scrap items' },
-  { to: '/itemsentry', icon: '))', label: 'items entry' }
+  { to: '/itemsentry', icon: 'bi bi-receipt-cutoff', label: 'Item entry' },
+  { to: '/dealer-payments', icon: 'bi bi-wallet2', label: 'Dealer Payments' },
+  { to: '/bill-comparison', icon: 'bi bi-arrow-left-right', label: 'Bill Comparison' }
 ]
 
 function Sidebar() {
@@ -44,14 +46,14 @@ function Sidebar() {
             {menuItems.map((item) => (
               <li key={item.to}>
                 <NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to={item.to} onClick={closeMenu}>
-                  <span className="sidebar-icon" aria-hidden="true">{item.icon}</span>
+                  <span className="sidebar-icon" aria-hidden="true">{item.icon.startsWith('bi ') ? <i className={item.icon} /> : item.icon}</span>
                   <span>{item.label}</span>
                 </NavLink>
               </li>
             ))}
             {user?.role === 'admin' && <li className="sidebar-settings">
               <button type="button" className={`sidebar-link settings-parent${location.pathname.startsWith('/settings') ? ' is-active' : ''}`} aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><span className="sidebar-icon" aria-hidden="true">⚙</span><span>Settings</span><span className="settings-chevron" aria-hidden="true">{settingsOpen ? '−' : '+'}</span></button>
-              {settingsOpen && <ul className="sidebar-submenu"><li><NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to="/settings/users" onClick={closeMenu}>User management</NavLink></li><li><NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to="/settings/backup" onClick={closeMenu}>Database backup</NavLink></li></ul>}
+              {settingsOpen && <ul className="sidebar-submenu"><li><NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to="/settings/users" onClick={closeMenu}>User management</NavLink></li><li><NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to="/settings/activity" onClick={closeMenu}>User activity</NavLink></li><li><NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to="/settings/backup" onClick={closeMenu}>Database backup</NavLink></li></ul>}
             </li>}
           </ul>
         </nav>

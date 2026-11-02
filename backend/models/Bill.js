@@ -14,6 +14,7 @@ const billSchema = new mongoose.Schema({
   issuedDate: { type: Date, required: true },
   items: { type: [billItemSchema], required: true, validate: (items) => items.length > 0 },
   total: { type: Number, required: true, min: 0 },
+  receivedPaise: { type: Number, default: 0, min: 0 },
 }, { timestamps: true })
 
 export default mongoose.model('Bill', billSchema)

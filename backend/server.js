@@ -3,6 +3,7 @@ import cors from 'cors'
 import express from 'express'
 import connectDB from './config/db.js'
 import billRoutes from './routes/billRoutes.js'
+import paymentRoutes from './routes/paymentRoutes.js'
 import dealerRoutes from './routes/dealerRoutes.js'
 import productRoutes from './routes/productRoutes.js'
 import authRoutes from './routes/authRoutes.js'
@@ -38,6 +39,7 @@ app.use('/api', authenticate)
 app.use('/api/dealers', dealerRoutes)
 app.use('/api/products', productRoutes)
 app.use('/api/bills', billRoutes)
+app.use('/api/payments', paymentRoutes)
 app.use('/api/admin/backup', backupRoutes)
 app.get('/', (_req, res) => {
   res.send('Kani Metals API is running successfully!')

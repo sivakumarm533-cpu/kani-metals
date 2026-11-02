@@ -14,6 +14,9 @@ import DealerBills from './pages/DealerBills.jsx'
 import Login from './pages/Login.jsx'
 import AdminSignup from './pages/AdminSignup.jsx'
 import Settings from './pages/Settings.jsx'
+import BillComparison from './pages/BillComparison.jsx'
+import BillComparisonProduct from './pages/BillComparisonProduct.jsx'
+import DealerPayments from './pages/DealerPayments.jsx'
 
 function AppLayout() {
   return (
@@ -28,6 +31,10 @@ function AppLayout() {
             <Route path="/products" element={<Products />} />
             <Route path="/scrap-items" element={<Cards />} />
             <Route path="/itemsentry" element={<Itemsentry />} />
+            <Route path="/bill-comparison" element={<BillComparison />} />
+            <Route path="/bill-comparison/product/:productKey" element={<BillComparisonProduct />} />
+            <Route path="/dealer-payments" element={<DealerPayments />} />
+            <Route path="/dealer-payments/:dealerId" element={<DealerPayments />} />
             <Route path="/dealers/:dealerId/bills" element={<DealerBills />} />
             <Route path="/settings/*" element={<RequireAuth adminOnly><Settings /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -7,6 +7,8 @@ import TotpChallenge from '../models/TotpChallenge.js'
 import AuthSession from '../models/AuthSession.js'
 import { getJwtSecret } from '../config/secrets.js'
 import { decryptTotpSecret, encryptTotpSecret, hashChallenge, makeTotpQr, newChallenge, newRecoveryCodes, newTotpSecret } from '../utils/totp.js'
+import { recordActivity } from '../utils/activity.js'
+import { profilePictureDataUrl } from '../utils/profilePicture.js'
 
 const allowedAdminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase()
 const previousAdminEmail = 'sivakumar.m533@gmail.com'
@@ -17,7 +19,7 @@ const emailIsAllowed = (email) => String(email || '').trim().toLowerCase() === a
 const canMigrateAdminEmail = (email) => emailIsAllowed(email) || String(email || '').trim().toLowerCase() === previousAdminEmail
 const primaryAdminExists = () => User.exists({ role: 'admin', email: { $in: [allowedAdminEmail, previousAdminEmail].filter(Boolean) } })
 const isRetiredDemoAdmin = (email) => retiredDemoAdminEmails.has(String(email || '').trim().toLowerCase())
-const publicUser = (user) => ({ _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt })
+const publicUser = (user) => ({ _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, profilePicture: user.profilePicture || '' })
 
 async function adminSetupIsComplete() {
   if (await primaryAdminExists()) return true
@@ -170,7 +172,7 @@ export async function login(req, res, next) {
   try {
     const email = String(req.body.email || '').trim().toLowerCase()
     const password = String(req.body.password || '')
-    const user = await User.findOne({ email }).select('+passwordHash').select('+totpSecretEncrypted')
+    const user = await User.findOne({ email }).select('+passwordHash').select('+totpSecretEncrypted').select('+profilePicture')
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ message: 'Email or password is incorrect.' })
     if (user.role !== 'admin') return res.json({ requiresTotp: false, ...await createSession(user) })
     if (!allowedAdminEmail) return res.status(503).json({ message: 'Admin email is not configured on the backend.' })
@@ -189,7 +191,7 @@ export async function verifyLoginTotp(req, res, next) {
   try {
     const challenge = await getChallenge(req.body.loginChallenge, 'login')
     if (!challenge) return invalidChallenge(res)
-    const user = await User.findById(challenge.user).select('+totpSecretEncrypted').select('+totpLastTimeStep')
+    const user = await User.findById(challenge.user).select('+totpSecretEncrypted').select('+totpLastTimeStep').select('+profilePicture')
     if (!user || user.role !== 'admin' || !user.totpEnabled || !user.totpSecretEncrypted || !canMigrateAdminEmail(user.email)) return res.status(401).json({ message: 'This admin login is unavailable. Sign in again.' })
     const secret = decryptTotpSecret(user.totpSecretEncrypted)
     const verified = await verifyTotpCode(secret, req.body.code, user.totpLastTimeStep ?? -1)
@@ -227,7 +229,7 @@ export async function verifyLoginRecovery(req, res, next) {
     const consumed = await TotpChallenge.findOneAndDelete({ _id: challenge._id })
     if (!consumed) return invalidChallenge(res)
     if (user.email !== allowedAdminEmail) await User.updateOne({ _id: user._id }, { $set: { email: allowedAdminEmail } })
-    const fullUser = await User.findById(user._id)
+    const fullUser = await User.findById(user._id).select('+profilePicture')
     res.json({ ...await createSession(fullUser), message: 'Signed in using a recovery code.' })
   } catch (error) { next(error) }
 }
@@ -240,8 +242,28 @@ export async function logout(req, res, next) {
 export function currentUser(req, res) { res.json({ user: publicUser(req.user) }) }
 
 export async function listUsers(_req, res, next) {
-  try { res.json(await User.find().select('name email role createdAt').sort({ createdAt: -1 })) }
+  try {
+    const users = await User.find().select('name email role createdAt').select('+profilePicture').sort({ createdAt: -1 })
+    res.json(users.map(publicUser))
+  }
   catch (error) { next(error) }
+}
+
+export async function userSummary(_req, res, next) {
+  try {
+    const now = new Date()
+    const [totalUsers, administrators, activeSessions] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: 'admin' }),
+      AuthSession.distinct('user', { expiresAt: { $gt: now } }),
+    ])
+    res.json({
+      totalUsers,
+      activeUsers: activeSessions.length,
+      administrators,
+      regularUsers: totalUsers - administrators,
+    })
+  } catch (error) { next(error) }
 }
 
 export async function createUser(req, res, next) {
@@ -252,19 +274,63 @@ export async function createUser(req, res, next) {
     }
     const normalizedEmail = email.trim().toLowerCase()
     if (await User.exists({ email: normalizedEmail })) return res.status(409).json({ message: 'An account with this email already exists.' })
-    const user = await User.create({ name: name.trim(), email: normalizedEmail, passwordHash: await bcrypt.hash(password, 12), role: 'user' })
+    const user = await User.create({
+      name: name.trim(), email: normalizedEmail, passwordHash: await bcrypt.hash(password, 12), role: 'user',
+      ...(req.file ? { profilePicture: profilePictureDataUrl(req.file) } : {}),
+    })
+    await recordActivity(req, { action: 'create', entity: 'user', entityId: user._id, before: null, after: user })
     res.status(201).json(publicUser(user))
+  } catch (error) { next(error) }
+}
+
+export async function updateUser(req, res, next) {
+  try {
+    const user = await User.findById(req.params.id).select('+profilePicture')
+    if (!user) return res.status(404).json({ message: 'User not found.' })
+    if (user.role === 'admin') return res.status(403).json({ message: 'The primary admin profile cannot be edited from User management.' })
+    const before = user.toObject()
+    const { name, email } = req.body
+    if (name !== undefined) {
+      if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ message: 'Enter a user name.' })
+      user.name = name.trim()
+    }
+    if (email !== undefined) {
+      if (typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email.trim())) return res.status(400).json({ message: 'Enter a valid email address.' })
+      const normalizedEmail = email.trim().toLowerCase()
+      if (await User.exists({ email: normalizedEmail, _id: { $ne: user._id } })) return res.status(409).json({ message: 'An account with this email already exists.' })
+      user.email = normalizedEmail
+    }
+    if (req.file) user.profilePicture = profilePictureDataUrl(req.file)
+    if (req.body.removeProfilePicture === 'true') user.profilePicture = ''
+    await user.save()
+    await recordActivity(req, { action: 'update', entity: 'user', entityId: user._id, before, after: user })
+    res.json(publicUser(user))
+  } catch (error) { next(error) }
+}
+
+export async function updateOwnProfilePicture(req, res, next) {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'Choose a profile picture to upload.' })
+    const user = await User.findById(req.user._id).select('+profilePicture')
+    if (!user) return res.status(404).json({ message: 'User not found.' })
+    const before = user.toObject()
+    user.profilePicture = profilePictureDataUrl(req.file)
+    await user.save()
+    await recordActivity(req, { action: 'update', entity: 'user', entityId: user._id, entityLabel: `${user.name} profile picture`, before, after: user })
+    res.json({ user: publicUser(user) })
   } catch (error) { next(error) }
 }
 
 export async function deleteUser(req, res, next) {
   try {
     if (req.params.id === req.user.id) return res.status(400).json({ message: 'You cannot delete your own account.' })
-    const user = await User.findById(req.params.id)
+    const user = await User.findById(req.params.id).select('+profilePicture')
     if (!user) return res.status(404).json({ message: 'User not found.' })
     if (user.role === 'admin') return res.status(403).json({ message: 'The primary admin account cannot be deleted here.' })
+    const before = user.toObject()
     await AuthSession.deleteMany({ user: user._id })
     await user.deleteOne()
+    await recordActivity(req, { action: 'delete', entity: 'user', entityId: user._id, before, after: null })
     res.json({ message: 'User deleted.' })
   } catch (error) { next(error) }
 }

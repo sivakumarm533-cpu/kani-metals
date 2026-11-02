@@ -9,10 +9,11 @@ export async function apiRequest(path, options = {}) {
   }
   const endpoint = path.startsWith('/') ? path : `/${path}`
   const token = localStorage.getItem('kani-auth-token')
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
