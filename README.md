@@ -33,3 +33,7 @@ Build the frontend with `npm run build` from the `frontend` folder.
    ```
 
 The dealer and bill forms send data to the backend API. The backend stores dealers, products, and bills in separate MongoDB collections inside the `datadb` database. Check `http://localhost:5000/api/health` to confirm the API is running.
+
+## Deploying the backend to Vercel
+
+Create a Vercel project for the `backend/` directory and set `MONGODB_URI` in the Vercel project environment variables to your MongoDB Atlas connection string. The backend exposes its `/api/*` routes as serverless functions and reuses the MongoDB connection between warm invocations. If the frontend is deployed as a separate Vercel project, set its `VITE_API_URL` environment variable to the backend deployment URL ending in `/api` (for example, `https://your-backend.vercel.app/api`) and redeploy the frontend.

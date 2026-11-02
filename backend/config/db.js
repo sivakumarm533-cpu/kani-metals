@@ -1,9 +1,26 @@
 import mongoose from 'mongoose'
 
-export default async function connectDB() {
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/datadb'
+let connectionPromise
 
-  await mongoose.connect(mongoUri)
-  console.log(`MongoDB connected to ${mongoose.connection.host}/${mongoose.connection.name}`)
-  return true
+export default async function connectDB() {
+  const mongoUri = process.env.MONGODB_URI
+  if (!mongoUri) {
+    throw new Error('MONGODB_URI is not configured.')
+  }
+
+  if (mongoose.connection.readyState === 1) return mongoose.connection
+
+  if (!connectionPromise) {
+    connectionPromise = mongoose.connect(mongoUri)
+      .then((connection) => {
+        console.log(`MongoDB connected to ${connection.connection.host}/${connection.connection.name}`)
+        return connection
+      })
+      .finally(() => {
+        connectionPromise = undefined
+      })
+  }
+
+  await connectionPromise
+  return mongoose.connection
 }
