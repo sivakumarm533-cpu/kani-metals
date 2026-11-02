@@ -20,9 +20,13 @@ export default function Login() {
   const [resendSeconds, setResendSeconds] = useState(0)
   const [demoEnabled, setDemoEnabled] = useState(false)
   const [demoCredentials, setDemoCredentials] = useState(null)
+  const [setupAvailable, setSetupAvailable] = useState(null)
 
   useEffect(() => {
-    if (import.meta.env.DEV) apiRequest('/auth/status').then((status) => { setDemoEnabled(status.demoLoginEnabled); setDemoCredentials(status.demoCredentials || null) }).catch(() => {})
+    apiRequest('/auth/status').then((status) => {
+      setSetupAvailable(!status.adminExists)
+      if (import.meta.env.DEV) { setDemoEnabled(status.demoLoginEnabled); setDemoCredentials(status.demoCredentials || null) }
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -61,5 +65,5 @@ export default function Login() {
 
   return <main className="auth-page"><section className="auth-card"><div className="auth-mark">KM</div><h1>{requiresOtp ? 'Verify admin login' : 'Sign in'}</h1><p>{requiresOtp ? 'Admin password verified. Complete email verification to continue.' : 'Access the Kani Metals admin panel.'}</p>{error && <div className="api-error" role="alert">{error}</div>}{message && <p className="auth-message" role="status">{message}</p>}
     {!requiresOtp ? <><form onSubmit={submit}><label>Email<input className="form-control" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label><label>Password<input className="form-control" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label><button className="continue-btn" disabled={busy}>{busy ? 'Checking…' : 'Continue'}</button></form>{import.meta.env.DEV && demoEnabled && demoCredentials && <div className="demo-login-card"><strong>Local demo credentials</strong><span>Email: {demoCredentials.email}</span><span>Password: {demoCredentials.password}</span><button type="button" className="demo-login-button" onClick={signInDemo} disabled={busy}>{busy ? 'Signing in…' : 'Sign in with demo account'}</button></div>}</> : <><button type="button" className="continue-btn" onClick={sendOtp} disabled={busy || resendSeconds > 0}>{busy ? 'Sending code…' : resendSeconds > 0 ? `Resend OTP in ${resendSeconds}s` : otpSent ? 'Resend Gmail OTP' : 'Send 6-digit Gmail OTP'}</button>{otpSent && <form onSubmit={verifyOtp}><label>6-digit Gmail OTP<input className="form-control" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" value={otp} onChange={(e) => setOtp(e.target.value)} required /></label><button className="continue-btn" disabled={busy}>{busy ? 'Verifying…' : 'Verify OTP and sign in'}</button></form>}<button type="button" className="back-button" onClick={() => { setRequiresOtp(false); setOtpSent(false); setOtp(''); setLoginChallenge('') }}>Back to sign in</button></>}
-    <Link to="/signup">Set up authorized admin</Link></section></main>
+    {setupAvailable !== false && <Link to="/signup">Set up authorized admin</Link>}</section></main>
 }

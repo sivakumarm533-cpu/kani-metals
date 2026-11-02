@@ -13,6 +13,7 @@ const otpLifetimeMs = 5 * 60 * 1000
 const sessionLifetimeMs = 12 * 60 * 60 * 1000
 const emailIsAllowed = (email) => String(email || '').trim().toLowerCase() === allowedAdminEmail
 const canMigrateAdminEmail = (email) => emailIsAllowed(email) || String(email || '').trim().toLowerCase() === previousAdminEmail
+const primaryAdminExists = () => User.exists({ role: 'admin', email: { $in: [allowedAdminEmail, previousAdminEmail] } })
 function demoLoginIsEnabled(req) {
   const clientIp = req.ip || req.socket.remoteAddress
   const isLocal = ['::1', '127.0.0.1', '::ffff:127.0.0.1'].includes(clientIp)
@@ -77,7 +78,7 @@ async function validateOtp(email, purpose, otp) {
 export async function authStatus(req, res, next) {
   try {
     const demoLoginEnabled = demoLoginIsEnabled(req)
-    res.json({ adminExists: Boolean(await User.exists({ role: 'admin' })), signupEmail: allowedAdminEmail, demoLoginEnabled, demoCredentials: demoLoginEnabled ? { email: process.env.DEMO_ADMIN_EMAIL, password: process.env.DEMO_ADMIN_PASSWORD } : undefined })
+    res.json({ adminExists: Boolean(await primaryAdminExists()), signupEmail: allowedAdminEmail, demoLoginEnabled, demoCredentials: demoLoginEnabled ? { email: process.env.DEMO_ADMIN_EMAIL, password: process.env.DEMO_ADMIN_PASSWORD } : undefined })
   }
   catch (error) { next(error) }
 }
@@ -86,7 +87,7 @@ export async function sendRegistrationOtp(req, res, next) {
   try {
     const email = String(req.body.email || '').trim().toLowerCase()
     if (!emailIsAllowed(email)) return res.status(403).json({ message: 'Admin signup is restricted to the authorized Gmail account.' })
-    if (await User.exists({ role: 'admin' })) return res.status(409).json({ message: 'Initial admin registration is disabled. Sign in instead.' })
+    if (await primaryAdminExists()) return res.status(409).json({ message: 'Initial admin registration is disabled. Sign in instead.' })
     await sendOtp(email, 'registration', 'Kani Metals admin registration code', 'Use this code to verify the authorized admin email.')
     res.json({ message: `A verification code was sent to ${allowedAdminEmail}.` })
   } catch (error) { next(error) }
@@ -109,7 +110,7 @@ export async function createAdmin(req, res, next) {
     if (verified.purpose !== 'create-admin' || !emailIsAllowed(verified.email)) return res.status(403).json({ message: 'Admin email verification is required.' })
     if (typeof name !== 'string' || !name.trim() || typeof password !== 'string' || password.length < 12) return res.status(400).json({ message: 'Enter your name and a password with at least 12 characters.' })
     if (password !== confirmPassword) return res.status(400).json({ message: 'Password and confirmation do not match.' })
-    if (await User.exists({ role: 'admin' })) return res.status(409).json({ message: 'Initial admin registration is disabled.' })
+    if (await primaryAdminExists()) return res.status(409).json({ message: 'Initial admin registration is disabled.' })
     const user = await User.create({ name: name.trim(), email: allowedAdminEmail, passwordHash: await bcrypt.hash(password, 12), role: 'admin' })
     await EmailVerification.deleteMany({ email: allowedAdminEmail })
     res.status(201).json(await createSession(user))
