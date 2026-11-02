@@ -7,10 +7,12 @@ import EmailVerification from '../models/EmailVerification.js'
 import AuthSession from '../models/AuthSession.js'
 import { getJwtSecret } from '../config/secrets.js'
 
-const allowedAdminEmail = 'sivakumar.m533@gmail.com'
+const allowedAdminEmail = 'kanimetal1972@gmail.com'
+const previousAdminEmail = 'sivakumar.m533@gmail.com'
 const otpLifetimeMs = 5 * 60 * 1000
 const sessionLifetimeMs = 12 * 60 * 60 * 1000
 const emailIsAllowed = (email) => String(email || '').trim().toLowerCase() === allowedAdminEmail
+const canMigrateAdminEmail = (email) => emailIsAllowed(email) || String(email || '').trim().toLowerCase() === previousAdminEmail
 function demoLoginIsEnabled(req) {
   const clientIp = req.ip || req.socket.remoteAddress
   const isLocal = ['::1', '127.0.0.1', '::ffff:127.0.0.1'].includes(clientIp)
@@ -44,7 +46,20 @@ async function sendOtp(email, purpose, subject, intro) {
     $setOnInsert: { email, purpose },
   }, { upsert: true, new: true, setDefaultsOnInsert: true })
   const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_APP_PASSWORD } })
-  await transporter.sendMail({ from: `Kani Metals <${process.env.SMTP_USER}>`, to: email, subject, text: `${intro}\n\nYour 6-digit code is ${otp}. It expires in 5 minutes. If you did not request this, ignore this email.` })
+  try {
+    await transporter.sendMail({ from: `Kani Metals <${process.env.SMTP_USER}>`, to: email, subject, text: `${intro}\n\nYour 6-digit code is ${otp}. It expires in 5 minutes. If you did not request this, ignore this email.` })
+  } catch (cause) {
+    await EmailVerification.deleteOne({ email, purpose })
+    console.error('OTP email delivery failed:', { code: cause.code, command: cause.command, responseCode: cause.responseCode })
+    const message = cause.code === 'EAUTH'
+      ? 'Gmail rejected the SMTP credentials. Use the authorized Gmail address and its 16-character App Password.'
+      : ['ETIMEDOUT', 'ECONNECTION', 'ENOTFOUND'].includes(cause.code)
+        ? 'Could not connect to Gmail SMTP from the deployed backend. Check the backend host logs or use an HTTP email provider.'
+        : 'Gmail could not send the OTP. Check the backend deployment logs and SMTP environment variables.'
+    const error = new Error(message)
+    error.statusCode = 503
+    throw error
+  }
 }
 
 async function validateOtp(email, purpose, otp) {
@@ -111,9 +126,9 @@ export async function login(req, res, next) {
     const user = await User.findOne({ email }).select('+passwordHash')
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ message: 'Email or password is incorrect.' })
     if (user.role === 'admin') {
-      if (!emailIsAllowed(user.email)) return res.status(403).json({ message: 'Admin account is not authorized.' })
-      const loginChallenge = jwt.sign({ sub: user._id.toString(), email: user.email, purpose: 'admin-login' }, getJwtSecret(), { expiresIn: '5m' })
-      return res.json({ requiresOtp: true, loginChallenge, email: user.email, message: 'Password verified. Request an email OTP to finish signing in.' })
+      if (!canMigrateAdminEmail(user.email)) return res.status(403).json({ message: 'Admin account is not authorized.' })
+      const loginChallenge = jwt.sign({ sub: user._id.toString(), email: allowedAdminEmail, purpose: 'admin-login' }, getJwtSecret(), { expiresIn: '5m' })
+      return res.json({ requiresOtp: true, loginChallenge, email: allowedAdminEmail, message: `Password verified. A login OTP will be sent to ${allowedAdminEmail}.` })
     }
     res.json({ requiresOtp: false, ...await createSession(user) })
   } catch (error) { next(error) }
@@ -147,7 +162,7 @@ export async function sendLoginOtp(req, res, next) {
     const challenge = jwt.verify(req.body.loginChallenge, getJwtSecret())
     if (challenge.purpose !== 'admin-login' || !emailIsAllowed(challenge.email)) return res.status(403).json({ message: 'A valid admin password check is required.' })
     const user = await User.findById(challenge.sub)
-    if (!user || user.role !== 'admin' || !emailIsAllowed(user.email)) return res.status(401).json({ message: 'This admin account is unavailable.' })
+    if (!user || user.role !== 'admin' || !canMigrateAdminEmail(user.email)) return res.status(401).json({ message: 'This admin account is unavailable.' })
     await sendOtp(user.email, 'admin-login', 'Kani Metals admin login code', 'Use this code to complete your admin sign-in.')
     res.json({ message: `A login code was sent to ${user.email}.` })
   } catch (error) {
@@ -162,7 +177,13 @@ export async function verifyLoginOtp(req, res, next) {
     if (challenge.purpose !== 'admin-login' || !emailIsAllowed(challenge.email)) return res.status(403).json({ message: 'A valid admin password check is required.' })
     if (!(await validateOtp(challenge.email, 'admin-login', req.body.otp))) return res.status(400).json({ message: 'The OTP is invalid, expired, or has reached its attempt limit.' })
     const user = await User.findById(challenge.sub)
-    if (!user || user.role !== 'admin') return res.status(401).json({ message: 'This admin account is unavailable.' })
+    if (!user || user.role !== 'admin' || !canMigrateAdminEmail(user.email)) return res.status(401).json({ message: 'This admin account is unavailable.' })
+    const emailConflict = await User.exists({ email: allowedAdminEmail, _id: { $ne: user._id } })
+    if (emailConflict) return res.status(409).json({ message: 'The authorized admin email is already assigned to another account. Remove or rename that account first.' })
+    if (user.email !== allowedAdminEmail) {
+      user.email = allowedAdminEmail
+      await user.save()
+    }
     res.json(await createSession(user))
   } catch (error) {
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') return res.status(401).json({ message: 'Password verification expired. Sign in again.' })

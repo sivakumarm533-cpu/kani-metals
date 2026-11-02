@@ -35,7 +35,7 @@ export default function Login() {
     event.preventDefault(); setBusy(true); setError('')
     try {
       const auth = await apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
-      if (auth.requiresOtp) { setLoginChallenge(auth.loginChallenge); setRequiresOtp(true); return }
+      if (auth.requiresOtp) { setLoginChallenge(auth.loginChallenge); setRequiresOtp(true); setMessage(auth.message || '') ; return }
       signIn(auth); navigate(location.state?.from || '/dashboard', { replace: true })
     }
     catch (err) { setError(err.message) } finally { setBusy(false) }

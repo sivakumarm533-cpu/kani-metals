@@ -4,7 +4,7 @@ import { apiRequest } from '../services/api.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import './pages.css'
 
-const allowedEmail = 'sivakumar.m533@gmail.com'
+const allowedEmail = 'kanimetal1972@gmail.com'
 
 export default function AdminSignup() {
   const { signIn } = useAuth()
