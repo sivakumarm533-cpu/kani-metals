@@ -223,6 +223,126 @@
   margin-bottom: 14px;
 }
 
+.dealer-card-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.view-dealer-bills-btn {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.view-dealer-bills-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+.dealer-history-actions, .dealer-bill-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dealer-bill-list { display: grid; gap: 16px; margin-top: 20px; }
+
+.dealer-bill-card {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.dealer-bill-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+}
+
+.dealer-bill-heading h3 { margin: 0 0 4px; font-size: 16px; }
+.dealer-bill-heading span { color: var(--color-text-muted); font-size: 12px; }
+.dealer-bill-heading > strong { font-size: 18px; }
+.dealer-bill-card .table-responsive { padding: 0 18px; }
+.dealer-bill-actions { justify-content: flex-end; padding: 12px 18px; border-top: 1px solid var(--color-border); }
+.dealer-bill-edit > label { display: grid; gap: 6px; max-width: 260px; margin-bottom: 16px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
+.dealer-bill-edit td { min-width: 115px; }
+
+.dealer-profile-panel {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 18px 0 24px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-background);
+}
+
+.dealer-profile-avatar {
+  display: grid;
+  flex: 0 0 76px;
+  width: 76px;
+  height: 76px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.dealer-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.dealer-profile-details h3 { margin: 0 0 6px; font-size: 20px; }
+.dealer-profile-contact { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 10px; color: var(--color-text-muted); font-size: 13px; }
+.dealer-profile-contact i { margin-right: 5px; color: var(--color-primary); }
+.dealer-bill-edit .table-responsive { margin: 16px 0 12px; }
+.dealer-bill-edit td { min-width: 145px; }
+.dealer-bill-edit td:last-child { min-width: 90px; }
+.dealer-bill-edit .form-control, .dealer-bill-edit .form-select { min-width: 125px; }
+.dealer-bill-edit .bill-item-name-cell { min-width: 240px; width: 240px; }
+.dealer-bill-edit .bill-item-name-input { box-sizing: border-box; width: 100%; min-width: 220px; }
+.bill-edit-amount { white-space: nowrap; font-weight: 600; }
+.dealer-bill-edit-total { margin-top: 14px; text-align: right; font-size: 17px; font-weight: 700; }
+
+.app-toast {
+  position: fixed;
+  z-index: 1200;
+  top: 22px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 13px 17px;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #166534;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 14%);
+  font-size: 14px;
+  font-weight: 600;
+  animation: toast-enter 180ms ease-out;
+}
+
+.app-toast i { font-size: 18px; }
+.app-toast-success { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.app-toast-info { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+.app-toast-danger { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+
+@keyframes toast-enter {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .edit-dealer-btn {
   display: grid;
   width: 30px;
@@ -238,6 +358,92 @@
 .edit-dealer-btn:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
+}
+
+.delete-dealer-btn {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #fecaca;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--color-danger);
+  cursor: pointer;
+}
+
+.delete-dealer-btn:hover {
+  border-color: var(--color-danger);
+  background: #fef2f2;
+}
+
+.dealer-delete-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 52%);
+}
+
+.dealer-delete-dialog {
+  width: min(100%, 420px);
+  padding: 26px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: 0 20px 60px rgb(15 23 42 / 22%);
+}
+
+.dealer-delete-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  margin-bottom: 16px;
+  border-radius: 50%;
+  background: #fef2f2;
+  color: var(--color-danger);
+  font-size: 20px;
+}
+
+.dealer-delete-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.dealer-delete-dialog p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.dealer-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.dealer-delete-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.confirm-delete-btn {
+  padding: 9px 14px;
+  border: 1px solid var(--color-danger);
+  border-radius: 7px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.confirm-delete-btn:hover:not(:disabled) {
+  background: #b91c1c;
 }
 
 .edit-dealer-btn svg {
@@ -545,6 +751,22 @@
   font-weight: 600;
 }
 
+.api-error {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 13px;
+}
+
+.dealer-empty-state {
+  margin-top: 20px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
 /* RESPONSIVE */
 
 @media (max-width: 576px) {
@@ -585,6 +807,8 @@
   .dealer-form-grid {
     grid-template-columns: 1fr;
   }
+
+  .dealer-history-actions { flex-wrap: wrap; justify-content: flex-end; }
 
   .dealer-form-actions {
     flex-direction: column-reverse;

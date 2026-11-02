@@ -1,30 +1,8 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./pages.css";
-
-const dealers = [
-  {
-    id: 1,
-    name: "Kumar Metals",
-    phone: "9876543210",
-    location: "Coimbatore",
-    type: "Regular Dealer",
-  },
-  {
-    id: 2,
-    name: "Sri Murugan Traders",
-    phone: "9876543211",
-    location: "Sulur",
-    type: "Wholesale Dealer",
-  },
-  {
-    id: 3,
-    name: "ABC Scrap Dealers",
-    phone: "9876543212",
-    location: "Tiruppur",
-    type: "Regular Dealer",
-  },
-];
+import { apiRequest } from "../services/api.js";
+import { Link, useSearchParams } from "react-router-dom";
 
 function getTodayDate() {
   const today = new Date();
@@ -33,16 +11,23 @@ function getTodayDate() {
 }
 
 function Itemsentry() {
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
-  const [dealerList, setDealerList] = useState(dealers);
+  const [dealerList, setDealerList] = useState([]);
+  const [apiError, setApiError] = useState("");
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedDealer, setSelectedDealer] = useState(null);
   const [search, setSearch] = useState("");
   const [showDealerForm, setShowDealerForm] = useState(false);
+  const [dealerToDelete, setDealerToDelete] = useState(null);
+  const [isDeletingDealer, setIsDeletingDealer] = useState(false);
   const [editingDealerId, setEditingDealerId] = useState(null);
   const [dealerForm, setDealerForm] = useState({ name: "", phone: "", location: "", type: "Regular Dealer", image: "", cardColor: "#fff3e8", cardBackground: "" });
   const [dealerCategories, setDealerCategories] = useState(["Regular Dealer", "Wholesale Dealer"]);
   const [newDealerCategory, setNewDealerCategory] = useState("");
-  const [itemCategories, setItemCategories] = useState(["Metal", "Plastic", "Paper", "Electronics"]);
+  const itemCategories = ["Metal", "Plastic", "Paper", "Electronics"];
   const [billDate, setBillDate] = useState(getTodayDate);
   const [billItems, setBillItems] = useState([]);
   const [billSaved, setBillSaved] = useState(false);
@@ -54,6 +39,28 @@ function Itemsentry() {
     price: "",
     unit: "kg",
   });
+
+  useEffect(() => {
+    if (!toastMessage) return undefined;
+    const timeout = window.setTimeout(() => setToastMessage(""), 3200);
+    return () => window.clearTimeout(timeout);
+  }, [toastMessage]);
+
+  useEffect(() => {
+    apiRequest("/dealers")
+      .then((dealers) => {
+        const mappedDealers = dealers.map((dealer) => ({
+        ...dealer,
+        id: dealer._id,
+        type: dealer.category,
+        image: dealer.profileImage,
+        }));
+        setDealerList(mappedDealers);
+        const requestedDealer = mappedDealers.find((dealer) => dealer.id === searchParams.get("dealer"));
+        if (requestedDealer) { setSelectedDealer(requestedDealer); setStep(2); }
+      })
+      .catch((error) => setApiError(error.message));
+  }, []);
 
   const filteredDealers = dealerList.filter((dealer) =>
     dealer.name.toLowerCase().includes(search.toLowerCase())
@@ -101,25 +108,70 @@ function Itemsentry() {
     if (imageInput) imageInput.value = "";
   }
 
-  function saveBill() {
+  async function saveBill() {
     if (billItems.length === 0) return;
-    setBillSaved(true);
+    setApiError("");
+    setIsSaving(true);
+    try {
+      await apiRequest("/bills", {
+        method: "POST",
+        body: JSON.stringify({
+          dealer: selectedDealer.id,
+          issuedDate: billDate,
+          items: billItems,
+        }),
+      });
+      setBillSaved(true);
+      setToastMessage(`Bill saved for ${selectedDealer.name}.`);
+      setToastType("success");
+      setStep(1);
+      setBillItems([]);
+      setEditingItemId(null);
+      setItemForm({ name: "", category: "", quantity: "", price: "", unit: "kg", image: "" });
+      setBillDate(getTodayDate());
+    } catch (error) {
+      setApiError(error.message);
+      setBillSaved(false);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
-  function addDealer(event) {
+  async function addDealer(event) {
     event.preventDefault();
-    if (editingDealerId !== null) {
-      const updatedDealer = { ...dealerForm, id: editingDealerId };
-      setDealerList((items) => items.map((dealer) => dealer.id === editingDealerId ? updatedDealer : dealer));
-      setSelectedDealer((dealer) => dealer?.id === editingDealerId ? updatedDealer : dealer);
-    } else {
-      const newDealer = { ...dealerForm, id: Date.now() };
-      setDealerList((items) => [...items, newDealer]);
-      setSelectedDealer(newDealer);
+    setApiError("");
+    const payload = {
+      name: dealerForm.name,
+      phone: dealerForm.phone,
+      location: dealerForm.location,
+      category: dealerForm.type,
+      profileImage: dealerForm.image,
+      cardColor: dealerForm.cardColor,
+      cardBackground: dealerForm.cardBackground,
+    };
+
+    try {
+      const wasEditing = editingDealerId !== null;
+      const saved = await apiRequest(
+        editingDealerId !== null ? `/dealers/${editingDealerId}` : "/dealers",
+        { method: editingDealerId !== null ? "PUT" : "POST", body: JSON.stringify(payload) },
+      );
+      const updatedDealer = { ...saved, id: saved._id, type: saved.category, image: saved.profileImage };
+      if (editingDealerId !== null) {
+        setDealerList((items) => items.map((dealer) => dealer.id === editingDealerId ? updatedDealer : dealer));
+        setSelectedDealer((dealer) => dealer?.id === editingDealerId ? updatedDealer : dealer);
+      } else {
+        setDealerList((items) => [updatedDealer, ...items]);
+        setSelectedDealer(updatedDealer);
+      }
+      setEditingDealerId(null);
+      setDealerForm({ name: "", phone: "", location: "", type: dealerCategories[0], image: "", cardColor: "#fff3e8", cardBackground: "" });
+      setShowDealerForm(false);
+      setToastMessage(wasEditing ? "Dealer updated successfully." : "Dealer added successfully.");
+      setToastType(wasEditing ? "info" : "success");
+    } catch (error) {
+      setApiError(error.message);
     }
-    setEditingDealerId(null);
-    setDealerForm({ name: "", phone: "", location: "", type: dealerCategories[0], image: "", cardColor: "#fff3e8", cardBackground: "" });
-    setShowDealerForm(false);
   }
 
   function editDealer(dealer, event) {
@@ -141,6 +193,25 @@ function Itemsentry() {
     setShowDealerForm(false);
     setEditingDealerId(null);
     setDealerForm({ name: "", phone: "", location: "", type: dealerCategories[0], image: "", cardColor: "#fff3e8", cardBackground: "" });
+  }
+
+  async function deleteDealer() {
+    if (!dealerToDelete) return;
+    setApiError("");
+    setIsDeletingDealer(true);
+    try {
+      await apiRequest(`/dealers/${dealerToDelete.id}`, { method: "DELETE" });
+      setDealerList((dealers) => dealers.filter((dealer) => dealer.id !== dealerToDelete.id));
+      setSelectedDealer((dealer) => dealer?.id === dealerToDelete.id ? null : dealer);
+      if (editingDealerId === dealerToDelete.id) cancelDealerEdit();
+      setDealerToDelete(null);
+      setToastMessage("Dealer deleted successfully.");
+      setToastType("danger");
+    } catch (error) {
+      setApiError(error.message);
+    } finally {
+      setIsDeletingDealer(false);
+    }
   }
 
   function previewDealerImage(event) {
@@ -188,6 +259,7 @@ function Itemsentry() {
 
   return (
     <section className="page-container items-entery">
+      {toastMessage && <div className={`app-toast app-toast-${toastType}`} role="status"><i className={`bi ${toastType === "danger" ? "bi-trash3-fill" : toastType === "info" ? "bi-pencil-square" : "bi-check-circle-fill"}`} aria-hidden="true" />{toastMessage}</div>}
 
       {/* Step indicator */}
       <div className="billing-steps">
@@ -209,6 +281,22 @@ function Itemsentry() {
           </div>
         </div>
       </div>
+
+      {apiError && <p className="api-error" role="alert">{apiError} Make sure MongoDB and the backend server are running.</p>}
+
+      {dealerToDelete && (
+        <div className="dealer-delete-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isDeletingDealer) setDealerToDelete(null); }}>
+          <section className="dealer-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="dealer-delete-title" aria-describedby="dealer-delete-description">
+            <div className="dealer-delete-icon"><i className="bi bi-trash3" aria-hidden="true" /></div>
+            <h2 id="dealer-delete-title">Delete dealer?</h2>
+            <p id="dealer-delete-description">Are you sure you want to delete <strong>{dealerToDelete.name}</strong>? This action cannot be undone.</p>
+            <div className="dealer-delete-actions">
+              <button type="button" className="back-button" disabled={isDeletingDealer} onClick={() => setDealerToDelete(null)}>Cancel</button>
+              <button type="button" className="confirm-delete-btn" disabled={isDeletingDealer} onClick={deleteDealer}>{isDeletingDealer ? "Deleting…" : "Delete dealer"}</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* STEP 1 */}
       {step === 1 && (
@@ -255,6 +343,8 @@ function Itemsentry() {
             />
           </div>
 
+          {dealerList.length === 0 && !apiError && <p className="dealer-empty-state">No dealers saved yet. Add your first dealer to get started.</p>}
+
           <div className="row g-3 mt-3">
             {filteredDealers.map((dealer) => (
               <div className="col-lg-4 col-md-6 col-12" key={dealer.id}>
@@ -282,12 +372,20 @@ function Itemsentry() {
                     {selectedDealer?.id === dealer.id && (
                       <i className="bi bi-check-circle-fill selected-icon" />
                     )}
-                    <button type="button" className="edit-dealer-btn" aria-label={`Edit ${dealer.name}`} title="Edit dealer" onClick={(event) => editDealer(dealer, event)}>
-                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
-                      </svg>
-                    </button>
+                    <div className="dealer-card-actions">
+                      <Link className="view-dealer-bills-btn" to={`/dealers/${dealer.id}/bills`} aria-label={`View ${dealer.name} bill history`} title="View bill history" onClick={(event) => event.stopPropagation()}>
+                        <i className="bi bi-clock-history" aria-hidden="true" />
+                      </Link>
+                      <button type="button" className="edit-dealer-btn" aria-label={`Edit ${dealer.name}`} title="Edit dealer" onClick={(event) => editDealer(dealer, event)}>
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
+                        </svg>
+                      </button>
+                      <button type="button" className="delete-dealer-btn" aria-label={`Delete ${dealer.name}`} title="Delete dealer" onClick={(event) => { event.stopPropagation(); setDealerToDelete(dealer); }}>
+                        <i className="bi bi-trash3" aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
 
                   <h5>{dealer.name}</h5>
@@ -487,8 +585,8 @@ function Itemsentry() {
             <button type="button" className="back-button" onClick={() => setStep(1)}>
               Back
             </button>
-            <button type="button" className="continue-btn" disabled={billItems.length === 0} onClick={saveBill}>
-              Save Bill
+            <button type="button" className="continue-btn" disabled={billItems.length === 0 || isSaving} onClick={saveBill}>
+              {isSaving ? "Saving…" : "Save Bill"}
             </button>
           </div>
           {billSaved && <p className="bill-success" role="status">Bill saved for {selectedDealer.name}.</p>}

@@ -8,6 +8,7 @@ import Cards from './pages/Cards.jsx'
 import './App.css'
 import './components/component.css'
 import Itemsentry from './pages/Itemsentry.jsx'
+import DealerBills from './pages/DealerBills.jsx'
 
 function AppLayout() {
   return (
@@ -22,6 +23,7 @@ function AppLayout() {
             <Route path="/products" element={<Products />} />
             <Route path="/scrap-items" element={<Cards />} />
             <Route path="/itemsentry" element={<Itemsentry />} />
+            <Route path="/dealers/:dealerId/bills" element={<DealerBills />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
