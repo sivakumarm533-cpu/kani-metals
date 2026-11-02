@@ -3,10 +3,12 @@ const API_BASE_URL = `${configuredApiUrl.replace(/\/+$/, '').replace(/\/api$/i, 
 
 export async function apiRequest(path, options = {}) {
   const endpoint = path.startsWith('/') ? path : `/${path}`
+  const token = localStorage.getItem('kani-auth-token')
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   })

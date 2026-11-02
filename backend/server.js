@@ -5,6 +5,9 @@ import connectDB from './config/db.js'
 import billRoutes from './routes/billRoutes.js'
 import dealerRoutes from './routes/dealerRoutes.js'
 import productRoutes from './routes/productRoutes.js'
+import authRoutes from './routes/authRoutes.js'
+import backupRoutes from './routes/backupRoutes.js'
+import { authenticate } from './middleware/auth.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 5000
@@ -20,16 +23,19 @@ app.use(async (_req, res, next) => {
     res.status(503).json({ message: 'Database unavailable. Check the MONGODB_URI environment variable and database access.' })
   }
 })
+app.get('/api/health', (_req, res) => res.json({ status: 'ok' }))
+app.use('/api/auth', authRoutes)
+app.use('/api', authenticate)
 app.use('/api/dealers', dealerRoutes)
 app.use('/api/products', productRoutes)
 app.use('/api/bills', billRoutes)
+app.use('/api/admin/backup', backupRoutes)
 app.get('/', (_req, res) => {
   res.send('Kani Metals API is running successfully!')
 })
-app.get('/api/health', (_req, res) => res.json({ status: 'ok' }))
 app.use((error, _req, res, _next) => {
   console.error(error)
-  const status = error.name === 'ValidationError' || error.name === 'CastError' ? 400 : 500
+  const status = error.statusCode || (error.name === 'ValidationError' || error.name === 'CastError' ? 400 : error.code === 11000 ? 409 : 500)
   res.status(status).json({ message: status === 400 ? error.message : 'Server error. Check the backend terminal.' })
 })
 

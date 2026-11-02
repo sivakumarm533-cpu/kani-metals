@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext.jsx'
 
 const menuItems = [
   { to: '/dashboard', icon: '⌂', label: 'Dashboard' },
@@ -10,6 +11,7 @@ const menuItems = [
 ]
 
 function Sidebar() {
+  const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(() => window.innerWidth > 960)
 
   useEffect(() => {
@@ -37,7 +39,7 @@ function Sidebar() {
         <p className="sidebar-heading">MENU</p>
         <nav>
           <ul className="sidebar-links p-0">
-            {menuItems.map((item) => (
+            {[...menuItems, ...(user?.role === 'admin' ? [{ to: '/settings', icon: '⚙', label: 'Settings' }] : [])].map((item) => (
               <li key={item.to}>
                 <NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to={item.to} onClick={closeMenu}>
                   <span className="sidebar-icon" aria-hidden="true">{item.icon}</span>

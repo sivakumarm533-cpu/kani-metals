@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext.jsx'
 import logo from '../assets/logos/kani-metal-logo-1.png'
 
 function Navbar() {
+  const { user, signOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(() => window.innerWidth > 960)
 
   useEffect(() => {
@@ -43,8 +45,8 @@ function Navbar() {
         <img className="navbar-logo" src={logo} alt="Kani Metals" />
       </Link>
       <div className="navbar-tools">
-        <span className="navbar-status">Admin panel</span>
-        <span className="profile-avatar" aria-label="Administrator">A</span>
+        <span className="navbar-status">{user?.name || 'Admin panel'}</span>
+        <button type="button" className="sign-out-button" onClick={signOut}>Sign out</button>
       </div>
     </header>
   )

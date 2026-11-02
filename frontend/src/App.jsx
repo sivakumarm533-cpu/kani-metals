@@ -1,4 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { AuthProvider } from './auth/AuthContext.jsx'
+import RequireAuth from './components/RequireAuth.jsx'
 import Navbar from './components/Navbar.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Dashboard from './pages/Dashboard.jsx'
@@ -9,6 +11,9 @@ import './App.css'
 import './components/component.css'
 import Itemsentry from './pages/Itemsentry.jsx'
 import DealerBills from './pages/DealerBills.jsx'
+import Login from './pages/Login.jsx'
+import AdminSignup from './pages/AdminSignup.jsx'
+import Settings from './pages/Settings.jsx'
 
 function AppLayout() {
   return (
@@ -24,6 +29,7 @@ function AppLayout() {
             <Route path="/scrap-items" element={<Cards />} />
             <Route path="/itemsentry" element={<Itemsentry />} />
             <Route path="/dealers/:dealerId/bills" element={<DealerBills />} />
+            <Route path="/settings" element={<RequireAuth adminOnly><Settings /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
@@ -33,7 +39,7 @@ function AppLayout() {
 }
 
 function App() {
-  return <BrowserRouter><AppLayout /></BrowserRouter>
+  return <BrowserRouter><AuthProvider><Routes><Route path="/login" element={<Login />} /><Route path="/signup" element={<AdminSignup />} /><Route path="/*" element={<RequireAuth><AppLayout /></RequireAuth>} /></Routes></AuthProvider></BrowserRouter>
 }
 
 export default App
