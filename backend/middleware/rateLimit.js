@@ -10,7 +10,7 @@ export function authRateLimit({ action, max = 10, windowMs = 15 * 60 * 1000 }) {
       const now = new Date()
       const current = await AuthRateLimit.findOne({ key })
       if (!current || current.resetAt <= now) {
-        await AuthRateLimit.findOneAndUpdate({ key }, { count: 1, resetAt: new Date(Date.now() + windowMs) }, { upsert: true, new: true })
+        await AuthRateLimit.findOneAndUpdate({ key }, { count: 1, resetAt: new Date(Date.now() + windowMs) }, { upsert: true, returnDocument: 'after' })
         return next()
       }
       if (current.count >= max) return res.status(429).json({ message: 'Too many attempts. Please wait and try again.' })

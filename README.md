@@ -36,24 +36,29 @@ The dealer and bill forms send data to the backend API. The backend stores deale
 
 ## Authentication and admin setup
 
-All business API endpoints require a signed-in account. Set `JWT_SECRET` to a unique random value of at least 32 characters and configure `RESEND_API_KEY`, `EMAIL_FROM`, and `ADMIN_EMAIL` in the backend environment. `EMAIL_FROM` must use a sender address on a domain verified in Resend; `ADMIN_EMAIL` is the sole address permitted to register the initial admin. Open `/signup`, request and verify the 6-digit OTP, then enter and confirm the primary admin password (12 or more characters). Registration is disabled after the admin is created.
+All business API endpoints require a signed-in account. The owner account is restricted to `ADMIN_EMAIL=kanimetal1972@gmail.com`. Admins use a password and Google Authenticator TOTP; regular users use email and password. TOTP secrets are encrypted at rest with `TOTP_ENCRYPTION_KEY`. Challenges expire after 5 minutes, allow at most 5 code attempts, and auth routes also use database-backed rate limits. Authenticator codes are accepted only once per time step. Ten one-time recovery codes are generated at enrollment, stored as hashes, and shown only once.
 
-If the existing admin account still uses `sivakumar.m533@gmail.com`, sign in once with that existing address and password. The login OTP is sent to the configured `ADMIN_EMAIL`; after it is verified, the stored admin account is migrated to that address.
+For initial setup, configure a strong, random `ADMIN_SETUP_KEY` on the backend, open `/signup`, enter the authorized address, name, password (at least 12 characters), and setup key, then scan the displayed QR code with Google Authenticator. Enter a current 6-digit code to enable TOTP and create the admin account. If the database has the retired `demo.admin@example.test` admin, setup claims that record in place, replacing its demo credentials without creating a second admin or touching business data. The setup key is a bootstrap secret; remove it from Render after account creation. Admin registration is then disabled.
 
-Every admin login requires a valid password followed by a new email OTP. Admin-created regular users sign in with email and password only. Admin sessions are invalidated on logout. OTPs expire after 5 minutes, permit at most 5 incorrect attempts, and have a 60-second resend cooldown. Authentication routes also use database-backed rate limits.
+For the existing admin, preserve the current email and password and sign in at `/login`. If the account has not enrolled, a successful password check starts a five-minute authenticator enrollment challenge; scan its QR code and verify a current code. If the existing account still uses `sivakumar.m533@gmail.com`, completing enrollment migrates that account to `ADMIN_EMAIL`. Save the recovery codes shown after enrollment. If the authenticator device is lost, use one unused recovery code at login; each code works once.
 
-For local testing only, set `ENABLE_DEMO_ADMIN=true`, `DEMO_ADMIN_EMAIL`, and `DEMO_ADMIN_PASSWORD` (at least 12 characters) in both the backend `.env` and the frontend can read its demo credentials from the backend status endpoint. The address should use a reserved test domain such as `demo.admin@example.test`; it is not a real Gmail inbox. The development frontend shows the demo address/password and a one-click sign-in. The backend refuses this endpoint outside localhost, in production, and on Vercel. Turn it off with `ENABLE_DEMO_ADMIN=false`; the generated Demo Admin account can also be removed from Settings → User management.
+Admin sessions are invalidated on logout. No email OTP delivery is used. The old email OTP routes have been removed, and the demo admin login route was removed so it cannot create a TOTP bypass.
 
 The admin Settings submenu provides User management and Database backup. Admins can provision regular user accounts with generated passwords and export/import a JSON backup. Backups include dealers, products, and bills; they exclude login accounts and password hashes. Import replaces those business collections, so export a fresh backup before restoring.
 
-Authentication endpoints: `POST /api/auth/send-otp`, `POST /api/auth/verify-otp`, `POST /api/auth/create-admin`, `POST /api/auth/login`, `POST /api/auth/send-login-otp`, `POST /api/auth/verify-login-otp`, `POST /api/auth/logout`, and `GET /api/auth/me`.
+Authentication endpoints: `POST /api/auth/totp/enroll`, `POST /api/auth/totp/enroll/verify`, `POST /api/auth/login`, `POST /api/auth/totp/login/verify`, `POST /api/auth/totp/login/recovery`, `POST /api/auth/logout`, and `GET /api/auth/me`.
 
 ## Deploying the backend to Render
 
-Create a Render Web Service with Root Directory `backend`, Build Command `npm ci`, and Start Command `npm start`. Add these environment variables in Render: `MONGODB_URI` (MongoDB Atlas URI), `JWT_SECRET` (unique random value of at least 32 characters), `RESEND_API_KEY`, `EMAIL_FROM` (for example, `Kani Metals <auth@your-verified-domain.com>`), `ADMIN_EMAIL=kanimetal1972@gmail.com`, and `ENABLE_DEMO_ADMIN=false`. Set `PORT` only if required by your Render service; Express reads Render's assigned port automatically. Remove legacy `SMTP_USER` and `SMTP_APP_PASSWORD` values.
+Create a Render Web Service with Root Directory `backend`, Build Command `npm ci`, and Start Command `npm start`. Set `MONGODB_URI` (MongoDB Atlas URI), `JWT_SECRET` (unique random value of at least 32 characters), `ADMIN_EMAIL=kanimetal1972@gmail.com`, and `TOTP_ENCRYPTION_KEY` (random 32-byte key encoded as base64). Set `ADMIN_SETUP_KEY` to a separate long random value only for first-time admin setup; remove it from Render after successful enrollment. Set `PORT` only if required by your Render service; Express reads Render's assigned port automatically. Remove `RESEND_API_KEY` and `EMAIL_FROM` from the service.
 
 For the frontend Vercel project, set `VITE_API_URL` to the deployed Render backend URL ending in `/api` (for example, `https://your-backend.onrender.com/api`) in the applicable Vercel environments. Vite embeds this value during the build, so redeploy the frontend after adding or changing it. Without this setting the production frontend shows a clear configuration error instead of trying to call `localhost`.
 
-### Resend sender setup
+Generate random values with Node.js:
 
-In Resend, add and verify a domain you control by publishing the DNS records it provides. Then set `EMAIL_FROM` to an address on that verified domain and set `RESEND_API_KEY` to a server-side API key in Render. The onboarding/test sender is restricted and is not suitable for sending OTPs to arbitrary recipients. Never put the API key in Vercel or frontend variables.
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"  # TOTP_ENCRYPTION_KEY
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))" # ADMIN_SETUP_KEY
+```
+
+Keep `TOTP_ENCRYPTION_KEY` stable and backed up securely. Changing or losing it makes existing encrypted authenticator secrets unreadable, and the admin must be recovered and enrolled again. Never put either secret in Vercel variables or commit them to Git.

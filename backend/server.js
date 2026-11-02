@@ -8,6 +8,7 @@ import productRoutes from './routes/productRoutes.js'
 import authRoutes from './routes/authRoutes.js'
 import backupRoutes from './routes/backupRoutes.js'
 import { authenticate } from './middleware/auth.js'
+import { totpEncryptionKeyConfigured } from './utils/totp.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 5000
@@ -28,9 +29,8 @@ app.get('/api/health', (_req, res) => res.json({
   status: 'ok',
   authConfig: {
     jwtSecretConfigured: Boolean(process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32 && !process.env.JWT_SECRET.toLowerCase().startsWith('replace-')),
-    resendApiKeyConfigured: Boolean(process.env.RESEND_API_KEY),
-    emailFromConfigured: Boolean(process.env.EMAIL_FROM),
     adminEmailConfigured: Boolean(process.env.ADMIN_EMAIL),
+    totpEncryptionKeyConfigured: totpEncryptionKeyConfigured(),
   },
 }))
 app.use('/api/auth', authRoutes)

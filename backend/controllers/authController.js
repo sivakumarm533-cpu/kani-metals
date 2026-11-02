@@ -1,25 +1,35 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { Resend } from 'resend'
-import { randomInt, randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
+import { verify as verifyTotp } from 'otplib'
 import User from '../models/User.js'
-import EmailVerification from '../models/EmailVerification.js'
+import TotpChallenge from '../models/TotpChallenge.js'
 import AuthSession from '../models/AuthSession.js'
 import { getJwtSecret } from '../config/secrets.js'
+import { decryptTotpSecret, encryptTotpSecret, hashChallenge, makeTotpQr, newChallenge, newRecoveryCodes, newTotpSecret } from '../utils/totp.js'
 
 const allowedAdminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase()
 const previousAdminEmail = 'sivakumar.m533@gmail.com'
-const otpLifetimeMs = 5 * 60 * 1000
+const challengeLifetimeMs = 5 * 60 * 1000
 const sessionLifetimeMs = 12 * 60 * 60 * 1000
+const retiredDemoAdminEmails = new Set(['demo.admin@example.test', 'demo.admin@localhost.test'])
 const emailIsAllowed = (email) => String(email || '').trim().toLowerCase() === allowedAdminEmail
 const canMigrateAdminEmail = (email) => emailIsAllowed(email) || String(email || '').trim().toLowerCase() === previousAdminEmail
 const primaryAdminExists = () => User.exists({ role: 'admin', email: { $in: [allowedAdminEmail, previousAdminEmail].filter(Boolean) } })
-function demoLoginIsEnabled(req) {
-  const clientIp = req.ip || req.socket.remoteAddress
-  const isLocal = ['::1', '127.0.0.1', '::ffff:127.0.0.1'].includes(clientIp)
-  return process.env.ENABLE_DEMO_ADMIN === 'true' && process.env.NODE_ENV !== 'production' && !process.env.VERCEL && isLocal && Boolean(process.env.DEMO_ADMIN_EMAIL && process.env.DEMO_ADMIN_PASSWORD && process.env.DEMO_ADMIN_PASSWORD.length >= 12)
-}
+const isRetiredDemoAdmin = (email) => retiredDemoAdminEmails.has(String(email || '').trim().toLowerCase())
 const publicUser = (user) => ({ _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt })
+
+async function adminSetupIsComplete() {
+  if (await primaryAdminExists()) return true
+  const administrators = await User.find({ role: 'admin' }).select('email').lean()
+  return administrators.length > 0 && !(administrators.length === 1 && isRetiredDemoAdmin(administrators[0]?.email))
+}
+
+async function findClaimableDemoAdmin() {
+  const administrators = await User.find({ role: 'admin' }).select('email')
+  if (administrators.length === 1 && isRetiredDemoAdmin(administrators[0].email)) return administrators[0]
+  return null
+}
 
 async function createSession(user) {
   const jti = randomUUID()
@@ -29,185 +39,197 @@ async function createSession(user) {
   return { token, user: publicUser(user) }
 }
 
-async function sendOtp(email, purpose, subject, intro) {
-  const apiKey = process.env.RESEND_API_KEY
-  const from = process.env.EMAIL_FROM
-  if (!apiKey || !from || !allowedAdminEmail) {
-    const error = new Error('Email verification is not configured. Set RESEND_API_KEY, EMAIL_FROM, and ADMIN_EMAIL on the backend.')
-    error.statusCode = 503
-    throw error
-  }
-  const previous = await EmailVerification.findOne({ email, purpose })
-  if (previous && Date.now() - previous.lastSentAt.getTime() < 60_000) {
-    const error = new Error('Wait 60 seconds before requesting another code.')
-    error.statusCode = 429
-    throw error
-  }
-  const otp = String(randomInt(100000, 1000000))
-  await EmailVerification.findOneAndUpdate({ email, purpose }, {
-    $set: { codeHash: await bcrypt.hash(otp, 10), attempts: 0, lastSentAt: new Date(), expiresAt: new Date(Date.now() + otpLifetimeMs) },
-    $setOnInsert: { email, purpose },
-  }, { upsert: true, new: true, setDefaultsOnInsert: true })
-  const resend = new Resend(apiKey)
-  const timeoutSignal = AbortSignal.timeout(10_000)
+function setupKeyMatches(candidate) {
+  const expected = String(process.env.ADMIN_SETUP_KEY || '')
+  const supplied = String(candidate || '')
+  if (!expected || !supplied) return false
+  const expectedBuffer = Buffer.from(expected)
+  const suppliedBuffer = Buffer.from(supplied)
+  return expectedBuffer.length === suppliedBuffer.length && timingSafeEqual(expectedBuffer, suppliedBuffer)
+}
+
+async function createTotpChallenge({ purpose, email, user, name, passwordHash }) {
+  const challenge = newChallenge()
+  const secretEncrypted = encryptTotpSecret(newTotpSecret())
+  const secret = decryptTotpSecret(secretEncrypted)
+  await TotpChallenge.create({
+    challengeHash: hashChallenge(challenge), purpose, email,
+    ...(user ? { user: user._id } : {}), ...(name ? { name } : {}), ...(passwordHash ? { passwordHash } : {}),
+    secretEncrypted, attempts: 0, expiresAt: new Date(Date.now() + challengeLifetimeMs),
+  })
   try {
-    const { data, error: resendError } = await resend.emails.send({
-      from,
-      to: [email],
-      subject,
-      text: `${intro}\n\nYour 6-digit code is ${otp}. It expires in 5 minutes. If you did not request this, ignore this email.`,
-    }, { signal: timeoutSignal })
-    if (resendError || !data?.id) {
-      const deliveryUncertain = timeoutSignal.aborted || resendError?.statusCode == null
-      const error = new Error(deliveryUncertain
-        ? 'Resend timed out while confirming email acceptance. The OTP may still have arrived; check your inbox. If it did not arrive, wait 60 seconds before requesting another code.'
-        : 'Resend could not accept the OTP email. Check the Resend API key, verified sender domain, and backend logs.')
-      error.statusCode = deliveryUncertain ? 504 : 502
-      if (deliveryUncertain) error.publicCode = 'EMAIL_DELIVERY_UNCERTAIN'
-      throw error
-    }
-  } catch (cause) {
-    console.error('Resend OTP request failed:', { name: cause.name, statusCode: cause.statusCode })
-    const deliveryUncertain = cause.publicCode === 'EMAIL_DELIVERY_UNCERTAIN' || timeoutSignal.aborted
-    if (!deliveryUncertain) await EmailVerification.deleteOne({ email, purpose })
-    if (cause.publicCode) throw cause
-    const error = new Error(deliveryUncertain
-      ? 'Resend timed out while confirming email acceptance. The OTP may still have arrived; check your inbox. If it did not arrive, wait 60 seconds before requesting another code.'
-      : 'Resend could not send the OTP email. Check the Resend API key, verified sender domain, and backend logs.')
-    error.statusCode = deliveryUncertain ? 504 : 502
-    if (deliveryUncertain) error.publicCode = 'EMAIL_DELIVERY_UNCERTAIN'
+    return { challenge, qrCodeDataUrl: await makeTotpQr(email, secret), expiresIn: 300 }
+  } catch (error) {
+    await TotpChallenge.deleteOne({ challengeHash: hashChallenge(challenge) })
     throw error
   }
 }
 
-async function validateOtp(email, purpose, otp) {
-  const verification = await EmailVerification.findOne({ email, purpose })
-  if (!verification || verification.expiresAt <= new Date() || verification.attempts >= 5) return false
-  if (!(await bcrypt.compare(String(otp || '').trim(), verification.codeHash))) {
-    verification.attempts += 1
-    await verification.save()
-    return false
-  }
-  const removed = await EmailVerification.deleteOne({ _id: verification._id, codeHash: verification.codeHash })
-  return removed.deletedCount === 1
+async function getChallenge(token, purpose) {
+  if (typeof token !== 'string' || token.length < 32 || token.length > 256) return null
+  return TotpChallenge.findOneAndUpdate({
+    challengeHash: hashChallenge(token), purpose, expiresAt: { $gt: new Date() }, attempts: { $lt: 5 },
+  }, { $inc: { attempts: 1 } }, { returnDocument: 'after' }).select('+secretEncrypted').select('+passwordHash')
 }
 
-export async function authStatus(req, res, next) {
+async function verifyTotpCode(secret, code, afterTimeStep = -1) {
+  const token = String(code || '').trim()
+  if (!/^\d{6}$/.test(token)) return null
+  const options = { secret, token, epochTolerance: [30, 0] }
+  if (afterTimeStep >= 0) options.afterTimeStep = afterTimeStep
+  const result = await verifyTotp(options)
+  return result.valid ? result : null
+}
+
+function invalidChallenge(res) {
+  return res.status(400).json({ message: 'The authenticator code is invalid, expired, or this challenge has reached its attempt limit.' })
+}
+
+async function storeRecoveryCodes(user) {
+  const recoveryCodes = newRecoveryCodes()
+  user.recoveryCodeHashes = await Promise.all(recoveryCodes.map((code) => bcrypt.hash(code, 10)))
+  return recoveryCodes
+}
+
+export async function authStatus(_req, res, next) {
   try {
-    const demoLoginEnabled = demoLoginIsEnabled(req)
-    res.json({ adminExists: Boolean(await primaryAdminExists()), signupEmail: allowedAdminEmail, demoLoginEnabled, demoCredentials: demoLoginEnabled ? { email: process.env.DEMO_ADMIN_EMAIL, password: process.env.DEMO_ADMIN_PASSWORD } : undefined })
-  }
-  catch (error) { next(error) }
+    res.json({ adminExists: await adminSetupIsComplete(), signupEmail: allowedAdminEmail })
+  } catch (error) { next(error) }
 }
 
-export async function sendRegistrationOtp(req, res, next) {
+export async function beginAdminEnrollment(req, res, next) {
   try {
     const email = String(req.body.email || '').trim().toLowerCase()
     if (!allowedAdminEmail) return res.status(503).json({ message: 'Admin email is not configured on the backend.' })
-    if (!emailIsAllowed(email)) return res.status(403).json({ message: 'Admin signup is restricted to the authorized Gmail account.' })
-    if (await primaryAdminExists()) return res.status(409).json({ message: 'Initial admin registration is disabled. Sign in instead.' })
-    await sendOtp(email, 'registration', 'Kani Metals admin registration code', 'Use this code to verify the authorized admin email.')
-    res.json({ message: `A verification code was sent to ${allowedAdminEmail}.` })
-  } catch (error) { next(error) }
-}
-
-export async function verifyRegistrationOtp(req, res, next) {
-  try {
-    const email = String(req.body.email || '').trim().toLowerCase()
-    if (!emailIsAllowed(email)) return res.status(403).json({ message: 'This email is not authorized for admin signup.' })
-    if (!(await validateOtp(email, 'registration', req.body.otp))) return res.status(400).json({ message: 'The OTP is invalid, expired, or has reached its attempt limit.' })
-    const signupToken = jwt.sign({ email, purpose: 'create-admin' }, getJwtSecret(), { expiresIn: '5m' })
-    res.json({ signupToken })
-  } catch (error) { next(error) }
-}
-
-export async function createAdmin(req, res, next) {
-  try {
-    const { signupToken, name, password, confirmPassword } = req.body
-    const verified = jwt.verify(signupToken, getJwtSecret())
-    if (verified.purpose !== 'create-admin' || !emailIsAllowed(verified.email)) return res.status(403).json({ message: 'Admin email verification is required.' })
+    if (!emailIsAllowed(email)) return res.status(403).json({ message: 'Admin setup is restricted to the authorized email address.' })
+    if (await adminSetupIsComplete()) return res.status(409).json({ message: 'Initial admin registration is disabled. Sign in instead.' })
+    if (!process.env.ADMIN_SETUP_KEY) return res.status(503).json({ message: 'One-time admin setup is not configured on the backend.' })
+    if (!setupKeyMatches(req.body.setupKey)) return res.status(403).json({ message: 'The one-time admin setup key is invalid.' })
+    const { name, password, confirmPassword } = req.body
     if (typeof name !== 'string' || !name.trim() || typeof password !== 'string' || password.length < 12) return res.status(400).json({ message: 'Enter your name and a password with at least 12 characters.' })
     if (password !== confirmPassword) return res.status(400).json({ message: 'Password and confirmation do not match.' })
-    if (await primaryAdminExists()) return res.status(409).json({ message: 'Initial admin registration is disabled.' })
-    const user = await User.create({ name: name.trim(), email: allowedAdminEmail, passwordHash: await bcrypt.hash(password, 12), role: 'admin' })
-    await EmailVerification.deleteMany({ email: allowedAdminEmail })
-    res.status(201).json(await createSession(user))
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') return res.status(401).json({ message: 'Email verification has expired. Request a new OTP.' })
-    next(error)
-  }
+    const passwordHash = await bcrypt.hash(password, 12)
+    const enrollment = await createTotpChallenge({ purpose: 'registration', email, name: name.trim(), passwordHash })
+    res.json({ ...enrollment, message: 'Scan the QR code with Google Authenticator, then enter the current 6-digit code.' })
+  } catch (error) { next(error) }
+}
+
+export async function verifyAdminEnrollment(req, res, next) {
+  try {
+    const purpose = req.body.purpose === 'enrollment' ? 'enrollment' : 'registration'
+    const challenge = await getChallenge(req.body.challenge, purpose)
+    if (!challenge || !emailIsAllowed(challenge.email)) return invalidChallenge(res)
+    const secret = decryptTotpSecret(challenge.secretEncrypted)
+    const verified = await verifyTotpCode(secret, req.body.code)
+    if (!verified) return invalidChallenge(res)
+
+    const claimed = await TotpChallenge.findOneAndDelete({ _id: challenge._id, attempts: { $lte: 5 }, expiresAt: { $gt: new Date() } }).select('+passwordHash').select('+secretEncrypted')
+    if (!claimed) return invalidChallenge(res)
+
+    let user
+    if (purpose === 'registration') {
+      if (await adminSetupIsComplete()) return res.status(409).json({ message: 'Initial admin registration has already been completed.' })
+      const demoAdmin = await findClaimableDemoAdmin()
+      if (demoAdmin) {
+        user = await User.findById(demoAdmin._id)
+        user.name = claimed.name
+        user.email = allowedAdminEmail
+        user.passwordHash = claimed.passwordHash
+        user.totpSecretEncrypted = claimed.secretEncrypted
+        user.totpEnabled = true
+        user.totpLastTimeStep = verified.timeStep
+      } else {
+        user = await User.create({
+          name: claimed.name,
+          email: allowedAdminEmail,
+          passwordHash: claimed.passwordHash,
+          role: 'admin',
+          totpSecretEncrypted: claimed.secretEncrypted,
+          totpEnabled: true,
+          totpLastTimeStep: verified.timeStep,
+        })
+      }
+    } else {
+      user = await User.findById(claimed.user).select('+totpSecretEncrypted').select('+recoveryCodeHashes')
+      if (!user || user.role !== 'admin' || user.totpEnabled || !canMigrateAdminEmail(user.email)) return res.status(409).json({ message: 'This admin enrollment is no longer available. Sign in again.' })
+      user.totpSecretEncrypted = claimed.secretEncrypted
+      user.totpEnabled = true
+      user.totpLastTimeStep = verified.timeStep
+      const emailConflict = await User.exists({ email: allowedAdminEmail, _id: { $ne: user._id } })
+      if (emailConflict) return res.status(409).json({ message: 'The authorized admin email is already assigned to another account. Remove or rename that account first.' })
+      user.email = allowedAdminEmail
+    }
+    const recoveryCodes = await storeRecoveryCodes(user)
+    await user.save()
+    await AuthSession.deleteMany({ user: user._id })
+    res.json({ ...await createSession(user), recoveryCodes, message: 'Authenticator enabled. Save these recovery codes now; they are shown only once.' })
+  } catch (error) { next(error) }
 }
 
 export async function login(req, res, next) {
   try {
     const email = String(req.body.email || '').trim().toLowerCase()
     const password = String(req.body.password || '')
-    const user = await User.findOne({ email }).select('+passwordHash')
+    const user = await User.findOne({ email }).select('+passwordHash').select('+totpSecretEncrypted')
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ message: 'Email or password is incorrect.' })
-    if (user.role === 'admin') {
-      if (!canMigrateAdminEmail(user.email)) return res.status(403).json({ message: 'Admin account is not authorized.' })
-      const loginChallenge = jwt.sign({ sub: user._id.toString(), email: allowedAdminEmail, purpose: 'admin-login' }, getJwtSecret(), { expiresIn: '5m' })
-      return res.json({ requiresOtp: true, loginChallenge, email: allowedAdminEmail, message: `Password verified. A login OTP will be sent to ${allowedAdminEmail}.` })
+    if (user.role !== 'admin') return res.json({ requiresTotp: false, ...await createSession(user) })
+    if (!allowedAdminEmail) return res.status(503).json({ message: 'Admin email is not configured on the backend.' })
+    if (!canMigrateAdminEmail(user.email)) return res.status(403).json({ message: 'Admin account is not authorized.' })
+    if (!user.totpEnabled || !user.totpSecretEncrypted) {
+      const enrollment = await createTotpChallenge({ purpose: 'enrollment', email: allowedAdminEmail, user })
+      return res.json({ requiresTotpEnrollment: true, enrollmentChallenge: enrollment.challenge, qrCodeDataUrl: enrollment.qrCodeDataUrl, expiresIn: enrollment.expiresIn, message: 'Scan this QR code with Google Authenticator to secure your account.' })
     }
-    res.json({ requiresOtp: false, ...await createSession(user) })
+    const challenge = newChallenge()
+    await TotpChallenge.create({ challengeHash: hashChallenge(challenge), purpose: 'login', email: allowedAdminEmail, user: user._id, attempts: 0, expiresAt: new Date(Date.now() + challengeLifetimeMs) })
+    res.json({ requiresTotp: true, loginChallenge: challenge, email: allowedAdminEmail, message: 'Password verified. Enter the current code from Google Authenticator.' })
   } catch (error) { next(error) }
 }
 
-export async function demoLogin(req, res, next) {
+export async function verifyLoginTotp(req, res, next) {
   try {
-    if (!demoLoginIsEnabled(req)) {
-      return res.status(404).json({ message: 'Demo login is disabled.' })
-    }
-    const email = String(req.body.email || '').trim().toLowerCase()
-    const password = String(req.body.password || '')
-    const demoEmail = String(process.env.DEMO_ADMIN_EMAIL || '').trim().toLowerCase()
-    const expectedPassword = process.env.DEMO_ADMIN_PASSWORD
-    if (!demoEmail || email !== demoEmail || !expectedPassword || password !== expectedPassword) return res.status(401).json({ message: 'Demo email or password is incorrect.' })
-    if (!password || password.length < 12) return res.status(503).json({ message: 'Set a demo admin password with at least 12 characters.' })
-    let user = await User.findOne({ email })
-    if (!user) {
-      user = await User.create({ name: 'Demo Admin', email, passwordHash: await bcrypt.hash(password, 12), role: 'admin' })
-    } else if (user.role !== 'admin') {
-      user.role = 'admin'
-      user.passwordHash = await bcrypt.hash(password, 12)
-      await user.save()
-    }
-    res.json({ ...await createSession(user), demo: true })
-  } catch (error) { next(error) }
-}
-
-export async function sendLoginOtp(req, res, next) {
-  try {
-    const challenge = jwt.verify(req.body.loginChallenge, getJwtSecret())
-    if (challenge.purpose !== 'admin-login' || !emailIsAllowed(challenge.email)) return res.status(403).json({ message: 'A valid admin password check is required.' })
-    const user = await User.findById(challenge.sub)
-    if (!user || user.role !== 'admin' || !canMigrateAdminEmail(user.email)) return res.status(401).json({ message: 'This admin account is unavailable.' })
-    await sendOtp(user.email, 'admin-login', 'Kani Metals admin login code', 'Use this code to complete your admin sign-in.')
-    res.json({ message: `A login code was sent to ${user.email}.` })
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') return res.status(401).json({ message: 'Password verification expired. Sign in again.' })
-    next(error)
-  }
-}
-
-export async function verifyLoginOtp(req, res, next) {
-  try {
-    const challenge = jwt.verify(req.body.loginChallenge, getJwtSecret())
-    if (challenge.purpose !== 'admin-login' || !emailIsAllowed(challenge.email)) return res.status(403).json({ message: 'A valid admin password check is required.' })
-    if (!(await validateOtp(challenge.email, 'admin-login', req.body.otp))) return res.status(400).json({ message: 'The OTP is invalid, expired, or has reached its attempt limit.' })
-    const user = await User.findById(challenge.sub)
-    if (!user || user.role !== 'admin' || !canMigrateAdminEmail(user.email)) return res.status(401).json({ message: 'This admin account is unavailable.' })
+    const challenge = await getChallenge(req.body.loginChallenge, 'login')
+    if (!challenge) return invalidChallenge(res)
+    const user = await User.findById(challenge.user).select('+totpSecretEncrypted').select('+totpLastTimeStep')
+    if (!user || user.role !== 'admin' || !user.totpEnabled || !user.totpSecretEncrypted || !canMigrateAdminEmail(user.email)) return res.status(401).json({ message: 'This admin login is unavailable. Sign in again.' })
+    const secret = decryptTotpSecret(user.totpSecretEncrypted)
+    const verified = await verifyTotpCode(secret, req.body.code, user.totpLastTimeStep ?? -1)
+    if (!verified) return invalidChallenge(res)
+    const lastStepFilter = user.totpLastTimeStep === undefined ? { $exists: false } : user.totpLastTimeStep
+    const updated = await User.updateOne({ _id: user._id, totpLastTimeStep: lastStepFilter }, { $set: { totpLastTimeStep: verified.timeStep } })
+    if (!updated.modifiedCount) return res.status(400).json({ message: 'That authenticator code has already been used. Wait for the next code and try again.' })
+    const consumed = await TotpChallenge.findOneAndDelete({ _id: challenge._id })
+    if (!consumed) return invalidChallenge(res)
     const emailConflict = await User.exists({ email: allowedAdminEmail, _id: { $ne: user._id } })
     if (emailConflict) return res.status(409).json({ message: 'The authorized admin email is already assigned to another account. Remove or rename that account first.' })
-    if (user.email !== allowedAdminEmail) {
-      user.email = allowedAdminEmail
-      await user.save()
-    }
+    if (user.email !== allowedAdminEmail) { user.email = allowedAdminEmail; await user.save() }
     res.json(await createSession(user))
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') return res.status(401).json({ message: 'Password verification expired. Sign in again.' })
-    next(error)
-  }
+  } catch (error) { next(error) }
+}
+
+export async function verifyLoginRecovery(req, res, next) {
+  try {
+    const challenge = await getChallenge(req.body.loginChallenge, 'login')
+    if (!challenge) return invalidChallenge(res)
+    const user = await User.findById(challenge.user).select('+recoveryCodeHashes')
+    if (!user || user.role !== 'admin' || !user.totpEnabled) return res.status(401).json({ message: 'This recovery challenge is unavailable. Sign in again.' })
+    if (!canMigrateAdminEmail(user.email)) return res.status(401).json({ message: 'This admin recovery challenge is unavailable. Sign in again.' })
+    const emailConflict = await User.exists({ email: allowedAdminEmail, _id: { $ne: user._id } })
+    if (emailConflict) return res.status(409).json({ message: 'The authorized admin email is already assigned to another account. Remove or rename that account first.' })
+    const submitted = String(req.body.recoveryCode || '').trim().toUpperCase()
+    if (!/^[A-F0-9]{4}(?:-[A-F0-9]{4}){3}$/.test(submitted)) return invalidChallenge(res)
+    let matchedHash = null
+    for (const hash of user.recoveryCodeHashes || []) {
+      if (await bcrypt.compare(submitted, hash)) matchedHash = hash
+    }
+    if (!matchedHash) return invalidChallenge(res)
+    const removed = await User.updateOne({ _id: user._id, recoveryCodeHashes: matchedHash }, { $pull: { recoveryCodeHashes: matchedHash } })
+    if (!removed.modifiedCount) return res.status(400).json({ message: 'That recovery code has already been used or is invalid.' })
+    const consumed = await TotpChallenge.findOneAndDelete({ _id: challenge._id })
+    if (!consumed) return invalidChallenge(res)
+    if (user.email !== allowedAdminEmail) await User.updateOne({ _id: user._id }, { $set: { email: allowedAdminEmail } })
+    const fullUser = await User.findById(user._id)
+    res.json({ ...await createSession(fullUser), message: 'Signed in using a recovery code.' })
+  } catch (error) { next(error) }
 }
 
 export async function logout(req, res, next) {
@@ -240,8 +262,7 @@ export async function deleteUser(req, res, next) {
     if (req.params.id === req.user.id) return res.status(400).json({ message: 'You cannot delete your own account.' })
     const user = await User.findById(req.params.id)
     if (!user) return res.status(404).json({ message: 'User not found.' })
-    const demoAdminEmails = [String(process.env.DEMO_ADMIN_EMAIL || '').toLowerCase(), 'demo.admin@localhost.test']
-    if (user.role === 'admin' && !demoAdminEmails.includes(user.email)) return res.status(403).json({ message: 'The primary admin account cannot be deleted here.' })
+    if (user.role === 'admin') return res.status(403).json({ message: 'The primary admin account cannot be deleted here.' })
     await AuthSession.deleteMany({ user: user._id })
     await user.deleteOne()
     res.json({ message: 'User deleted.' })
