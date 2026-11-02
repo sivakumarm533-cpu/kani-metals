@@ -14,6 +14,9 @@ app.use(express.json({ limit: '12mb' }))
 app.use('/api/dealers', dealerRoutes)
 app.use('/api/products', productRoutes)
 app.use('/api/bills', billRoutes)
+app.get('/', (_req, res) => {
+  res.send('Kani Metals API is running successfully!')
+})
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }))
 app.use((error, _req, res, _next) => {
   console.error(error)
@@ -23,7 +26,7 @@ app.use((error, _req, res, _next) => {
 
 connectDB()
   .then(() => {
-    app.listen(port, () => console.log(`Backend server listening on port ${port}`))
+    app.listen(port, '0.0.0.0', () => console.log(`Backend server listening on port ${port}`))
   })
   .catch((error) => {
     console.error('MongoDB connection failed:', error.message)
