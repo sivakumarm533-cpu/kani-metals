@@ -29,7 +29,7 @@ function AppLayout() {
             <Route path="/scrap-items" element={<Cards />} />
             <Route path="/itemsentry" element={<Itemsentry />} />
             <Route path="/dealers/:dealerId/bills" element={<DealerBills />} />
-            <Route path="/settings" element={<RequireAuth adminOnly><Settings /></RequireAuth>} />
+            <Route path="/settings/*" element={<RequireAuth adminOnly><Settings /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

@@ -363,6 +363,10 @@
 .auth-card form, .settings-user-form { display: grid; gap: 14px; }
 .auth-card a { color: var(--color-primary); font-size: 13px; text-align: center; }
 .auth-card .continue-btn { display: inline-flex; justify-content: center; text-decoration: none; }
+.demo-login-button { border-color: var(--color-border); background: #f8fafc; color: var(--color-text); }
+.demo-login-button:hover { border-color: var(--color-primary); background: var(--color-primary-soft); color: var(--color-primary); }
+.demo-login-card { display: grid; gap: 6px; padding: 13px; border: 1px dashed var(--color-border); border-radius: 9px; background: var(--color-background); font-size: 12px; overflow-wrap: anywhere; }
+.demo-login-card strong { font-size: 13px; }
 .auth-mark { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 13px; background: var(--color-primary-soft); color: var(--color-primary); font-weight: 800; }
 .auth-allowed-email { padding: 12px; border-radius: 8px; background: var(--color-background); overflow-wrap: anywhere; }
 .auth-message, .settings-message { padding: 11px 13px; border: 1px solid #bbf7d0; border-radius: 8px; background: #f0fdf4; color: #166534; font-size: 13px; }
@@ -373,6 +377,7 @@
 .settings-panel > p { margin-bottom: 16px; color: var(--color-text-muted); font-size: 13px; line-height: 1.5; }
 .settings-user-form small { color: var(--color-text-muted); font-weight: 400; }
 .backup-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.settings-user-form .backup-actions { justify-content: flex-start; }
 .backup-file-label { display: inline-flex; align-items: center; cursor: pointer; }
 .backup-file-label input { display: none; }
 .settings-users { margin-top: 18px; }

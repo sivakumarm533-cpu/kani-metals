@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 
 const menuItems = [
@@ -12,7 +12,9 @@ const menuItems = [
 
 function Sidebar() {
   const { user } = useAuth()
+  const location = useLocation()
   const [isOpen, setIsOpen] = useState(() => window.innerWidth > 960)
+  const [settingsOpen, setSettingsOpen] = useState(() => location.pathname.startsWith('/settings'))
 
   useEffect(() => {
     const handleToggle = (event) => setIsOpen(event.detail)
@@ -39,7 +41,7 @@ function Sidebar() {
         <p className="sidebar-heading">MENU</p>
         <nav>
           <ul className="sidebar-links p-0">
-            {[...menuItems, ...(user?.role === 'admin' ? [{ to: '/settings', icon: '⚙', label: 'Settings' }] : [])].map((item) => (
+            {menuItems.map((item) => (
               <li key={item.to}>
                 <NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to={item.to} onClick={closeMenu}>
                   <span className="sidebar-icon" aria-hidden="true">{item.icon}</span>
@@ -47,6 +49,10 @@ function Sidebar() {
                 </NavLink>
               </li>
             ))}
+            {user?.role === 'admin' && <li className="sidebar-settings">
+              <button type="button" className={`sidebar-link settings-parent${location.pathname.startsWith('/settings') ? ' is-active' : ''}`} aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><span className="sidebar-icon" aria-hidden="true">⚙</span><span>Settings</span><span className="settings-chevron" aria-hidden="true">{settingsOpen ? '−' : '+'}</span></button>
+              {settingsOpen && <ul className="sidebar-submenu"><li><NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to="/settings/users" onClick={closeMenu}>User management</NavLink></li><li><NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to="/settings/backup" onClick={closeMenu}>Database backup</NavLink></li></ul>}
+            </li>}
           </ul>
         </nav>
       </aside>

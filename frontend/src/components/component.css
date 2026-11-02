@@ -142,6 +142,11 @@ button:hover { background: var(--color-primary-hover); }
 .sidebar-link.is-active { font-weight: 700; }
 .sidebar-icon { display: inline-grid; width: 20px; place-items: center; font-size: 18px; }
 .sidebar-heading { margin: 0 0 12px 12px; color: #94a3b8; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+.settings-parent { width: 100%; justify-content: flex-start; color: var(--color-text-muted); background: transparent; font-weight: 500; text-align: left; }
+.settings-parent:hover { border-color: var(--color-border); color: var(--color-primary); background: var(--color-primary-soft); }
+.settings-chevron { margin-left: auto; font-size: 18px; }
+.sidebar-submenu { display: grid; gap: 3px; margin: 4px 0 8px 18px; padding: 0; list-style: none; }
+.sidebar-submenu .sidebar-link { min-height: 38px; padding: 8px 10px; font-size: 13px; }
 .admin-content { flex: 1; min-width: 0; padding: clamp(20px, 3vw, 40px); }
 
 /* Tablet: keep navigation visible while giving content more room. */

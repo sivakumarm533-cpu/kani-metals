@@ -19,6 +19,7 @@ export function AuthProvider({ children }) {
   }
 
   function signOut() {
+    apiRequest('/auth/logout', { method: 'POST' }).catch(() => {})
     localStorage.removeItem('kani-auth-token')
     setUser(null)
   }
