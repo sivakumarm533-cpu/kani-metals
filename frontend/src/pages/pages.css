@@ -1282,3 +1282,95 @@
 @keyframes payment-shimmer { to { background-position-x: -280%; } } @keyframes payment-modal-in { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (max-width: 1100px) { .payment-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }.payment-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }.payment-charts-grid { grid-template-columns: 1fr; }.payment-method-list { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; } }
 @media (max-width: 650px) { .payment-page-heading, .payment-followup-card { align-items: stretch; flex-direction: column; }.payment-page-heading .continue-btn { justify-content: center; }.payment-summary-grid, .payment-detail-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }.payment-summary-card { align-items: flex-start; padding: 12px; }.payment-summary-card > span { flex-basis: 32px; width: 32px; height: 32px; }.payment-summary-card strong { font-size: 15px; }.payment-progress-card, .payment-chart-card, .payment-table-card, .payment-followup-card { padding: 14px; }.payment-progress-legend { align-items: flex-start; flex-direction: column; }.payment-filters { grid-template-columns: 1fr 1fr; }.payment-filters label:first-child { grid-column: 1 / -1; }.payment-table { min-width: 680px; }.payment-form-grid, .payment-bill-preview { grid-template-columns: 1fr; }.payment-modal { padding: 17px; }.payment-followup-card .back-button { justify-content: center; }.payment-method-list { grid-template-columns: 1fr; }.payment-method-row { grid-template-columns: minmax(80px, .8fr) minmax(50px, 1fr) auto; } }
+
+/* Shared page-level responsive refinements */
+@media (max-width: 900px) {
+  .user-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .activity-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .settings-grid { grid-template-columns: 1fr; }
+  .bill-compare-metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bill-compare-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bill-compare-product-search { grid-column: 1 / -1; }
+  .bill-product-charts-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .boarder-box, .page-container { width: 100%; max-width: 100%; }
+  .page-container > h1, .page-title, .page-container h1 { font-size: clamp(23px, 7vw, 30px); line-height: 1.2; }
+  .page-description { font-size: 13px; }
+  .dealer-header, .bill-header, .settings-page-header, .payment-page-heading, .bill-comparison-result-heading { align-items: stretch; flex-direction: column; }
+  .dealer-header > *, .bill-header > *, .settings-page-header > *, .payment-page-heading > * { max-width: 100%; }
+  .dealer-form-grid, .settings-grid { grid-template-columns: 1fr; }
+  .dealer-form, .settings-panel, .dashboard-card { padding: 15px; }
+  .dealer-form-actions, .dealer-history-actions, .dealer-bill-actions { flex-wrap: wrap; }
+  .dealer-history-actions > *, .dealer-bill-actions > * { flex: 1 1 auto; }
+  .dealer-footer, .bill-actions { gap: 8px; }
+  .dealer-footer button, .bill-actions button { min-height: 42px; }
+  .billing-steps { align-items: stretch; flex-direction: column; gap: 9px; padding: 13px; }
+  .billing-step { min-width: 0; }
+  .step-line { width: 2px; height: 8px; flex: 0 0 8px; margin-left: 16px; }
+  .dealer-card { padding: 14px; }
+  .dealer-card-top { gap: 8px; }
+  .dealer-card-actions { gap: 5px; }
+  .bill-product-context-grid, .bill-pick-grid, .bill-dealer-fields { grid-template-columns: 1fr; }
+  .bill-compare-metrics-grid, .bill-product-metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bill-compare-panel, .bill-pick-card, .bill-comparison-results, .bill-compare-insights-panel, .bill-compare-table-panel, .bill-product-insights { padding: 13px; }
+  .bill-compare-toolbar { grid-template-columns: 1fr 1fr; }
+  .bill-compare-toolbar label { min-width: 0; }
+  .bill-compare-clear { width: 100%; }
+  .bill-product-hero { align-items: flex-start; flex-wrap: wrap; padding: 15px; }
+  .bill-product-hero > div { min-width: 0; flex: 1 1 calc(100% - 70px); }
+  .bill-product-hero-badges { width: 100%; margin-left: 0; }
+  .bill-product-toolbar, .bill-compare-actions, .bill-compare-export-actions { flex-wrap: wrap; }
+  .bill-product-toolbar > *, .bill-compare-actions > *, .bill-compare-export-actions > * { flex: 1 1 auto; justify-content: center; }
+  .payment-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .payment-table-card { min-width: 0; }
+  .payment-breadcrumbs { font-size: 11px; }
+  .payment-month-column small { font-size: 9px; }
+  .scrap-grid { grid-template-columns: 1fr; }
+  .user-management-toolbar { align-items: stretch; }
+  .user-management-toolbar label, .user-management-toolbar .user-search { min-width: 0; flex: 1 1 100%; }
+  .user-result-count { margin-left: 0; padding-bottom: 0; }
+  .user-add-button { justify-content: center; }
+  .activity-filter-panel label, .activity-filter-panel .activity-search-field { min-width: 0; flex-basis: calc(50% - 6px); }
+  .activity-row-title { flex-wrap: wrap; }
+  .activity-card-header { align-items: flex-start; }
+  .dealer-delete-dialog, .payment-modal { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); margin: auto; padding: 16px; }
+  .app-toast { top: 68px; right: 10px; left: 10px; width: auto; max-width: none; }
+  .settings-page-header .user-add-button { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .user-summary-grid, .activity-summary-grid, .payment-summary-grid, .payment-detail-summary, .bill-compare-metrics-grid, .bill-product-metrics-grid { grid-template-columns: 1fr 1fr; gap: 7px; }
+  .activity-summary-card { min-width: 0; padding: 11px; }
+  .activity-summary-card:last-child { grid-column: 1 / -1; }
+  .user-summary-card { gap: 8px; min-height: 80px; padding: 10px; }
+  .user-summary-icon { width: 34px; height: 34px; flex-basis: 34px; }
+  .user-summary-card strong { font-size: 19px; }
+  .user-summary-card small { overflow-wrap: anywhere; }
+  .bill-compare-section-title, .bill-pick-card-heading { gap: 9px; }
+  .bill-compare-metric { gap: 7px; padding: 10px; }
+  .bill-compare-metric-icon { width: 28px; height: 28px; flex-basis: 28px; }
+  .bill-compare-metric strong { font-size: 14px; }
+  .bill-compare-toolbar { grid-template-columns: 1fr; }
+  .bill-compare-toolbar .bill-compare-product-search { grid-column: auto; }
+  .bill-pick-details { gap: 8px; padding: 10px; }
+  .activity-change { grid-template-columns: 1fr; }
+  .activity-row-meta { flex-wrap: wrap; overflow-wrap: anywhere; }
+  .activity-dialog-header { align-items: flex-start; padding: 14px; }
+  .activity-dialog-footer { align-items: stretch; flex-direction: column; padding: 14px; }
+  .payment-page-heading h1 { font-size: 24px; }
+  .payment-summary-card { display: grid; justify-items: start; gap: 6px; padding: 10px; }
+  .payment-summary-card strong { font-size: 14px; }
+  .payment-month-chart { gap: 3px; }
+  .payment-month-bars { gap: 2px; padding-inline: 1px; }
+  .payment-month-bars span { width: 8px; }
+  .payment-chart-legend { flex-wrap: wrap; gap: 9px; }
+  .payment-form-grid, .payment-bill-preview { grid-template-columns: 1fr; }
+  .payment-modal-actions { flex-wrap: wrap; }
+  .payment-modal-actions button { flex: 1 1 120px; justify-content: center; }
+  .sign-out-button { font-size: 10px; }
+  .auth-page { padding: 12px; }
+  .auth-card { padding: 18px; }
+  .totp-recovery-codes { grid-template-columns: 1fr; }
+}

@@ -222,3 +222,34 @@ button:hover { background: var(--color-primary-hover); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
+
+/* Keep the shared shell and common controls inside narrow screens. */
+html, body, #root { width: 100%; min-width: 320px; }
+body { overflow-x: hidden; }
+img, video, canvas, svg { max-width: 100%; }
+.admin-body, .admin-content, .page-container, main { min-width: 0; }
+.admin-content { overflow-wrap: anywhere; }
+.table-responsive, [class*="table-wrap"], [class*="table-scroll"] { max-width: 100%; -webkit-overflow-scrolling: touch; }
+input, select, textarea, button { max-width: 100%; }
+
+@media (max-width: 720px) {
+  .admin-content { padding: 16px 12px; }
+  .admin-navbar { gap: 8px; padding-inline: 10px; }
+  .navbar-brand { min-width: 0; }
+  .navbar-logo { max-width: min(130px, 34vw); }
+  .navbar-tools { min-width: 0; gap: 7px; }
+  .navbar-profile-upload { flex: 0 0 32px; width: 32px; height: 32px; }
+  .sign-out-button { padding: 7px 9px; white-space: nowrap; }
+  .admin-sidebar { padding: 16px 12px; }
+  .sidebar-link { min-height: 46px; }
+}
+
+@media (max-width: 420px) {
+  .admin-navbar { gap: 5px; padding-inline: 7px; }
+  .menu-toggle { flex: 0 0 36px; width: 36px; height: 36px; }
+  .navbar-logo { max-width: 112px; height: 32px; }
+  .navbar-tools { gap: 5px; }
+  .navbar-profile-upload { flex-basis: 29px; width: 29px; height: 29px; }
+  .sign-out-button { padding: 6px 7px; font-size: 11px; }
+  .admin-content { padding: 13px 9px; }
+}
