@@ -22,7 +22,14 @@ export default function AdminSignup() {
   const [busy, setBusy] = useState(false)
   const [resendSeconds, setResendSeconds] = useState(0)
 
-  useEffect(() => { apiRequest('/auth/status').then((status) => setAdminExists(Boolean(status.adminExists))).catch((err) => setError(err.message)) }, [])
+  useEffect(() => {
+    apiRequest('/auth/status')
+      .then((status) => {
+        if (status.adminExists) navigate('/login', { replace: true })
+        else setAdminExists(false)
+      })
+      .catch((err) => setError(err.message))
+  }, [navigate])
   useEffect(() => {
     if (resendSeconds <= 0) return undefined
     const timer = window.setTimeout(() => setResendSeconds((seconds) => seconds - 1), 1000)
