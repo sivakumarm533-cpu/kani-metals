@@ -2,7 +2,7 @@ import ActivityLog from '../models/ActivityLog.js'
 import mongoose from 'mongoose'
 
 const actions = new Set(['create', 'update', 'delete'])
-const entities = new Set(['dealer', 'product', 'bill', 'payment', 'user', 'backup'])
+const entities = new Set(['dealer', 'product', 'bill', 'payment', 'user', 'backup', 'settings'])
 
 export async function listActivity(req, res, next) {
   try {

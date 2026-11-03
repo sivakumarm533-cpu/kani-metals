@@ -6,10 +6,12 @@ import Navbar from './components/Navbar.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import PageLoader from './components/PageLoader.jsx'
 import { useMediaQuery } from './hooks/useMediaQuery.js'
+import { AppSettingsProvider } from './settings/AppSettingsProvider.jsx'
 import './App.css'
 import './components/component.css'
 import './pages/pages.css'
 import './styles/system.css'
+import './styles/features.css'
 
 // Pages are split into separate chunks so the first load only downloads what is shown.
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'))
@@ -24,6 +26,8 @@ const Settings = lazy(() => import('./pages/Settings.jsx'))
 const BillComparison = lazy(() => import('./pages/BillComparison.jsx'))
 const BillComparisonProduct = lazy(() => import('./pages/BillComparisonProduct.jsx'))
 const DealerPayments = lazy(() => import('./pages/DealerPayments.jsx'))
+const ThemeSettings = lazy(() => import('./pages/ThemeSettings.jsx'))
+const BillSettings = lazy(() => import('./pages/BillSettings.jsx'))
 
 const DESKTOP_QUERY = '(min-width: 961px)'
 
@@ -74,6 +78,8 @@ function AppLayout() {
                 <Route path="/dealer-payments" element={<DealerPayments />} />
                 <Route path="/dealer-payments/:dealerId" element={<DealerPayments />} />
                 <Route path="/dealers/:dealerId/bills" element={<DealerBills />} />
+                <Route path="/settings/theme" element={<RequireAuth adminOnly><ThemeSettings /></RequireAuth>} />
+                <Route path="/settings/bill" element={<RequireAuth adminOnly><BillSettings /></RequireAuth>} />
                 <Route path="/settings/*" element={<RequireAuth adminOnly><Settings /></RequireAuth>} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
@@ -93,7 +99,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<AdminSignup />} />
-            <Route path="/*" element={<RequireAuth><AppLayout /></RequireAuth>} />
+            <Route path="/*" element={<RequireAuth><AppSettingsProvider><AppLayout /></AppSettingsProvider></RequireAuth>} />
           </Routes>
         </Suspense>
       </AuthProvider>

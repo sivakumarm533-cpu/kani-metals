@@ -7,6 +7,8 @@ import dealerRoutes from './routes/dealerRoutes.js'
 import productRoutes from './routes/productRoutes.js'
 import authRoutes from './routes/authRoutes.js'
 import backupRoutes, { BACKUP_IMPORT_PATH } from './routes/backupRoutes.js'
+import settingsRoutes from './routes/settingsRoutes.js'
+import dashboardRoutes from './routes/dashboardRoutes.js'
 import { authenticate } from './middleware/auth.js'
 import { apiRateLimit, configuredCorsOrigins, corsMiddleware, securityHeaders } from './middleware/security.js'
 import { totpEncryptionKeyConfigured } from './utils/totp.js'
@@ -53,6 +55,8 @@ app.use('/api/products', productRoutes)
 app.use('/api/bills', billRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/admin/backup', backupRoutes)
+app.use('/api/app-settings', settingsRoutes)
+app.use('/api/dashboard', dashboardRoutes)
 app.get('/', (_req, res) => {
   res.send('Kani Metals API is running successfully!')
 })

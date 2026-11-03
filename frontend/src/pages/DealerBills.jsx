@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { apiRequest } from '../services/api.js'
 import Toast from '../components/Toast.jsx'
 import Modal from '../components/Modal.jsx'
+import BillShareModal from '../components/BillShareModal.jsx'
 import LoadError from '../components/LoadError.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { formatRupees } from '../utils/format.js'
@@ -17,6 +18,7 @@ function DealerBills() {
   const [retry, setRetry] = useState(0)
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [sharingBillId, setSharingBillId] = useState(null)
   const [error, setError] = useState('')
   const [toast, notify] = useToast()
   const [busy, setBusy] = useState(false)
@@ -97,8 +99,9 @@ function DealerBills() {
     {!loading && dealer && (!bills.length ? <div className="empty-state empty-state-panel"><i className="bi bi-receipt" aria-hidden="true" /><strong>No bills saved for this dealer yet</strong><span>Create the first bill from Item entry.</span><Link className="continue-btn" to={`/itemsentry?dealer=${dealerId}`}>Add bill</Link></div> : <div className="dealer-bill-list">{bills.map((bill) => <article className="dealer-bill-card" key={bill._id}>
       <div className="dealer-bill-heading"><div><h3>Bill · {billDate(bill.issuedDate)}</h3><span>{bill.items.length} {bill.items.length === 1 ? 'item' : 'items'}</span></div><strong>{formatRupees(bill.total)}</strong></div>
       <div className="table-responsive"><table className="table align-middle mb-0 responsive-card-table"><thead><tr><th>Item</th><th>Category</th><th>Quantity</th><th>Price / unit</th><th>Amount</th></tr></thead><tbody>{bill.items.map((item, index) => <tr key={`${item.name}-${index}`}><td data-label="Item">{item.name}</td><td data-label="Category">{item.category}</td><td data-label="Quantity">{item.quantity} {item.unit}</td><td data-label="Price / unit">{formatRupees(item.price)}</td><td data-label="Amount">{formatRupees(Number(item.quantity) * Number(item.price))}</td></tr>)}</tbody></table></div>
-      <div className="dealer-bill-actions"><Link className="back-button" to={`/dealer-payments/${dealerId}?bill=${bill._id}`}><i className="bi bi-wallet2" aria-hidden="true" /> Payments</Link><button type="button" className="edit-bill-item" onClick={() => beginEdit(bill)}>Edit bill</button><button type="button" className="remove-bill-item" onClick={() => setDeleting(bill)}>Delete bill</button></div>
+      <div className="dealer-bill-actions"><button type="button" className="whatsapp-inline-btn" onClick={() => setSharingBillId(bill._id)}><i className="bi bi-whatsapp" aria-hidden="true" /> Send on WhatsApp</button><Link className="back-button" to={`/dealer-payments/${dealerId}?bill=${bill._id}`}><i className="bi bi-wallet2" aria-hidden="true" /> Payments</Link><button type="button" className="edit-bill-item" onClick={() => beginEdit(bill)}>Edit bill</button><button type="button" className="remove-bill-item" onClick={() => setDeleting(bill)}>Delete bill</button></div>
     </article>)}</div>)}
+    {sharingBillId && <BillShareModal dealerId={dealerId} billId={sharingBillId} onClose={() => setSharingBillId(null)} />}
     {deleting && <Modal role="alertdialog" busy={busy} onClose={() => setDeleting(null)} labelledBy="bill-delete-title" describedBy="bill-delete-description"><div className="dealer-delete-icon"><i className="bi bi-trash3" aria-hidden="true" /></div><h2 id="bill-delete-title">Delete bill?</h2><p id="bill-delete-description">Delete this bill dated <strong>{billDate(deleting.issuedDate)}</strong>? This cannot be undone.</p><div className="dealer-delete-actions"><button type="button" className="back-button" disabled={busy} onClick={() => setDeleting(null)} data-autofocus>Cancel</button><button type="button" className="confirm-delete-btn" disabled={busy} onClick={confirmDelete}>{busy ? 'Deleting…' : 'Delete bill'}</button></div></Modal>}
   </section>
 }

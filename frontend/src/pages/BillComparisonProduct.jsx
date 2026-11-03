@@ -32,7 +32,7 @@ function ComparisonBarChart({ title, previousLabel, currentLabel, previousValue,
   const maxHeight = 122
   const bars = [
     { x: 115, color: '#b8c1cc', label: previousLabel, value: previousValue },
-    { x: 285, color: '#f36f12', label: currentLabel, value: currentValue },
+    { x: 285, color: 'var(--color-primary)', label: currentLabel, value: currentValue },
   ]
   return <section className="bill-product-chart-card">
     <div className="bill-product-chart-heading"><div><h3>{title}</h3><p>{differenceText}</p></div><span className="bill-product-chart-legend"><i />Previous <i className="current" />Current</span></div>
@@ -42,7 +42,7 @@ function ComparisonBarChart({ title, previousLabel, currentLabel, previousValue,
         const height = bar.value == null ? 0 : Math.max(3, Number(bar.value < 0n ? -bar.value : bar.value) / max * maxHeight)
         const y = baseY - height
         return <g key={bar.label}>
-          {bar.value == null ? <line x1={bar.x} y1={baseY - 2} x2={bar.x + 80} y2={baseY - 2} className="bill-product-chart-missing" /> : <rect x={bar.x} y={y} width="80" height={height} rx="7" fill={bar.color}><title>{`${bar.label}: ${currency ? formatMoney(bar.value) : `${formatScaledQuantity(bar.value)} ${unit}`}`}</title></rect>}
+          {bar.value == null ? <line x1={bar.x} y1={baseY - 2} x2={bar.x + 80} y2={baseY - 2} className="bill-product-chart-missing" /> : <rect x={bar.x} y={y} width="80" height={height} rx="7" style={{ fill: bar.color }}><title>{`${bar.label}: ${currency ? formatMoney(bar.value) : `${formatScaledQuantity(bar.value)} ${unit}`}`}</title></rect>}
           <text x={bar.x + 40} y={Math.max(22, y - 10)} textAnchor="middle" className="bill-product-chart-value"><title>{bar.value == null ? 'Value unavailable' : currency ? formatMoney(bar.value) : `${formatScaledQuantity(bar.value)} ${unit}`}</title>{bar.value == null ? 'N/A' : currency ? formatMoney(bar.value) : `${formatScaledQuantity(bar.value)} ${unit}`}</text>
           <text x={bar.x + 40} y="218" textAnchor="middle" className="bill-product-chart-label">{bar.label}</text>
         </g>

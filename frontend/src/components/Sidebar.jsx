@@ -15,6 +15,8 @@ const menuItems = [
 const settingsItems = [
   { to: '/settings/users', icon: 'bi-people', label: 'User management' },
   { to: '/settings/activity', icon: 'bi-clock-history', label: 'User activity' },
+  { to: '/settings/theme', icon: 'bi-palette', label: 'Theme settings' },
+  { to: '/settings/bill', icon: 'bi-receipt', label: 'Bill settings' },
   { to: '/settings/backup', icon: 'bi-database-down', label: 'Database backup' },
 ]
 

@@ -4,6 +4,7 @@ import { apiRequest } from "../services/api.js";
 import Toast from "../components/Toast.jsx";
 import Modal from "../components/Modal.jsx";
 import LoadError from "../components/LoadError.jsx";
+import BillShareModal from "../components/BillShareModal.jsx";
 import { useToast } from "../hooks/useToast.js";
 import { compressImage } from "../utils/image.js";
 import { formatRupees, localDateInputValue as getTodayDate } from "../utils/format.js";
@@ -34,7 +35,8 @@ function Itemsentry() {
   const [newDealerCategory, setNewDealerCategory] = useState("");
   const [billDate, setBillDate] = useState(getTodayDate);
   const [billItems, setBillItems] = useState([]);
-  const [billSaved, setBillSaved] = useState(false);
+  const [lastSavedBill, setLastSavedBill] = useState(null);
+  const [sharingBill, setSharingBill] = useState(null);
   const [editingItemId, setEditingItemId] = useState(null);
   const [itemForm, setItemForm] = useState(emptyItemForm);
 
@@ -82,7 +84,7 @@ function Itemsentry() {
     setEditingItemId(null);
     setItemForm(emptyItemForm());
     resetItemImageInput();
-    setBillSaved(false);
+   
     document.getElementById("itemName")?.focus();
   }
 
@@ -96,7 +98,7 @@ function Itemsentry() {
       unit: item.unit,
       image: item.image || "",
     });
-    setBillSaved(false);
+   
     document.getElementById("itemName")?.focus();
   }
 
@@ -111,7 +113,7 @@ function Itemsentry() {
     setApiError("");
     setIsSaving(true);
     try {
-      await apiRequest("/bills", {
+      const savedBill = await apiRequest("/bills", {
         method: "POST",
         body: JSON.stringify({
           dealer: selectedDealer.id,
@@ -119,7 +121,7 @@ function Itemsentry() {
           items: billItems.map(({ name, category, quantity, unit, price, image }) => ({ name, category, quantity, unit, price, image })),
         }),
       });
-      setBillSaved(true);
+      setLastSavedBill({ id: savedBill._id, dealerId: selectedDealer.id, dealerName: selectedDealer.name, total: savedBill.total });
       notify(`Bill saved for ${selectedDealer.name}.`);
       setStep(1);
       setBillItems([]);
@@ -128,7 +130,7 @@ function Itemsentry() {
       setBillDate(getTodayDate());
     } catch (error) {
       setApiError(error.message);
-      setBillSaved(false);
+     
     } finally {
       setIsSaving(false);
     }
@@ -276,6 +278,18 @@ function Itemsentry() {
       </ol>
 
       <LoadError message={apiError} />
+
+      {lastSavedBill && step === 1 && (
+        <div className="saved-bill-banner" role="status">
+          <span className="saved-bill-icon" aria-hidden="true"><i className="bi bi-check-circle-fill" /></span>
+          <div><strong>Bill saved for {lastSavedBill.dealerName}</strong><small>Total {formatRupees(lastSavedBill.total)} · send it to the dealer now?</small></div>
+          <div className="saved-bill-actions">
+            <button type="button" className="continue-btn whatsapp-btn" onClick={() => setSharingBill(lastSavedBill)}><i className="bi bi-whatsapp" aria-hidden="true" /> Send on WhatsApp</button>
+            <button type="button" className="link-button" onClick={() => setLastSavedBill(null)}>Dismiss</button>
+          </div>
+        </div>
+      )}
+      {sharingBill && <BillShareModal dealerId={sharingBill.dealerId} billId={sharingBill.id} onClose={() => setSharingBill(null)} />}
 
       {dealerToDelete && (
         <Modal role="alertdialog" busy={isDeletingDealer} onClose={() => setDealerToDelete(null)} labelledBy="dealer-delete-title" describedBy="dealer-delete-description">
@@ -462,7 +476,7 @@ function Itemsentry() {
 
           <div className="bill-date-field">
             <label className="label-title" htmlFor="billDate">Bill issued date</label>
-            <input id="billDate" type="date" className="form-control" value={billDate} onChange={(event) => { setBillDate(event.target.value); setBillSaved(false); }} required />
+            <input id="billDate" type="date" className="form-control" value={billDate} onChange={(event) => { setBillDate(event.target.value); }} required />
           </div>
 
           <form onSubmit={addBillItem} className="bill-item-form">
@@ -566,7 +580,7 @@ function Itemsentry() {
                       <td data-label="Actions">
                         <div className="bill-row-actions">
                           <button type="button" className="edit-bill-item" onClick={() => editBillItem(item)}>Edit</button>
-                          <button type="button" className="remove-bill-item" aria-label={`Remove ${item.name}`} onClick={() => { setBillItems((items) => items.filter((entry) => entry.id !== item.id)); if (editingItemId === item.id) cancelItemEdit(); setBillSaved(false); }}>Remove</button>
+                          <button type="button" className="remove-bill-item" aria-label={`Remove ${item.name}`} onClick={() => { setBillItems((items) => items.filter((entry) => entry.id !== item.id)); if (editingItemId === item.id) cancelItemEdit(); }}>Remove</button>
                         </div>
                       </td>
                     </tr>
@@ -584,7 +598,6 @@ function Itemsentry() {
               {isSaving ? <><span className="btn-spinner" aria-hidden="true" /> Saving…</> : `Save Bill · ${formatRupees(billTotal)}`}
             </button>
           </div>
-          {billSaved && <p className="bill-success" role="status">Bill saved for {selectedDealer.name}.</p>}
         </div>
       )}
     </section>
