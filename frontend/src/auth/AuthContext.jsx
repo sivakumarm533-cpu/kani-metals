@@ -1,34 +1,43 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import { apiRequest } from '../services/api.js'
-
-const AuthContext = createContext(null)
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { apiRequest, AUTH_EXPIRED_EVENT, getAuthToken, setAuthToken } from '../services/api.js'
+import { AuthContext } from './authContextValue.js'
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Only wait for /auth/me when a token exists; otherwise the user is known to be signed out.
+  const [loading, setLoading] = useState(() => Boolean(getAuthToken()))
 
   useEffect(() => {
-    const token = localStorage.getItem('kani-auth-token')
-    if (!token) { setLoading(false); return }
-    apiRequest('/auth/me').then(({ user: current }) => setUser(current)).catch(() => localStorage.removeItem('kani-auth-token')).finally(() => setLoading(false))
+    if (!getAuthToken()) return undefined
+    let active = true
+    apiRequest('/auth/me')
+      .then(({ user: current }) => { if (active) setUser(current) })
+      .catch(() => { if (active) setAuthToken(null) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
   }, [])
 
-  function signIn(auth) {
-    localStorage.setItem('kani-auth-token', auth.token)
-    setUser(auth.user)
-  }
+  useEffect(() => {
+    // Any API call that reports an expired or revoked session signs the user out locally.
+    const handleExpired = () => { setAuthToken(null); setUser(null) }
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpired)
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired)
+  }, [])
 
-  function signOut() {
+  const signIn = useCallback((auth) => {
+    if (auth?.token) setAuthToken(auth.token)
+    setUser(auth?.user || null)
+  }, [])
+
+  const updateUser = useCallback((nextUser) => setUser(nextUser), [])
+
+  const signOut = useCallback(() => {
+    // The request reads the token synchronously before it is cleared below.
     apiRequest('/auth/logout', { method: 'POST' }).catch(() => {})
-    localStorage.removeItem('kani-auth-token')
+    setAuthToken(null)
     setUser(null)
-  }
+  }, [])
 
-  return <AuthContext.Provider value={{ user, loading, signIn, signOut }}>{children}</AuthContext.Provider>
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (!context) throw new Error('useAuth must be used inside AuthProvider')
-  return context
+  const value = useMemo(() => ({ user, loading, signIn, signOut, updateUser }), [user, loading, signIn, signOut, updateUser])
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -1,34 +1,61 @@
-import { useEffect, useState } from 'react'
-import { apiRequest } from '../services/api.js'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/authContextValue.js'
+import { LOW_STOCK_LIMIT, useProducts } from '../hooks/useProducts.js'
+import LoadError from '../components/LoadError.jsx'
+
+const quickLinks = [
+  { to: '/itemsentry', icon: 'bi-receipt-cutoff', title: 'Create a bill', text: 'Choose a dealer and enter purchased items.' },
+  { to: '/dealer-payments', icon: 'bi-wallet2', title: 'Dealer payments', text: 'Record payments and follow up on balances.' },
+  { to: '/bill-comparison', icon: 'bi-arrow-left-right', title: 'Compare bills', text: 'See price and quantity changes between bills.' },
+  { to: '/inventory', icon: 'bi-boxes', title: 'Check inventory', text: 'Review stock levels and low-stock items.' },
+]
 
 function Dashboard() {
-  const [products, setProducts] = useState([])
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    apiRequest('/products')
-      .then(setProducts)
-      .catch((requestError) => setError(requestError.message))
-  }, [])
-
-  const lowStockCount = products.filter((product) => product.quantity <= 10).length
+  const { user } = useAuth()
+  const { products, loading, error, retry } = useProducts()
+  const lowStockCount = products.filter((product) => product.quantity <= LOW_STOCK_LIMIT).length
   const inStockCount = products.length - lowStockCount
+  const value = (count) => (loading ? <span className="skeleton skeleton-number" aria-label="Loading" /> : error ? '—' : count)
+
+  const cards = [
+    { icon: 'bi-tags', label: 'Total products', count: products.length, note: 'Products in your catalog' },
+    { icon: 'bi-exclamation-triangle', label: 'Low stock', count: lowStockCount, note: `${LOW_STOCK_LIMIT} units or fewer`, tone: 'warning' },
+    { icon: 'bi-check2-circle', label: 'In stock', count: inStockCount, note: 'Items currently available', tone: 'success' },
+  ]
 
   return (
     <section className="page-container">
-      <p className="eyebrow">OVERVIEW</p>
-      <h1>Dashboard</h1>
-      <p className="page-description">Welcome to your Kani Metals admin panel. Here is a quick look at your store.</p>
-      {error && <p className="api-error" role="alert">{error}. Make sure MongoDB and the backend server are running.</p>}
-      <div className="row g-3 mt-2">
-        <div className="col-12 col-md-4"><article className="summary-card"><span className="summary-icon">â–¤</span><p>Total products</p><strong>{products.length}</strong><small>Products in your catalog</small></article></div>
-        <div className="col-12 col-md-4"><article className="summary-card"><span className="summary-icon">â—·</span><p>Low stock</p><strong>{lowStockCount}</strong><small>Items to review soon</small></article></div>
-        <div className="col-12 col-md-4"><article className="summary-card"><span className="summary-icon">âœ“</span><p>In stock</p><strong>{inStockCount}</strong><small>Items currently available</small></article></div>
+      <header className="page-header">
+        <div>
+          <p className="eyebrow">OVERVIEW</p>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-description">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}. Here is a quick look at your store.</p>
+        </div>
+      </header>
+      <LoadError message={error} onRetry={retry} />
+      <div className="summary-grid">
+        {cards.map((card) => (
+          <article className={`summary-card${card.tone ? ` summary-card-${card.tone}` : ''}`} key={card.label}>
+            <span className="summary-icon" aria-hidden="true"><i className={`bi ${card.icon}`} /></span>
+            <p>{card.label}</p>
+            <strong>{value(card.count)}</strong>
+            <small>{card.note}</small>
+          </article>
+        ))}
       </div>
-      <article className="dashboard-card mt-4">
-        <h2>Getting started</h2>
-        <p>Use the menu on the left to view your inventory or browse and manage your products.</p>
-      </article>
+      <section className="dashboard-card">
+        <h2>Quick actions</h2>
+        <p>Jump straight to the tasks you use most.</p>
+        <div className="quick-link-grid">
+          {quickLinks.map((link) => (
+            <Link className="quick-link" to={link.to} key={link.to}>
+              <span className="quick-link-icon" aria-hidden="true"><i className={`bi ${link.icon}`} /></span>
+              <span><strong>{link.title}</strong><small>{link.text}</small></span>
+              <i className="bi bi-arrow-right quick-link-arrow" aria-hidden="true" />
+            </Link>
+          ))}
+        </div>
+      </section>
     </section>
   )
 }

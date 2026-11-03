@@ -1,59 +1,68 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext.jsx'
+import { useAuth } from '../auth/authContextValue.js'
 
 const menuItems = [
-  { to: '/dashboard', icon: '⌂', label: 'Dashboard' },
-  { to: '/inventory', icon: '▤', label: 'Inventory' },
-  { to: '/products', icon: '◈', label: 'Products' },
-  { to: '/scrap-items', icon: '♻', label: 'Scrap items' },
-  { to: '/itemsentry', icon: 'bi bi-receipt-cutoff', label: 'Item entry' },
-  { to: '/dealer-payments', icon: 'bi bi-wallet2', label: 'Dealer Payments' },
-  { to: '/bill-comparison', icon: 'bi bi-arrow-left-right', label: 'Bill Comparison' }
+  { to: '/dashboard', icon: 'bi-house-door', label: 'Dashboard' },
+  { to: '/inventory', icon: 'bi-boxes', label: 'Inventory' },
+  { to: '/products', icon: 'bi-tags', label: 'Products' },
+  { to: '/scrap-items', icon: 'bi-recycle', label: 'Scrap items' },
+  { to: '/itemsentry', icon: 'bi-receipt-cutoff', label: 'Item entry' },
+  { to: '/dealer-payments', icon: 'bi-wallet2', label: 'Dealer Payments' },
+  { to: '/bill-comparison', icon: 'bi-arrow-left-right', label: 'Bill Comparison' },
 ]
 
-function Sidebar() {
+const settingsItems = [
+  { to: '/settings/users', icon: 'bi-people', label: 'User management' },
+  { to: '/settings/activity', icon: 'bi-clock-history', label: 'User activity' },
+  { to: '/settings/backup', icon: 'bi-database-down', label: 'Database backup' },
+]
+
+const linkClass = ({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`
+
+function Sidebar({ isOpen, isDesktop, onNavigate }) {
   const { user } = useAuth()
   const location = useLocation()
-  const [isOpen, setIsOpen] = useState(() => window.innerWidth > 960)
-  const [settingsOpen, setSettingsOpen] = useState(() => location.pathname.startsWith('/settings'))
-
-  useEffect(() => {
-    const handleToggle = (event) => setIsOpen(event.detail)
-    const handleResize = () => setIsOpen(window.innerWidth > 960)
-    window.addEventListener('sidebar-toggle', handleToggle)
-    window.addEventListener('resize', handleResize)
-    return () => {
-      window.removeEventListener('sidebar-toggle', handleToggle)
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [])
-
-  function closeMenu() {
-    // On wide screens, keep the persistent sidebar open when changing pages.
-    if (window.innerWidth > 960) return
-    setIsOpen(false)
-    window.dispatchEvent(new CustomEvent('sidebar-toggle', { detail: false }))
-  }
+  const inSettings = location.pathname.startsWith('/settings')
+  const [settingsOpen, setSettingsOpen] = useState(inSettings)
 
   return (
     <>
-      {isOpen && window.innerWidth <= 960 && <button className="sidebar-backdrop" type="button" aria-label="Close navigation menu" onClick={closeMenu} />}
-      <aside className={`admin-sidebar${isOpen ? ' is-open' : ''}`} aria-label="Main navigation" aria-hidden={!isOpen}>
+      {isOpen && !isDesktop && <button className="sidebar-backdrop" type="button" aria-label="Close navigation menu" tabIndex={-1} onClick={onNavigate} />}
+      {/* `inert` keeps the hidden drawer's links out of the keyboard and screen-reader order. */}
+      <aside id="main-navigation" className={`admin-sidebar${isOpen ? ' is-open' : ''}`} aria-label="Main navigation" inert={!isOpen}>
         <p className="sidebar-heading">MENU</p>
         <nav>
-          <ul className="sidebar-links p-0">
+          <ul className="sidebar-links">
             {menuItems.map((item) => (
               <li key={item.to}>
-                <NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to={item.to} onClick={closeMenu}>
-                  <span className="sidebar-icon" aria-hidden="true">{item.icon.startsWith('bi ') ? <i className={item.icon} /> : item.icon}</span>
+                <NavLink className={linkClass} to={item.to} onClick={onNavigate}>
+                  <span className="sidebar-icon" aria-hidden="true"><i className={`bi ${item.icon}`} /></span>
                   <span>{item.label}</span>
                 </NavLink>
               </li>
             ))}
             {user?.role === 'admin' && <li className="sidebar-settings">
-              <button type="button" className={`sidebar-link settings-parent${location.pathname.startsWith('/settings') ? ' is-active' : ''}`} aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><span className="sidebar-icon" aria-hidden="true">⚙</span><span>Settings</span><span className="settings-chevron" aria-hidden="true">{settingsOpen ? '−' : '+'}</span></button>
-              {settingsOpen && <ul className="sidebar-submenu"><li><NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to="/settings/users" onClick={closeMenu}>User management</NavLink></li><li><NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to="/settings/activity" onClick={closeMenu}>User activity</NavLink></li><li><NavLink className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`} to="/settings/backup" onClick={closeMenu}>Database backup</NavLink></li></ul>}
+              <button
+                type="button"
+                className={`sidebar-link settings-parent${inSettings ? ' is-active' : ''}`}
+                aria-expanded={settingsOpen}
+                aria-controls="settings-submenu"
+                onClick={() => setSettingsOpen((open) => !open)}
+              >
+                <span className="sidebar-icon" aria-hidden="true"><i className="bi bi-gear" /></span>
+                <span>Settings</span>
+                <i className={`bi bi-chevron-down settings-chevron${settingsOpen ? ' is-open' : ''}`} aria-hidden="true" />
+              </button>
+              {settingsOpen && <ul className="sidebar-submenu" id="settings-submenu">
+                {settingsItems.map((item) => (
+                  <li key={item.to}>
+                    <NavLink className={linkClass} to={item.to} onClick={onNavigate}>
+                      <i className={`bi ${item.icon}`} aria-hidden="true" /><span>{item.label}</span>
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>}
             </li>}
           </ul>
         </nav>

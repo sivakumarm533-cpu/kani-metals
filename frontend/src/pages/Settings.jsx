@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { apiRequest } from '../services/api.js'
-import './pages.css'
-
-const configuredApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000/api' : '')
-const apiBase = configuredApiUrl ? `${configuredApiUrl.replace(/\/+$/, '').replace(/\/api$/i, '')}/api` : ''
+import { apiFetch, apiRequest } from '../services/api.js'
+import Modal from '../components/Modal.jsx'
+import { compressImageFile } from '../utils/image.js'
 
 function UserAvatar({ user, size = 'normal' }) {
   return <span className={`user-avatar user-avatar-${size}`}>{user.profilePicture ? <img src={user.profilePicture} alt={`${user.name} profile`} /> : <span>{user.name?.trim()?.[0]?.toUpperCase() || '?'}</span>}</span>
@@ -295,7 +293,7 @@ export default function Settings() {
     try {
       const body = new FormData()
       Object.entries(form).forEach(([key, value]) => body.append(key, value))
-      if (profileFile) body.append('profilePicture', profileFile)
+      if (profileFile) body.append('profilePicture', await compressImageFile(profileFile))
       const user = await apiRequest('/auth/users', { method: 'POST', body })
       setUsers((current) => [user, ...current]); setForm({ name: '', email: '', password: '' }); setProfileFile(null)
       setUsersSummary((current) => ({ ...current, totalUsers: current.totalUsers + 1, regularUsers: current.regularUsers + 1 }))
@@ -316,7 +314,7 @@ export default function Settings() {
     try {
       const body = new FormData()
       Object.entries(editForm).forEach(([key, value]) => body.append(key, value))
-      if (editProfileFile) body.append('profilePicture', editProfileFile)
+      if (editProfileFile) body.append('profilePicture', await compressImageFile(editProfileFile))
       const updated = await apiRequest(`/auth/users/${editingUser._id}`, { method: 'PATCH', body })
       setUsers((current) => current.map((user) => user._id === updated._id ? updated : user))
       setEditingUser(null); setToastType('info'); setToastMessage('User account updated.')
@@ -336,13 +334,22 @@ export default function Settings() {
   }
 
   async function exportData() {
-    setError('')
+    setError(''); setBusy(true)
     try {
-      if (!apiBase) throw new Error('Backend API URL is missing. Set VITE_API_URL in the frontend deployment, then redeploy.')
-      const response = await fetch(`${apiBase}/admin/backup/export`, { headers: { Authorization: `Bearer ${localStorage.getItem('kani-auth-token')}` } })
+      const response = await apiFetch('/admin/backup/export')
       if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.message || 'Could not export backup.') }
-      const blob = await response.blob(); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'kani-metals-backup.json'; anchor.click(); URL.revokeObjectURL(url); setToastType('success'); setToastMessage('Database backup downloaded.')
-    } catch (err) { setError(err.message) }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `kani-metals-backup-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.append(anchor)
+      anchor.click()
+      anchor.remove()
+      // Revoking immediately can cancel the download in some browsers.
+      window.setTimeout(() => URL.revokeObjectURL(url), 2000)
+      setToastType('success'); setToastMessage('Database backup downloaded.')
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
 
   async function importData(event) {
@@ -366,7 +373,7 @@ export default function Settings() {
     {!isActivityPage && <header className="bill-header settings-page-header"><div><h1 className="page-title">{heading}</h1><p>{description}</p></div>{!isBackupPage && <button type="button" className="continue-btn user-add-button" onClick={openCreateUser}><i className="bi bi-plus-lg" aria-hidden="true" /> Add User</button>}</header>}
     {error && !isActivityPage && !createUserOpen && !usersLoading && <p className="api-error" role="alert">{error}</p>}
 
-    {isBackupPage ? <section className="settings-panel"><h2>Backup and restore</h2><p>Export or restore dealers, products, bills, and payment history as a JSON backup. User accounts and password hashes are never included. Import replaces current business records.</p><div className="backup-actions"><button type="button" className="continue-btn" onClick={exportData}>Export backup</button><label className="back-button backup-file-label">Import backup<input type="file" accept="application/json,.json" onChange={importData} disabled={busy} /></label></div></section> : null}
+    {isBackupPage ? <section className="settings-panel"><h2>Backup and restore</h2><p>Export or restore dealers, products, bills, and payment history as a JSON backup. User accounts and password hashes are never included. Import replaces current business records.</p><div className="backup-actions"><button type="button" className="continue-btn" onClick={exportData} disabled={busy}><i className="bi bi-download" aria-hidden="true" /> {busy ? 'Working…' : 'Export backup'}</button><label className={`back-button backup-file-label${busy ? ' is-disabled' : ''}`}><i className="bi bi-upload" aria-hidden="true" /> Import backup<input type="file" accept="application/json,.json" onChange={importData} disabled={busy} /></label></div></section> : null}
 
     {isActivityPage && <ActivityPage />}
 
@@ -409,7 +416,7 @@ export default function Settings() {
       </form>
     </dialog>}
 
-    {editingUser && <div className="dealer-delete-backdrop" role="presentation"><section className="dealer-delete-dialog user-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="user-edit-title"><h2 id="user-edit-title">Edit user</h2><form className="settings-user-form" onSubmit={updateUser}><label>Name<input className="form-control" value={editForm.name} onChange={(event) => setEditForm({ ...editForm, name: event.target.value })} required /></label><label>Email<input className="form-control" type="email" value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} required /></label><label>New profile picture<input className="form-control" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setEditProfileFile(event.target.files?.[0] || null)} /></label><div className="dealer-delete-actions"><button type="button" className="back-button" disabled={busy} onClick={() => setEditingUser(null)}>Cancel</button><button className="continue-btn" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button></div></form></section></div>}
-    {userToDelete && <div className="dealer-delete-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setUserToDelete(null) }}><section className="dealer-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="user-delete-title" aria-describedby="user-delete-description"><div className="dealer-delete-icon"><i className="bi bi-trash3" aria-hidden="true" /></div><h2 id="user-delete-title">Delete user?</h2><p id="user-delete-description">Delete <strong>{userToDelete.name}</strong> ({userToDelete.email})? They will lose access to the workspace immediately. This action cannot be undone.</p><div className="dealer-delete-actions"><button type="button" className="back-button" disabled={busy} onClick={() => setUserToDelete(null)}>Cancel</button><button type="button" className="confirm-delete-btn" disabled={busy} onClick={removeUser}>{busy ? 'Deleting…' : 'Delete user'}</button></div></section></div>}
+    {editingUser && <Modal className="dealer-delete-dialog user-edit-dialog" busy={busy} onClose={() => setEditingUser(null)} labelledBy="user-edit-title"><h2 id="user-edit-title">Edit user</h2>{error && <p className="api-error" role="alert">{error}</p>}<form className="settings-user-form" onSubmit={updateUser}><label>Name<input className="form-control" value={editForm.name} onChange={(event) => setEditForm({ ...editForm, name: event.target.value })} required /></label><label>Email<input className="form-control" type="email" value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} required /></label><label>New profile picture<input className="form-control" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setEditProfileFile(event.target.files?.[0] || null)} /></label><div className="dealer-delete-actions"><button type="button" className="back-button" disabled={busy} onClick={() => setEditingUser(null)}>Cancel</button><button className="continue-btn" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button></div></form></Modal>}
+    {userToDelete && <Modal role="alertdialog" busy={busy} onClose={() => setUserToDelete(null)} labelledBy="user-delete-title" describedBy="user-delete-description"><div className="dealer-delete-icon"><i className="bi bi-trash3" aria-hidden="true" /></div><h2 id="user-delete-title">Delete user?</h2><p id="user-delete-description">Delete <strong>{userToDelete.name}</strong> ({userToDelete.email})? They will lose access to the workspace immediately. This action cannot be undone.</p><div className="dealer-delete-actions"><button type="button" className="back-button" disabled={busy} onClick={() => setUserToDelete(null)} data-autofocus>Cancel</button><button type="button" className="confirm-delete-btn" disabled={busy} onClick={removeUser}>{busy ? 'Deleting…' : 'Delete user'}</button></div></Modal>}
   </section>
 }

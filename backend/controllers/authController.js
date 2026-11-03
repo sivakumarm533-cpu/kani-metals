@@ -20,6 +20,8 @@ const canMigrateAdminEmail = (email) => emailIsAllowed(email) || String(email ||
 const primaryAdminExists = () => User.exists({ role: 'admin', email: { $in: [allowedAdminEmail, previousAdminEmail].filter(Boolean) } })
 const isRetiredDemoAdmin = (email) => retiredDemoAdminEmails.has(String(email || '').trim().toLowerCase())
 const publicUser = (user) => ({ _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, profilePicture: user.profilePicture || '' })
+// Compared against when an email is unknown so failed logins take the same time either way.
+const timingSafetyHash = bcrypt.hashSync(randomBytes(24).toString('hex'), 12)
 
 async function adminSetupIsComplete() {
   if (await primaryAdminExists()) return true
@@ -108,7 +110,7 @@ export async function beginAdminEnrollment(req, res, next) {
     if (!process.env.ADMIN_SETUP_KEY) return res.status(503).json({ message: 'One-time admin setup is not configured on the backend.' })
     if (!setupKeyMatches(req.body.setupKey)) return res.status(403).json({ message: 'The one-time admin setup key is invalid.' })
     const { name, password, confirmPassword } = req.body
-    if (typeof name !== 'string' || !name.trim() || typeof password !== 'string' || password.length < 12) return res.status(400).json({ message: 'Enter your name and a password with at least 12 characters.' })
+    if (typeof name !== 'string' || !name.trim() || typeof password !== 'string' || password.length < 12 || password.length > 128 || name.trim().length > 100) return res.status(400).json({ message: 'Enter your name and a password with at least 12 characters.' })
     if (password !== confirmPassword) return res.status(400).json({ message: 'Password and confirmation do not match.' })
     const passwordHash = await bcrypt.hash(password, 12)
     const enrollment = await createTotpChallenge({ purpose: 'registration', email, name: name.trim(), passwordHash })
@@ -172,8 +174,10 @@ export async function login(req, res, next) {
   try {
     const email = String(req.body.email || '').trim().toLowerCase()
     const password = String(req.body.password || '')
+    if (!email || email.length > 254 || password.length > 1024) return res.status(401).json({ message: 'Email or password is incorrect.' })
     const user = await User.findOne({ email }).select('+passwordHash').select('+totpSecretEncrypted').select('+profilePicture')
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ message: 'Email or password is incorrect.' })
+    const passwordMatches = await bcrypt.compare(password, user?.passwordHash || timingSafetyHash)
+    if (!user || !passwordMatches) return res.status(401).json({ message: 'Email or password is incorrect.' })
     if (user.role !== 'admin') return res.json({ requiresTotp: false, ...await createSession(user) })
     if (!allowedAdminEmail) return res.status(503).json({ message: 'Admin email is not configured on the backend.' })
     if (!canMigrateAdminEmail(user.email)) return res.status(403).json({ message: 'Admin account is not authorized.' })
@@ -239,7 +243,13 @@ export async function logout(req, res, next) {
   catch (error) { next(error) }
 }
 
-export function currentUser(req, res) { res.json({ user: publicUser(req.user) }) }
+export async function currentUser(req, res, next) {
+  try {
+    const user = await User.findById(req.user._id).select('name email role createdAt').select('+profilePicture')
+    if (!user) return res.status(401).json({ message: 'This account is no longer available.' })
+    res.json({ user: publicUser(user) })
+  } catch (error) { next(error) }
+}
 
 export async function listUsers(_req, res, next) {
   try {
@@ -269,7 +279,7 @@ export async function userSummary(_req, res, next) {
 export async function createUser(req, res, next) {
   try {
     const { name, email, password } = req.body
-    if (typeof name !== 'string' || !name.trim() || typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email) || typeof password !== 'string' || password.length < 12) {
+    if (typeof name !== 'string' || !name.trim() || typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email) || typeof password !== 'string' || password.length < 12 || password.length > 128 || name.trim().length > 100 || email.trim().length > 254) {
       return res.status(400).json({ message: 'Provide a name, valid email, and password with at least 12 characters.' })
     }
     const normalizedEmail = email.trim().toLowerCase()

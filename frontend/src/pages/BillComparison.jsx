@@ -10,7 +10,6 @@ import {
   formatQuantityDifference,
   percentChange,
 } from '../utils/billComparison.js'
-import './pages.css'
 
 function formatDate(value) {
   const date = new Date(value)

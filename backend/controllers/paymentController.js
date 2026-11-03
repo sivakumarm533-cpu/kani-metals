@@ -6,6 +6,13 @@ import { paymentCountsAsReceived, rupeesToPaise } from '../utils/money.js'
 import { recordActivity } from '../utils/activity.js'
 
 const methods = new Set(['gpay', 'phonepe', 'paytm', 'upi_other', 'net_banking', 'cheque', 'bank_deposit', 'cash', 'other'])
+// The business operates in India; "today" and month buckets must not depend on the server's timezone.
+const indiaDateParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' })
+function indiaDay(value) {
+  if (Number.isNaN(new Date(value).getTime())) return { year: 0, month: 0, day: 0, key: 'invalid', monthKey: 'invalid' }
+  const parts =Object.fromEntries(indiaDateParts.formatToParts(new Date(value)).map(({ type, value: part }) => [type, part]))
+  return { year: Number(parts.year), month: Number(parts.month), day: Number(parts.day), key: `${parts.year}-${parts.month}-${parts.day}`, monthKey: `${parts.year}-${parts.month}` }
+}
 const asDate = (value) => {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
@@ -25,7 +32,7 @@ async function reserveBillAmount(bill, amountPaise, session) {
     _id: bill._id,
     total: bill.total,
     $or: [{ receivedPaise: { $lte: maxPrior } }, { receivedPaise: { $exists: false } }],
-  }, { $inc: { receivedPaise: amountPaise } }, { new: true, session })
+  }, { $inc: { receivedPaise: amountPaise } }, { returnDocument: 'after', session })
 }
 
 async function safePaymentActivity(req, action, payment, before = null, after = null) {
@@ -54,9 +61,8 @@ export async function getPaymentOverview(req, res, next) {
     const totalBillPaise = billStates.reduce((sum, row) => sum + row.totalPaise, 0)
     const totalReceivedPaise = receivedPayments.reduce((sum, payment) => sum + payment.amountPaise, 0)
     const pendingDealerIds = new Set(billStates.filter((row) => row.pendingPaise > 0).map((row) => String(row.bill.dealer)))
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    const todayEnd = new Date(today); todayEnd.setDate(todayEnd.getDate() + 1)
-    const todayReceivedPaise = receivedPayments.filter((payment) => new Date(payment.paymentDate) >= today && new Date(payment.paymentDate) < todayEnd).reduce((sum, payment) => sum + payment.amountPaise, 0)
+    const todayKey = indiaDay(new Date()).key
+    const todayReceivedPaise = receivedPayments.filter((payment) => indiaDay(payment.paymentDate).key === todayKey).reduce((sum, payment) => sum + payment.amountPaise, 0)
     const dealerRows = dealers.map((dealer) => {
       const rows = billStates.filter((row) => String(row.bill.dealer) === String(dealer._id))
       const totalPaise = rows.reduce((sum, row) => sum + row.totalPaise, 0)
@@ -70,14 +76,14 @@ export async function getPaymentOverview(req, res, next) {
     const methodsSummary = new Map()
     for (const payment of receivedPayments) methodsSummary.set(payment.paymentMethod, (methodsSummary.get(payment.paymentMethod) || 0) + payment.amountPaise)
     const monthMap = new Map()
-    const todayMonth = new Date(); todayMonth.setDate(1); todayMonth.setHours(0, 0, 0, 0)
+    const currentMonth = indiaDay(new Date())
     for (let offset = 5; offset >= 0; offset -= 1) {
-      const date = new Date(todayMonth); date.setMonth(date.getMonth() - offset)
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      monthMap.set(key, { month: key, label: date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }), billedPaise: 0, receivedPaise: 0, pendingPaise: 0 })
+      const date = new Date(Date.UTC(currentMonth.year, currentMonth.month - 1 - offset, 1))
+      const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+      monthMap.set(key, { month: key, label: date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit', timeZone: 'UTC' }), billedPaise: 0, receivedPaise: 0, pendingPaise: 0 })
     }
     for (const { bill, totalPaise, receivedPaise, pendingPaise } of billStates) {
-      const date = new Date(bill.issuedDate); const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const key = indiaDay(bill.issuedDate).monthKey
       if (monthMap.has(key)) {
         monthMap.get(key).billedPaise += totalPaise
         monthMap.get(key).receivedPaise += receivedPaise
@@ -192,7 +198,7 @@ export async function reversePayment(req, res, next) {
       if (!payment || payment.paymentStatus === 'reversed') { const error = new Error('Payment not found or already reversed.'); error.statusCode = 409; throw error }
       const before = payment.toObject()
       if (paymentCountsAsReceived(payment)) {
-        const bill = await Bill.findOneAndUpdate({ _id: payment.bill, receivedPaise: { $gte: payment.amountPaise } }, { $inc: { receivedPaise: -payment.amountPaise } }, { new: true, session })
+        const bill = await Bill.findOneAndUpdate({ _id: payment.bill, receivedPaise: { $gte: payment.amountPaise } }, { $inc: { receivedPaise: -payment.amountPaise } }, { returnDocument: 'after', session })
         if (!bill) { const error = new Error('Bill payment balance needs reconciliation; payment was not reversed.'); error.statusCode = 409; throw error }
       }
       payment.paymentStatus = 'reversed'

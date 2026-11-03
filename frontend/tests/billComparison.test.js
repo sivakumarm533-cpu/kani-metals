@@ -5,6 +5,7 @@ import {
   buildProductComparisons,
   comparisonIdentity,
   decimalToCents,
+  formatQuantityDifference,
   percentChange,
   productAmountMicro,
 } from '../src/utils/billComparison.js'
@@ -83,4 +84,11 @@ test('matches category as part of identity and rounds financial values in intege
   assert.equal(billTotalCents({ total: 5356.01 }), 535_601n)
   assert.equal(percentChange(0n, 1000n), null)
   assert.equal(percentChange(10_000n, 12_000n), 20)
+})
+
+test('formats quantity differences with a single sign', () => {
+  assert.equal(formatQuantityDifference(-2_500_000n, 'kg'), '−2.5 kg')
+  assert.equal(formatQuantityDifference(2_500_000n, 'kg'), '+2.5 kg')
+  assert.equal(formatQuantityDifference(0n, 'kg'), '0 kg')
+  assert.equal(formatQuantityDifference(null, 'kg'), '—')
 })

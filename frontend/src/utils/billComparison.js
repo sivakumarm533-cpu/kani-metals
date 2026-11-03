@@ -277,7 +277,8 @@ export function formatMoney(cents, { signed = false } = {}) {
 export function formatQuantityDifference(value, unit) {
   if (value == null) return '—'
   const sign = value > 0n ? '+' : value < 0n ? '−' : ''
-  return `${sign}${formatScaledQuantity(value)} ${unit || ''}`.trim()
+  // Format the magnitude; formatting the signed value produced a double sign ("−-2.5 kg").
+  return `${sign}${formatScaledQuantity(value < 0n ? -value : value)} ${unit || ''}`.trim()
 }
 
 export function totalQuantityMicro(product, unit) {

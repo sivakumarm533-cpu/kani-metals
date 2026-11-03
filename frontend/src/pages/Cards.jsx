@@ -1,5 +1,5 @@
 import './Cards.css'
-import scrapImages from '../assets/scrap/scrap-materials-sheet.png'
+import scrapImages from '../assets/scrap/scrap-materials-sheet.webp'
 
 const scrapItems = [
   { name: 'Copper Wire Scrap', grade: 'Clean copper · Grade A', oldPrice: 720, newPrice: 745, oldDate: '24 Oct 2026', newDate: '31 Oct 2026', tile: 0 },
@@ -16,7 +16,7 @@ function Cards() {
   return (
     <section className="page-container scrap-page">
       <p className="eyebrow">SCRAP MARKET</p>
-      <h1>Scrap item prices</h1>
+      <h1 className="page-title">Scrap item prices</h1>
       <p className="page-description">Compare the latest price per kilogram with the previous update.</p>
 
       <div className="scrap-grid">

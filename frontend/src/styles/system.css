@@ -1,0 +1,576 @@
+/* =========================================================
+   Kani Metals UI system layer.
+   Loaded after the page stylesheets: it normalizes shared
+   building blocks (buttons, cards, forms, feedback states,
+   motion) so every page behaves and looks the same.
+   ========================================================= */
+
+/* ---------- Accessibility helpers ---------- */
+.skip-link {
+  position: absolute;
+  z-index: 2000;
+  top: 8px;
+  left: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-secondary);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-150%);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.skip-link:focus { transform: translateY(0); }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+#main-content:focus { outline: none; }
+
+a { color: var(--color-link); }
+
+body.modal-open, body.drawer-open { overflow: hidden; }
+
+/* ---------- Buttons ---------- */
+button { transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease, color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease; }
+button:disabled { cursor: not-allowed; }
+
+.continue-btn,
+.add-dealer-btn,
+.back-button,
+.confirm-delete-btn {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease, color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease;
+}
+
+.continue-btn,
+.add-dealer-btn {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 1px 2px rgb(243 111 18 / 25%);
+}
+.continue-btn:hover:not(:disabled),
+.add-dealer-btn:hover:not(:disabled) {
+  border-color: var(--color-primary-hover);
+  background: var(--color-primary-hover);
+  color: #fff;
+  box-shadow: 0 4px 12px rgb(243 111 18 / 28%);
+}
+
+.back-button {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.back-button:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-faint);
+  color: var(--color-primary-strong);
+}
+
+.confirm-delete-btn { border: 1px solid var(--color-danger); background: var(--color-danger); color: #fff; }
+.confirm-delete-btn:hover:not(:disabled) { border-color: #b91c1c; background: #b91c1c; }
+
+.continue-btn:active:not(:disabled),
+.add-dealer-btn:active:not(:disabled),
+.back-button:active:not(:disabled),
+.confirm-delete-btn:active:not(:disabled) { transform: translateY(1px) scale(.99); }
+
+.continue-btn:disabled,
+.add-dealer-btn:disabled,
+.back-button:disabled,
+.confirm-delete-btn:disabled { opacity: .55; box-shadow: none; }
+
+.btn-block { width: 100%; }
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--color-link);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.link-button:hover { background: transparent; color: var(--color-primary-hover); }
+
+/* Small table / card actions share one look */
+.edit-bill-item, .remove-bill-item, .user-action-edit, .user-action-delete, .payment-row-actions button {
+  min-height: 32px;
+  border-radius: 7px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.edit-bill-item:hover { border-color: var(--color-primary); background: var(--color-primary-faint); }
+.remove-bill-item:hover { border-color: #fecaca; background: var(--color-danger-soft); }
+
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border: 2px solid rgb(255 255 255 / 45%);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ui-spin .7s linear infinite;
+}
+.btn-spinner-dark { border-color: rgb(25 27 29 / 15%); border-top-color: var(--color-primary); }
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+
+/* ---------- Page structure ---------- */
+.page-transition { max-width: 1480px; margin: 0 auto; animation: page-enter 240ms var(--ease-out) both; }
+@keyframes page-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.page-container { display: grid; gap: 20px; }
+/* Grid pages need an explicit shrinkable column; with the implicit `auto` track a wide
+   table stretched the whole page past the viewport instead of scrolling in its wrapper. */
+.page-container, .bill-comparison-page, .bill-product-page, .dealer-payment-page, .activity-page, .bill-comparison-results {
+  grid-template-columns: minmax(0, 1fr);
+}
+.page-container > *, .bill-comparison-page > *, .bill-product-page > *, .dealer-payment-page > * { min-width: 0; }
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-title { margin: 0; color: var(--color-text); font-size: clamp(22px, 2.4vw, 28px); font-weight: 700; letter-spacing: -.01em; line-height: 1.2; }
+.section-title { margin: 0; color: var(--color-text); font-size: 18px; font-weight: 700; }
+.eyebrow { margin: 0 0 6px; color: var(--color-primary-strong); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.page-description { margin: 6px 0 0; color: var(--color-text-muted); font-size: 14px; line-height: 1.6; }
+
+/* Card surface used by most feature pages */
+.boarder-box {
+  padding: clamp(16px, 2.2vw, 24px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+.boarder-box .boarder-box { padding: 16px; border-radius: var(--radius-md); box-shadow: none; }
+.page-container > .boarder-box { margin-top: 0; }
+
+.label-title { display: block; margin-bottom: 6px; color: var(--color-text); font-size: 13px; font-weight: 600; }
+
+.breadcrumbs, .payment-breadcrumbs, .bill-product-breadcrumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.breadcrumbs a, .payment-breadcrumbs a, .bill-product-breadcrumbs a { color: var(--color-link); font-weight: 600; text-decoration: none; }
+.breadcrumbs a:hover, .payment-breadcrumbs a:hover, .bill-product-breadcrumbs a:hover { text-decoration: underline; }
+.breadcrumbs i { font-size: 11px; }
+
+/* ---------- Forms ---------- */
+.form-control, .form-select {
+  min-height: 42px;
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 14px;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+.form-control:hover, .form-select:hover { border-color: #bfc5cc; }
+.form-control:focus, .form-select:focus { border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+.form-control[type="file"] { min-height: 42px; padding-top: 8px; }
+.form-control::placeholder { color: var(--color-text-subtle); }
+
+/* Shared search / filter inputs on the feature pages pick up the same focus treatment */
+.payment-filters input:focus, .payment-filters select:focus, .payment-form input:focus, .payment-form select:focus, .payment-form textarea:focus,
+.payment-reverse-modal textarea:focus, .activity-filter-panel input:focus, .activity-filter-panel select:focus,
+.user-management-toolbar select:focus, .bill-dealer-fields select:focus, .bill-pick-card select:focus, .bill-compare-toolbar select:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.bill-compare-searchbox:focus-within, .activity-search-input:focus-within, .dealer-search:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+.bill-compare-searchbox input:focus-visible, .activity-search-input input:focus-visible, .dealer-search input:focus-visible, .user-search-input input:focus-visible { box-shadow: none; }
+
+/* ---------- Feedback: errors, empty states, skeletons ---------- */
+.api-error-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.api-error-row > span { flex: 1 1 200px; }
+.api-error-row .back-button { min-height: 34px; padding: 6px 12px; font-size: 13px; }
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 36px 16px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+.empty-state > i {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 20px;
+}
+.empty-state strong { color: var(--color-text); font-size: 15px; }
+.empty-state span { max-width: 420px; font-size: 13px; }
+.empty-state .continue-btn { margin-top: 8px; }
+.empty-state-panel { border: 1px dashed var(--color-border-strong); border-radius: var(--radius-md); background: var(--color-surface-muted); }
+
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, #eef0f3 25%, #f8f9fa 45%, #eef0f3 65%);
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 1.3s ease-in-out infinite;
+}
+.skeleton-line { width: 100%; height: 14px; }
+.skeleton-title { width: min(260px, 60%); height: 26px; }
+.skeleton-number { display: inline-block; width: 56px; height: 28px; vertical-align: middle; }
+.skeleton-row { height: 76px; margin-bottom: 12px; border-radius: var(--radius-md); }
+.skeleton-card { height: 140px; border-radius: var(--radius-md); }
+.skeleton-card-lg { height: 260px; border-radius: var(--radius-md); }
+.skeleton-dealer-card { height: 236px; border-radius: var(--radius-md); }
+@keyframes skeleton-shimmer { to { background-position: -300% 0; } }
+
+.page-loader { display: grid; gap: 14px; padding: 4px 0; }
+.page-loader-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 6px; }
+.page-loader-full { min-height: 100vh; place-items: center; background: var(--color-background); }
+.page-loader-spinner { width: 36px; height: 36px; border: 3px solid var(--color-primary-soft); border-top-color: var(--color-primary); border-radius: 50%; animation: ui-spin .8s linear infinite; }
+
+.table-skeleton-row td { padding: 14px 8px !important; }
+
+/* ---------- Toasts ---------- */
+.app-toast > span { min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------- Navbar ---------- */
+.admin-navbar { box-shadow: 0 1px 0 rgb(16 24 40 / 2%); }
+.navbar-user { display: grid; min-width: 0; line-height: 1.2; }
+.navbar-user strong { overflow: hidden; max-width: 180px; color: var(--color-text); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.navbar-user small { color: var(--color-text-muted); font-size: 11px; }
+.sign-out-button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; border-radius: var(--radius-sm); font-weight: 600; }
+.navbar-profile-upload { transition: box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease; }
+.navbar-profile-upload:hover { box-shadow: 0 0 0 3px var(--color-primary-soft); }
+.navbar-profile-upload:focus-within { box-shadow: var(--focus-ring); }
+.navbar-profile-upload.is-uploading { opacity: .6; cursor: progress; animation: avatar-pulse 1s ease-in-out infinite alternate; }
+@keyframes avatar-pulse { to { opacity: .35; } }
+
+.menu-toggle { border-radius: var(--radius-sm); }
+.menu-toggle span { border-radius: 2px; transition: transform var(--duration-base) var(--ease-out), opacity var(--duration-fast) ease; }
+@media (max-width: 960px) {
+  .menu-toggle.is-open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .menu-toggle.is-open span:nth-child(2) { opacity: 0; }
+  .menu-toggle.is-open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+}
+
+@media (max-width: 720px) {
+  .navbar-user { display: none; }
+  .sign-out-button span { display: none; }
+  .sign-out-button { width: 36px; justify-content: center; padding: 0; font-size: 16px; }
+}
+
+/* ---------- Sidebar ---------- */
+@media (min-width: 961px) {
+  .admin-sidebar {
+    position: sticky;
+    top: 68px;
+    align-self: flex-start;
+    height: calc(100vh - 68px);
+    overflow-y: auto;
+    flex-basis: var(--sidebar-width);
+  }
+}
+.sidebar-links { margin: 0; padding: 0; }
+.sidebar-link {
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+.sidebar-link.is-active { position: relative; color: var(--color-primary-strong); }
+.sidebar-link.is-active::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: -1px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--color-primary);
+}
+.sidebar-icon { font-size: 17px; }
+.settings-parent { border-radius: 7px; }
+.settings-chevron { font-size: 12px; transition: transform var(--duration-base) var(--ease-out); }
+.settings-chevron.is-open { transform: rotate(180deg); }
+.sidebar-submenu { animation: submenu-enter 180ms var(--ease-out) both; }
+.sidebar-submenu .sidebar-link i { font-size: 14px; }
+.sidebar-heading { color: var(--color-text-subtle); }
+@keyframes submenu-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.admin-sidebar { transition: transform 220ms var(--ease-out); }
+.sidebar-backdrop { animation: modal-backdrop-enter 180ms ease-out both; }
+
+/* ---------- Dashboard ---------- */
+.summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.summary-card { min-height: 0; padding: 20px; border-radius: var(--radius-md); box-shadow: var(--shadow-xs); }
+.summary-icon { font-size: 18px; }
+.summary-card-warning .summary-icon { background: var(--color-warning-soft); color: var(--color-warning); }
+.summary-card-success .summary-icon { background: var(--color-success-soft); color: var(--color-success); }
+.summary-card strong { margin-top: 2px; font-size: 30px; }
+.summary-card p { margin-top: 6px; font-weight: 600; }
+.summary-card small { font-size: 12px; }
+
+.dashboard-card { border-radius: var(--radius-md); box-shadow: var(--shadow-xs); }
+.dashboard-card h2 { font-weight: 700; }
+.payment-section-heading h2, .payment-modal-heading h2, .bill-compare-section-title h2, .bill-pick-card h2 { font-weight: 700; }
+.quick-link-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 16px; }
+.quick-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-base) ease, transform var(--duration-base) var(--ease-out);
+}
+.quick-link > span:nth-child(2) { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.quick-link strong { font-size: 14px; }
+.quick-link small { color: var(--color-text-muted); font-size: 12px; line-height: 1.4; }
+.quick-link-icon { display: grid; flex: 0 0 40px; width: 40px; height: 40px; place-items: center; border-radius: 10px; background: var(--color-primary-soft); color: var(--color-primary); font-size: 18px; }
+.quick-link-arrow { color: var(--color-text-subtle); transition: transform var(--duration-base) var(--ease-out), color var(--duration-fast) ease; }
+.quick-link:hover { border-color: var(--color-primary); }
+.quick-link:hover .quick-link-arrow { color: var(--color-primary); transform: translateX(3px); }
+
+/* ---------- Products & inventory ---------- */
+.product-list, .inventory-table-wrap { margin-top: 0; }
+.product-symbol { overflow: hidden; }
+.product-symbol img { width: 100%; height: 100%; object-fit: cover; }
+.product-price small { color: var(--color-text-muted); font-weight: 500; }
+.inventory-table-wrap { padding: 4px 18px; border-radius: var(--radius-md); }
+.table > :not(caption) > * > * { padding-top: 12px; padding-bottom: 12px; }
+.table thead th { color: var(--color-text-muted); font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+
+/* Hover lift on interactive cards (pointer devices only, so taps do not leave cards raised) */
+@media (hover: hover) {
+  .summary-card, .payment-summary-card, .user-summary-card, .activity-summary-card, .bill-compare-metric {
+    transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) ease;
+  }
+  .summary-card:hover, .payment-summary-card:hover, .user-summary-card:hover, .activity-summary-card:hover, .quick-link:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* ---------- Authentication ---------- */
+.auth-page {
+  background:
+    radial-gradient(1000px 500px at 0% 0%, rgb(243 111 18 / 9%), transparent 60%),
+    radial-gradient(800px 400px at 100% 100%, rgb(146 151 155 / 14%), transparent 60%),
+    var(--color-background);
+}
+.auth-card { gap: 18px; padding: clamp(22px, 5vw, 34px); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); animation: modal-content-enter 280ms var(--ease-out) both; }
+.auth-brand { display: flex; align-items: center; gap: 12px; }
+.auth-mark { width: 52px; height: 52px; padding: 4px; border: 1px solid var(--color-border); border-radius: 14px; background: #fff; object-fit: contain; }
+.auth-brand > span { display: grid; color: var(--color-text); font-size: 16px; font-weight: 700; line-height: 1.2; }
+.auth-brand small { color: var(--color-text-muted); font-size: 12px; font-weight: 500; }
+.auth-heading h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.01em; }
+.auth-heading p { margin: 6px 0 0; color: var(--color-text-muted); font-size: 14px; line-height: 1.5; }
+.auth-card label small { color: var(--color-text-muted); font-size: 12px; font-weight: 400; }
+.auth-status { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--color-text-muted); font-size: 14px; line-height: 1.5; }
+.auth-footnote { margin: 0; color: var(--color-text-muted); font-size: 13px; text-align: center; }
+.auth-footnote a { font-weight: 600; }
+.auth-signin-footer .back-button { color: var(--color-text); }
+.password-field { position: relative; display: block; }
+.password-field .form-control { padding-right: 46px; }
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-muted);
+  transform: translateY(-50%);
+}
+.password-toggle:hover { background: var(--color-background); color: var(--color-text); }
+.code-input { font-size: 18px; font-weight: 600; letter-spacing: .2em; text-align: center; }
+.totp-recovery-codes code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+/* ---------- Item entry ---------- */
+ol.billing-steps { margin: 0; list-style: none; }
+.billing-steps { border-radius: var(--radius-md); }
+.billing-step > span { transition: background-color var(--duration-base) ease, color var(--duration-base) ease; }
+.billing-step.completed > span { background: var(--color-success); }
+.step-line { transition: background-color var(--duration-base) ease; }
+.dealer-card-name { margin: 0 0 7px; color: var(--color-text); font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.dealer-card { position: relative; border-radius: var(--radius-md); background-size: cover; background-position: center; transition: border-color var(--duration-fast) ease, box-shadow var(--duration-base) ease, transform var(--duration-base) var(--ease-out); }
+.dealer-card:hover { box-shadow: var(--shadow-md); }
+.dealer-card.selected { box-shadow: 0 0 0 3px rgb(243 111 18 / 16%); }
+.dealer-info p { font-size: 13px; overflow-wrap: anywhere; }
+.select-dealer-btn { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease; }
+.select-dealer-btn:hover:not(.active) { border-color: var(--color-primary); background: var(--color-primary-faint); }
+.select-dealer-btn.active:hover { background: var(--color-primary-hover); }
+.dealer-search { max-width: 520px; margin-top: 4px; background: var(--color-surface); cursor: text; transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease; }
+.dealer-search input { font-size: 14px; }
+.dealer-search i { color: var(--color-text-subtle); }
+.dealer-form { animation: section-enter 220ms var(--ease-out) both; scroll-margin-top: 84px; }
+.dealer-form-grid label { color: var(--color-text); font-size: 13px; }
+.dealer-image-previews { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
+.dealer-image-previews > span { display: grid; justify-items: center; gap: 4px; }
+.dealer-background-preview { width: 120px; border-radius: var(--radius-sm); }
+.image-upload-box { padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-muted); }
+.item-line-total { margin: 0; color: var(--color-text-muted); font-size: 13px; }
+.item-line-total strong { color: var(--color-text); }
+.bill-item-form { margin-top: 8px; }
+.bill-actions-inline { margin-top: 18px; padding-top: 16px; }
+.bill-preview tr.is-editing td { background: var(--color-primary-faint); }
+.bill-preview-heading > strong { font-size: 16px; }
+.dealer-bill-card { border-radius: var(--radius-md); }
+.dealer-bill-actions .back-button { min-height: 32px; padding: 5px 10px; font-size: 12px; }
+@keyframes section-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Settings & payments refinements ---------- */
+/* The desktop delete button is icon-only (30px); the mobile card version also has a label. */
+.user-mobile-card .user-action-delete { width: auto; padding-inline: 10px; }
+.user-mobile-card .managed-user-actions > button { flex: 1 1 0; min-height: 38px; font-size: 13px; }
+.backup-file-label.is-disabled { opacity: .55; pointer-events: none; }
+.backup-file-label { cursor: pointer; }
+.settings-panel { border-radius: var(--radius-md); }
+
+/* Raise the smallest text sizes for readability */
+.payment-status-badge { font-size: 11px; }
+.user-summary-card small { font-size: 11px; }
+.user-management-table th, .payment-table th, .bill-compare-table th, .activity-comparison-table thead th { font-size: 11px; }
+.user-management-table td, .managed-user-cell strong { font-size: 13px; }
+.managed-user-cell small, .managed-user-role, .primary-admin-protected, .user-action-edit, .user-password-secondary, .user-password-warning, .user-photo-field small, .activity-eyebrow, .payment-eyebrow, .payment-row-actions button, .payment-table td small, .bill-compare-table td small, .bill-compare-status, .bill-product-chart-legend { font-size: 11px; }
+.user-dialog-actions button { font-size: 13px; }
+.payment-table, .bill-compare-table { font-size: 13px; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 991px) {
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .summary-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+/* Two-column stat grids on phones: a lone last card spans the full row. */
+@media (max-width: 650px) {
+  .payment-summary-grid > :last-child:nth-child(odd), .user-summary-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+@media (max-width: 575px) {
+  .summary-grid { grid-template-columns: 1fr; }
+  .summary-grid > :last-child:nth-child(odd) { grid-column: auto; }
+  .summary-card { padding: 16px; }
+  .summary-card strong { font-size: 26px; }
+  .page-header { align-items: flex-start; }
+  .boarder-box { border-radius: var(--radius-md); }
+
+  /* Prevent iOS from zooming into inputs smaller than 16px. */
+  .form-control, .form-select, .dealer-search input, .payment-filters input, .payment-filters select,
+  .payment-form input, .payment-form select, .payment-form textarea, .activity-filter-panel input, .activity-filter-panel select,
+  .user-search-input input, .user-management-toolbar select, .bill-compare-searchbox input, .bill-dealer-fields select,
+  .bill-pick-card select, .bill-compare-toolbar select { font-size: 16px; }
+
+  /* Tables that opt in turn into stacked cards on phones. */
+  .responsive-card-table { min-width: 0 !important; table-layout: auto !important; }
+  .responsive-card-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .responsive-card-table, .responsive-card-table tbody, .responsive-card-table tr, .responsive-card-table td { display: block; width: 100%; }
+  .responsive-card-table tr { margin: 10px 0; padding: 4px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); }
+  .responsive-card-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0 !important;
+    border-bottom: 1px solid #f0f1f3;
+    text-align: right !important;
+    white-space: normal !important;
+  }
+  .responsive-card-table td:last-child { border-bottom: 0; }
+  .responsive-card-table td::before { content: attr(data-label); flex: 0 0 auto; color: var(--color-text-muted); font-size: 12px; font-weight: 600; text-align: left; }
+  .responsive-card-table td:not([data-label])::before { content: none; }
+  .responsive-card-table .table-empty-row td, .responsive-card-table .table-skeleton-row td { display: block; text-align: center !important; }
+  .responsive-card-table tr.table-empty-row, .responsive-card-table tr.table-skeleton-row { border: 0; padding: 0; }
+  .responsive-card-table .bill-row-actions { justify-content: flex-end; }
+  .bill-preview .table-responsive, .dealer-bill-card .table-responsive { padding: 0 10px; }
+  .inventory-table-wrap { padding: 0; border: 0; background: transparent; box-shadow: none; }
+
+  /* Keep the main bill / dealer action reachable while scrolling on phones. */
+  .sticky-action-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin-right: -16px;
+    margin-bottom: -16px;
+    margin-left: -16px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-border);
+    background: rgb(255 255 255 / 96%);
+    backdrop-filter: blur(6px);
+  }
+
+  .dealer-delete-actions { flex-direction: column-reverse; }
+  .dealer-delete-actions > * { width: 100%; }
+  .payment-modal-actions > * { flex: 1 1 100%; }
+}
+
+/* Comfortable touch targets on touch screens */
+@media (pointer: coarse) {
+  .edit-bill-item, .remove-bill-item, .user-action-edit, .user-action-delete, .payment-row-actions button,
+  .activity-view-button, .user-clear-filter { min-height: 40px; padding-inline: 12px; }
+  .dealer-card-actions > a, .dealer-card-actions > button { flex-basis: 38px; width: 38px; height: 38px; }
+  .sidebar-link { min-height: 46px; }
+}
+
+/* ---------- Motion preferences ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Print ---------- */
+@media print {
+  .admin-navbar, .admin-sidebar, .sidebar-backdrop, .skip-link, .app-toast { display: none !important; }
+  .admin-content { padding: 0; }
+  .page-transition { animation: none; }
+}
