@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { apiFetch, apiRequest } from '../services/api.js'
 import Modal from '../components/Modal.jsx'
@@ -369,7 +370,7 @@ export default function Settings() {
   const description = isBackupPage ? 'Export or restore business records.' : isActivityPage ? 'Review who changed dealers, products, bills, and user accounts.' : 'Manage team members and control access to your Kani Metals workspace.'
 
   return <section className="boarder-box settings-page">
-    {toastMessage && <div key={`${toastType}-${toastMessage}`} className={`app-toast app-toast-${toastType}`} role="status"><i className={`bi ${toastType === 'danger' ? 'bi-trash3-fill' : toastType === 'info' ? 'bi-pencil-square' : 'bi-check-circle-fill'}`} aria-hidden="true" />{toastMessage}</div>}
+    {toastMessage && createPortal(<div key={`${toastType}-${toastMessage}`} className={`app-toast app-toast-${toastType}`} role="status"><i className={`bi ${toastType === 'danger' ? 'bi-trash3-fill' : toastType === 'info' ? 'bi-pencil-square' : 'bi-check-circle-fill'}`} aria-hidden="true" />{toastMessage}</div>, document.body)}
     {!isActivityPage && <header className="bill-header settings-page-header"><div><h1 className="page-title">{heading}</h1><p>{description}</p></div>{!isBackupPage && <button type="button" className="continue-btn user-add-button" onClick={openCreateUser}><i className="bi bi-plus-lg" aria-hidden="true" /> Add User</button>}</header>}
     {error && !isActivityPage && !createUserOpen && !usersLoading && <p className="api-error" role="alert">{error}</p>}
 

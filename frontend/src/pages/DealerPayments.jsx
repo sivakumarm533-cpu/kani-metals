@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { apiRequest } from '../services/api.js'
 import { decimalToCents } from '../utils/billComparison.js'
@@ -18,7 +19,7 @@ function Toast({ message, type, onClose }) {
     const timeout = window.setTimeout(onClose, 3400)
     return () => window.clearTimeout(timeout)
   }, [message, onClose])
-  return message ? <div className={`app-toast app-toast-${type}`} role="status" aria-live="polite"><i className={`bi ${type === 'danger' ? 'bi-exclamation-circle-fill' : 'bi-check-circle-fill'}`} aria-hidden="true" />{message}</div> : null
+  return message ? createPortal(<div className={`app-toast app-toast-${type}`} role="status" aria-live="polite"><i className={`bi ${type === 'danger' ? 'bi-exclamation-circle-fill' : 'bi-check-circle-fill'}`} aria-hidden="true" />{message}</div>, document.body) : null
 }
 
 function SummaryCard({ icon, label, value, tone = '' }) {

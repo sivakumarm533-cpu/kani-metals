@@ -44,6 +44,53 @@ a { color: var(--color-link); }
 
 body.modal-open, body.drawer-open { overflow: hidden; }
 
+/* ---------- Popups (confirmations, payment and edit dialogs) ---------- */
+.dealer-delete-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgb(10 12 16 / 68%);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.dealer-delete-backdrop > section {
+  width: min(100%, 440px);
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.dealer-delete-backdrop > .payment-modal { width: min(100%, 560px); }
+.dealer-delete-dialog h2 { font-weight: 700; }
+.payment-close { flex: 0 0 36px; padding: 0; font-size: 22px; line-height: 1; }
+.payment-close:hover { border-color: var(--color-border-strong); background: var(--color-background); color: var(--color-text); }
+.dealer-delete-backdrop > .user-edit-dialog { width: min(100%, 460px); }
+.activity-changes-dialog::backdrop, .user-create-dialog::backdrop { background: rgb(10 12 16 / 68%); }
+
+@media (max-width: 575px) {
+  .dealer-delete-backdrop { align-items: flex-end; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); }
+  .dealer-delete-backdrop > section,
+  .dealer-delete-backdrop > .payment-modal,
+  .dealer-delete-backdrop > .user-edit-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    margin: auto 0 0;
+    padding: 18px 16px;
+    border-radius: 16px;
+  }
+  .dealer-delete-dialog h2, .payment-modal-heading h2 { font-size: 18px; }
+  .payment-modal-heading { align-items: flex-start; }
+  .payment-form-grid, .payment-bill-preview { grid-template-columns: 1fr; }
+  .payment-modal-actions, .dealer-delete-actions { position: sticky; bottom: -18px; margin-bottom: -18px; padding: 12px 0 18px; background: var(--color-surface); }
+  .user-create-dialog, .activity-changes-dialog { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); }
+}
+
 /* ---------- Buttons ---------- */
 button { transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease, color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease; }
 button:disabled { cursor: not-allowed; }
@@ -148,7 +195,9 @@ button:disabled { cursor: not-allowed; }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
 
 /* ---------- Page structure ---------- */
-.page-transition { max-width: 1480px; margin: 0 auto; animation: page-enter 240ms var(--ease-out) both; }
+/* `backwards` (not `both`): a fill that keeps a transform applied after the animation would
+   turn this wrapper into the containing block for fixed-position overlays. */
+.page-transition { max-width: 1480px; margin: 0 auto; animation: page-enter 240ms var(--ease-out) backwards; }
 @keyframes page-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 .page-container { display: grid; gap: 20px; }
@@ -271,6 +320,7 @@ button:disabled { cursor: not-allowed; }
 .table-skeleton-row td { padding: 14px 8px !important; }
 
 /* ---------- Toasts ---------- */
+.app-toast { z-index: 1400; }
 .app-toast > span { min-width: 0; overflow-wrap: anywhere; }
 
 /* ---------- Navbar ---------- */
@@ -279,7 +329,23 @@ button:disabled { cursor: not-allowed; }
 .navbar-user strong { overflow: hidden; max-width: 180px; color: var(--color-text); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .navbar-user small { color: var(--color-text-muted); font-size: 11px; }
 .sign-out-button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; border-radius: var(--radius-sm); font-weight: 600; }
-.navbar-profile-upload { transition: box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease; }
+/* Always a perfect circle: one size variable drives width and height together. */
+.navbar-profile-upload {
+  --avatar-size: 36px;
+  flex: 0 0 var(--avatar-size);
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  min-width: var(--avatar-size);
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  transition: box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease;
+}
+.navbar-profile-avatar { border-radius: 50%; font-size: calc(var(--avatar-size) * .42); line-height: 1; }
+.navbar-profile-avatar img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+@media (max-width: 720px) { .navbar-profile-upload { --avatar-size: 34px; } }
+@media (max-width: 420px) { .navbar-profile-upload { --avatar-size: 32px; } }
 .navbar-profile-upload:hover { box-shadow: 0 0 0 3px var(--color-primary-soft); }
 .navbar-profile-upload:focus-within { box-shadow: var(--focus-ring); }
 .navbar-profile-upload.is-uploading { opacity: .6; cursor: progress; animation: avatar-pulse 1s ease-in-out infinite alternate; }

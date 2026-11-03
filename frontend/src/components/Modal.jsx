@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
@@ -47,7 +48,9 @@ export default function Modal({ onClose, busy = false, labelledBy, describedBy, 
     }
   }, [])
 
-  return (
+  // Rendered into <body> so the overlay always covers the whole screen, whatever
+  // transforms or overflow settings the page around it uses.
+  return createPortal(
     <div
       className={`dealer-delete-backdrop ${backdropClassName}`.trim()}
       role="presentation"
@@ -56,6 +59,7 @@ export default function Modal({ onClose, busy = false, labelledBy, describedBy, 
       <section ref={dialogRef} className={className} role={role} aria-modal="true" aria-labelledby={labelledBy} aria-describedby={describedBy}>
         {children}
       </section>
-    </div>
+    </div>,
+    document.body,
   )
 }
