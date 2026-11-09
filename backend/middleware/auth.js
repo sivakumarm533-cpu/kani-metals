@@ -84,17 +84,26 @@ async function enabledFeatures() {
  * Blocks changes made through a feature the administrator has switched off for
  * regular users. Reads stay open because other screens share the same data.
  */
-export function requireFeature(feature) {
+export function requireFeature(feature, { readWith = [] } = {}) {
   return async (req, res, next) => {
     try {
-      if (req.method === 'GET' || isManagerRole(req.user?.role)) return next()
-      // A per-person setting wins over the workspace setting.
-      const own = req.user?.featureAccess?.[feature]
-      if (own === true) return next()
-      if (own === false) return res.status(403).json({ message: 'This feature has been turned off for your account by your administrator.' })
-      const features = await enabledFeatures()
-      if (features[feature] === false) return res.status(403).json({ message: 'This feature has been turned off by your administrator.' })
-      next()
+      if (isManagerRole(req.user?.role)) return next()
+      const allowed = await userFeatureCheck(req.user)
+      // Reading is allowed for any screen that shows this data; changes need the screen itself.
+      const needed = req.method === 'GET' || req.method === 'HEAD' ? [feature, ...readWith] : [feature]
+      if (needed.some(allowed)) return next()
+      return res.status(403).json({ message: 'This feature has been turned off for your account by your administrator.' })
     } catch (error) { next(error) }
+  }
+}
+
+/** Returns `(feature) => boolean` for a regular user: their own setting first, then the workspace setting. */
+export async function userFeatureCheck(user) {
+  if (isManagerRole(user?.role)) return () => true
+  const features = await enabledFeatures()
+  return (feature) => {
+    const own = user?.featureAccess?.[feature]
+    if (typeof own === 'boolean') return own
+    return features[feature] !== false
   }
 }

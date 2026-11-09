@@ -7,6 +7,12 @@ import { useAdvanceOnBill } from '../utils/advance.js'
 import { formatPaise } from '../utils/money.js'
 import { billItemsPayload, billTotal, objectId, validDate } from '../utils/validation.js'
 
+/**
+ * Payments that still count (or may count) towards a bill. Reversed payments and bounced
+ * cheques are only history, so they no longer lock the bill against edits or deletion.
+ */
+const ACTIVE_PAYMENT = { paymentStatus: { $nin: ['reversed', 'bounced'] } }
+
 export async function listBills(req, res, next) {
   try {
     const filter = {}
@@ -15,7 +21,10 @@ export async function listBills(req, res, next) {
       filter.dealer = req.query.dealer
     }
     // Only the dealer's name and contact are needed here; loading its images for every bill made this list very large.
-    res.json(await Bill.find(filter).populate('dealer', 'name phone location category').sort({ issuedDate: -1, createdAt: -1 }).lean())
+    const bills = await Bill.find(filter).populate('dealer', 'name phone location category').sort({ issuedDate: -1, createdAt: -1 }).lean()
+    // `hasPayments`: the bill has payments that still count, so it cannot be edited or deleted.
+    const locked = new Set((await Payment.distinct('bill', { bill: { $in: bills.map((bill) => bill._id) }, ...ACTIVE_PAYMENT })).map(String))
+    res.json(bills.map((bill) => ({ ...bill, hasPayments: locked.has(String(bill._id)) })))
   }
   catch (error) { next(error) }
 }
@@ -43,7 +52,9 @@ export async function createBill(req, res, next) {
     const dealerId = objectId(req.body.dealer, 'dealer')
     const issuedDate = validDate(req.body.issuedDate, 'bill date')
     const items = billItemsPayload(req.body.items)
-    if (!await Dealer.exists({ _id: dealerId })) return res.status(404).json({ message: 'The selected dealer no longer exists.' })
+    const dealer = await Dealer.findById(dealerId).select('active name').lean()
+    if (!dealer) return res.status(404).json({ message: 'The selected dealer no longer exists.' })
+    if (dealer.active === false) return res.status(409).json({ message: `${dealer.name} is inactive. Edit the dealer and mark them active to create a bill.` })
     const bill = await Bill.create({ dealer: dealerId, issuedDate, items, total: billTotal(items) })
     await recordActivity(req, { action: 'create', entity: 'bill', entityId: bill._id, before: null, after: bill })
     // Extra money the dealer paid earlier is used on this new bill automatically.
@@ -64,7 +75,7 @@ export async function updateBill(req, res, next) {
   try {
     const bill = await Bill.findById(objectId(req.params.id, 'bill ID'))
     if (!bill) return res.status(404).json({ message: 'Bill not found.' })
-    if (await Payment.exists({ bill: bill._id })) return res.status(409).json({ message: 'This bill has payment history and cannot be edited. Record a payment correction instead.' })
+    if (await Payment.exists({ bill: bill._id, ...ACTIVE_PAYMENT })) return res.status(409).json({ message: 'This bill has payments and cannot be edited. Reverse its payments first (Payments → Reverse), then edit the bill.' })
     const issuedDate = validDate(req.body.issuedDate, 'bill date')
     const items = billItemsPayload(req.body.items)
     const before = bill.toObject()
@@ -79,7 +90,7 @@ export async function updateBill(req, res, next) {
 export async function deleteBill(req, res, next) {
   try {
     const billId = objectId(req.params.id, 'bill ID')
-    if (await Payment.exists({ bill: billId })) return res.status(409).json({ message: 'This bill has payment history and cannot be deleted.' })
+    if (await Payment.exists({ bill: billId, ...ACTIVE_PAYMENT })) return res.status(409).json({ message: 'This bill has payments and cannot be deleted. Reverse its payments first (Payments → Reverse), then delete the bill.' })
     const bill = await Bill.findByIdAndDelete(billId)
     if (!bill) return res.status(404).json({ message: 'Bill not found.' })
     await recordActivity(req, { action: 'delete', entity: 'bill', entityId: bill._id, before: bill, after: null })

@@ -2,6 +2,7 @@ import Bill from '../models/Bill.js'
 import Dealer from '../models/Dealer.js'
 import Payment from '../models/Payment.js'
 import { appliedPaise, rupeesToPaise } from '../utils/money.js'
+import { userFeatureCheck } from '../middleware/auth.js'
 
 const toPaise = (rupees) => rupeesToPaise(String(rupees ?? 0)) ?? 0
 
@@ -9,7 +10,7 @@ const toPaise = (rupees) => rupeesToPaise(String(rupees ?? 0)) ?? 0
  * Dashboard data: dealers with outstanding balances and the latest purchase
  * rate changes, derived from saved bills and received/cleared payments.
  */
-export async function getDashboardSummary(_req, res, next) {
+export async function getDashboardSummary(req, res, next) {
   try {
     const [bills, payments, rateGroups] = await Promise.all([
       Bill.find().select('dealer total issuedDate').lean(),
@@ -92,16 +93,21 @@ export async function getDashboardSummary(_req, res, next) {
       }
     }).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate) || a.name.localeCompare(b.name))
 
+    // Only send the parts this person can see in the app (team members may have screens switched off).
+    const can = await userFeatureCheck(req.user)
+    const seesPayments = can('dealerPayments')
+    const seesBills = seesPayments || can('itemEntry')
+    const seesRates = can('itemPrices') || can('billComparison')
     res.json({
       summary: {
-        totalPendingPaise: pendingDealers.reduce((sum, row) => sum + row.pendingPaise, 0),
-        totalBilledPaise: [...byDealer.values()].reduce((sum, row) => sum + row.totalPaise, 0),
-        totalReceivedPaise: [...byDealer.values()].reduce((sum, row) => sum + row.receivedPaise, 0),
-        dealersWithPending: pendingDealers.length,
-        pendingBills: pendingDealers.reduce((sum, row) => sum + row.pendingBills, 0),
+        totalPendingPaise: seesPayments ? pendingDealers.reduce((sum, row) => sum + row.pendingPaise, 0) : null,
+        totalBilledPaise: seesBills ? [...byDealer.values()].reduce((sum, row) => sum + row.totalPaise, 0) : null,
+        totalReceivedPaise: seesPayments ? [...byDealer.values()].reduce((sum, row) => sum + row.receivedPaise, 0) : null,
+        dealersWithPending: seesPayments ? pendingDealers.length : null,
+        pendingBills: seesPayments ? pendingDealers.reduce((sum, row) => sum + row.pendingBills, 0) : null,
       },
-      pendingDealers: pendingDealers.slice(0, 8),
-      rateUpdates: rateUpdates.slice(0, 12),
+      pendingDealers: seesPayments ? pendingDealers.slice(0, 8) : [],
+      rateUpdates: seesRates ? rateUpdates.slice(0, 12) : [],
     })
   } catch (error) { next(error) }
 }

@@ -1,5 +1,6 @@
 import ActivityLog from '../models/ActivityLog.js'
 import mongoose from 'mongoose'
+import { recordActivity } from '../utils/activity.js'
 
 const actions = new Set(['create', 'update', 'delete'])
 const entities = new Set(['dealer', 'product', 'bill', 'payment', 'user', 'backup', 'settings', 'itemPrice'])
@@ -55,5 +56,19 @@ export async function listActivity(req, res, next) {
       summary: { total, today, create: byAction.create || 0, update: byAction.update || 0, delete: byAction.delete || 0 },
       actors: actors.map(({ _id, name, email }) => ({ _id, name, email })),
     })
+  } catch (error) { next(error) }
+}
+
+/**
+ * Primary admin only: deletes the whole activity history.
+ * The request must carry { confirm: 'CLEAR' } (typed in the confirmation popup).
+ * One new entry records who cleared it and how many records were removed.
+ */
+export async function clearActivity(req, res, next) {
+  try {
+    if (String(req.body?.confirm || '').trim().toUpperCase() !== 'CLEAR') return res.status(400).json({ message: 'Type CLEAR to confirm.' })
+    const { deletedCount } = await ActivityLog.deleteMany({})
+    await recordActivity(req, { action: 'delete', entity: 'settings', entityLabel: `Activity history cleared (${deletedCount} records)` })
+    res.json({ message: `Activity history cleared. ${deletedCount} records removed.`, deletedCount })
   } catch (error) { next(error) }
 }

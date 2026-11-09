@@ -10,6 +10,8 @@ const dealerSchema = new mongoose.Schema({
   cardBackground: { type: String, default: '' },
   /** Money paid beyond a bill's balance, kept for this dealer and used on their next bill. */
   advancePaise: { type: Number, default: 0, min: 0 },
+  /** Inactive dealers stay in history but cannot get new bills. */
+  active: { type: Boolean, default: true },
 }, { timestamps: true })
 
 export default mongoose.model('Dealer', dealerSchema)

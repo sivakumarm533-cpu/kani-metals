@@ -122,6 +122,22 @@ function ActivityPage() {
   const loadingMoreRef = useRef(false)
   const [retryCount, setRetryCount] = useState(0)
   const [selectedActivity, setSelectedActivity] = useState(null)
+  const { user: currentUser } = useAuth()
+  const isPrimaryAdmin = currentUser?.role === 'admin'
+  const [clearOpen, setClearOpen] = useState(false)
+  const [clearText, setClearText] = useState('')
+  const [clearing, setClearing] = useState(false)
+  const [clearError, setClearError] = useState('')
+  const [clearedMessage, setClearedMessage] = useState('')
+
+  async function clearHistory() {
+    setClearing(true); setClearError('')
+    try {
+      const result = await apiRequest('/auth/activity', { method: 'DELETE', body: JSON.stringify({ confirm: clearText }) })
+      setClearOpen(false); setClearText(''); setClearedMessage(result.message)
+      setRetryCount((count) => count + 1)
+    } catch (issue) { setClearError(issue.message) } finally { setClearing(false) }
+  }
   const dialogRef = useRef(null)
   const filterKey = JSON.stringify(appliedFilters)
   const requestUrl = activityRequestUrl(appliedFilters, 1)
@@ -205,7 +221,8 @@ function ActivityPage() {
     </form>
     {error && items.length > 0 && <p className="api-error" role="alert">{error}</p>}
     <section className="activity-results" aria-live="polite">
-      <div className="activity-results-heading"><h2>Recent activity</h2><span>{Number(summary.total || 0).toLocaleString('en-IN')} records</span></div>
+      <div className="activity-results-heading"><h2>Recent activity</h2><span>{Number(summary.total || 0).toLocaleString('en-IN')} records</span>{isPrimaryAdmin && <button type="button" className="activity-clear-button" onClick={() => { setClearOpen(true); setClearText(''); setClearError('') }} disabled={loading || !summary.total}><i className="bi bi-trash3" aria-hidden="true" /> Clear history</button>}</div>
+      {clearedMessage && <p className="activity-cleared-note" role="status"><i className="bi bi-check-circle-fill" aria-hidden="true" /> {clearedMessage}</p>}
       {loading ? <div className="activity-skeleton-list" aria-label="Loading activities">{Array.from({ length: 5 }, (_, index) => <div className="activity-skeleton" key={index} />)}</div> : error ? <div className="activity-empty-state" role="alert"><span className="activity-empty-icon"><i className="bi bi-exclamation-circle" aria-hidden="true" /></span><h3>Could not load activity</h3><p>{error}</p><button type="button" className="back-button" onClick={() => setRetryCount((count) => count + 1)}>Try again</button></div> : groupedItems.length ? <div className="activity-timeline">
         {groupedItems.map((row) => row.type === 'heading' ? <h3 className="activity-date-heading" key={`heading-${row.key}`}>{row.title}</h3> : <article className="activity-row" key={row.item._id}>
           <span className="activity-avatar">{row.item.actorName?.trim()?.[0]?.toUpperCase() || '?'}</span>
@@ -216,6 +233,16 @@ function ActivityPage() {
       </div> : <div className="activity-empty-state"><span className="activity-empty-icon"><i className="bi bi-inbox" aria-hidden="true" /></span><h3>No activity found</h3><p>Try changing your search or filters.</p><button type="button" className="back-button" onClick={resetFilters}>Reset filters</button></div>}
       {!loading && page < pages && <button type="button" className="activity-load-more" onClick={loadMore} disabled={loadingMore}>{loadingMore ? 'Loading…' : 'Load more activity'}</button>}
     </section>
+    {clearOpen && <Modal role="alertdialog" busy={clearing} onClose={() => setClearOpen(false)} labelledBy="activity-clear-title" describedBy="activity-clear-description">
+      <div className="dealer-delete-icon"><i className="bi bi-trash3" aria-hidden="true" /></div>
+      <h2 id="activity-clear-title">Clear all activity history?</h2>
+      <p id="activity-clear-description">This permanently deletes <strong>{Number(summary.total || 0).toLocaleString('en-IN')} activity records</strong> for every user. Your bills, payments, dealers and other data are not affected. This cannot be undone.</p>
+      {clearError && <p className="api-error" role="alert">{clearError}</p>}
+      <label className="dealer-delete-confirm">Type <strong>CLEAR</strong> to confirm
+        <input className="form-control" value={clearText} onChange={(event) => setClearText(event.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck="false" disabled={clearing} placeholder="CLEAR" />
+      </label>
+      <div className="dealer-delete-actions"><button type="button" className="back-button" disabled={clearing} onClick={() => setClearOpen(false)} data-autofocus>Cancel</button><button type="button" className="confirm-delete-btn" disabled={clearing || clearText.trim().toUpperCase() !== 'CLEAR'} onClick={clearHistory}>{clearing ? 'Clearing…' : 'Clear history'}</button></div>
+    </Modal>}
     <dialog className="activity-changes-dialog" ref={dialogRef} onClose={() => setSelectedActivity(null)} aria-labelledby="activity-dialog-title">
       {selectedActivity && <><header className="activity-dialog-header"><div><span className="activity-eyebrow">ACTIVITY DETAILS</span><h2 id="activity-dialog-title">{selectedActivity.actorName} {selectedActivity.action} a {selectedActivity.entity}</h2><p>{selectedActivity.entityLabel} · {activityTime(selectedActivity.createdAt)}</p></div><button type="button" className="activity-dialog-close" onClick={() => dialogRef.current?.close()} aria-label="Close activity details"><i className="bi bi-x-lg" aria-hidden="true" /></button></header>
         <div className="activity-comparison-wrap"><table className="activity-comparison-table"><thead><tr><th>Field</th><th>Previous value</th><th>New value</th></tr></thead><tbody>{selectedActivity.changes?.length ? selectedActivity.changes.map((change) => <tr key={change.field}><th scope="row">{readableField(change.field)}</th><td data-label="Previous value">{selectedActivity.action === 'create' ? <span className="activity-value-empty">—</span> : formatCompareValue(change.before, change.field, selectedActivity.action, 'before')}</td><td data-label="New value">{selectedActivity.action === 'delete' ? <span className="activity-value-empty">—</span> : formatCompareValue(change.after, change.field, selectedActivity.action, 'after')}</td></tr>) : <tr><td colSpan="3" className="activity-no-changes">No field details were recorded for this activity.</td></tr>}</tbody></table></div>

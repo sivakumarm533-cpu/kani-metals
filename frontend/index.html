@@ -44,6 +44,10 @@
       <p class="app-splash-name">Kani <span>Metals</span></p>
       <div class="app-splash-bar" aria-hidden="true"></div>
     </div>
+    <script>
+      // Safety net: if the app script fails to load, do not leave the opening screen covering the page.
+      setTimeout(function () { var s = document.getElementById('app-splash'); if (s) s.remove() }, 10000)
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

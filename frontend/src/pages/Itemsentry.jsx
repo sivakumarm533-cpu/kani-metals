@@ -11,9 +11,11 @@ import { useProducts } from "../hooks/useProducts.js";
 import { formatRupees, localDateInputValue as getTodayDate } from "../utils/format.js";
 
 const itemCategories = ["Metal", "Plastic", "Paper", "Electronics"];
-const emptyDealerForm = (type = "Regular Dealer") => ({ name: "", phone: "", location: "", type, image: "", cardColor: "#fff3e8", cardBackground: "" });
+const emptyDealerForm = (type = "Regular Dealer") => ({ name: "", phone: "", location: "", type, image: "", cardColor: "#fff3e8", cardBackground: "", active: true });
 const emptyItemForm = () => ({ name: "", category: "", quantity: "", price: "", unit: "kg", image: "", note: "" });
-const mapDealer = (dealer) => ({ ...dealer, id: dealer._id, type: dealer.category, image: dealer.profileImage });
+// Dealers saved before the status existed count as active.
+const mapDealer = (dealer) => ({ ...dealer, id: dealer._id, type: dealer.category, image: dealer.profileImage, active: dealer.active !== false });
+const statusFilters = [["all", "All"], ["active", "Active"], ["inactive", "Inactive"]];
 
 function Itemsentry() {
   const [searchParams] = useSearchParams();
@@ -30,6 +32,10 @@ function Itemsentry() {
   const [showDealerForm, setShowDealerForm] = useState(false);
   const [dealerToDelete, setDealerToDelete] = useState(null);
   const [isDeletingDealer, setIsDeletingDealer] = useState(false);
+  // What deleting the dealer would also remove: { bills, payments, advancePaise, canDelete } or { error }.
+  const [deleteSummary, setDeleteSummary] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [editingDealerId, setEditingDealerId] = useState(null);
   const [dealerForm, setDealerForm] = useState(() => emptyDealerForm());
   const [dealerCategories, setDealerCategories] = useState(["Regular Dealer", "Wholesale Dealer"]);
@@ -67,7 +73,7 @@ function Itemsentry() {
         // Keep categories that exist on saved dealers available in the dropdown.
         setDealerCategories((current) => [...new Set([...current, ...mappedDealers.map((dealer) => dealer.type).filter(Boolean)])]);
         const requestedDealer = mappedDealers.find((dealer) => dealer.id === requestedDealerId);
-        if (requestedDealer) { setSelectedDealer(requestedDealer); setStep(2); }
+        if (requestedDealer?.active) { setSelectedDealer(requestedDealer); setStep(2); }
       })
       .catch((error) => { if (active) setApiError(error.message); })
       .finally(() => { if (active) setDealersLoading(false); });
@@ -75,9 +81,25 @@ function Itemsentry() {
   }, [requestedDealerId]);
 
   const searchText = search.trim().toLowerCase();
+  const statusCounts = { all: dealerList.length, active: dealerList.filter((dealer) => dealer.active).length, inactive: dealerList.filter((dealer) => !dealer.active).length };
   const filteredDealers = dealerList.filter((dealer) =>
+    (statusFilter === "all" || (statusFilter === "active") === dealer.active) &&
     `${dealer.name} ${dealer.phone} ${dealer.location}`.toLowerCase().includes(searchText)
   );
+
+  function selectDealer(dealer) {
+    if (!dealer.active) { notify(`${dealer.name} is inactive. Edit the dealer and switch them to Active to create a bill.`, "info", "bi-pause-circle"); return; }
+    setSelectedDealer(dealer);
+  }
+
+  function askDeleteDealer(dealer) {
+    setDealerToDelete(dealer);
+    setDeleteSummary(null);
+    setDeleteConfirmText("");
+    apiRequest(`/dealers/${dealer.id}/delete-summary`)
+      .then(setDeleteSummary)
+      .catch((error) => setDeleteSummary({ error: error.message }));
+  }
 
   const billTotal = billItems.reduce((total, item) => total + item.quantity * item.price, 0);
 
@@ -171,6 +193,7 @@ function Itemsentry() {
       profileImage: dealerForm.image,
       cardColor: dealerForm.cardColor,
       cardBackground: dealerForm.cardBackground,
+      active: dealerForm.active,
     };
 
     try {
@@ -182,10 +205,11 @@ function Itemsentry() {
       const updatedDealer = mapDealer(saved);
       if (wasEditing) {
         setDealerList((items) => items.map((dealer) => dealer.id === editingDealerId ? updatedDealer : dealer));
-        setSelectedDealer((dealer) => dealer?.id === editingDealerId ? updatedDealer : dealer);
+        // An inactive dealer cannot stay selected for a new bill.
+        setSelectedDealer((dealer) => dealer?.id === editingDealerId ? (updatedDealer.active ? updatedDealer : null) : dealer);
       } else {
         setDealerList((items) => [updatedDealer, ...items]);
-        setSelectedDealer(updatedDealer);
+        if (updatedDealer.active) setSelectedDealer(updatedDealer);
       }
       setEditingDealerId(null);
       setDealerForm(emptyDealerForm(dealerCategories[0]));
@@ -209,6 +233,7 @@ function Itemsentry() {
       image: dealer.image || "",
       cardColor: dealer.cardColor || "#fff3e8",
       cardBackground: dealer.cardBackground || "",
+      active: dealer.active,
     });
     setShowDealerForm(true);
     window.requestAnimationFrame(() => document.getElementById("dealer-form")?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -225,12 +250,12 @@ function Itemsentry() {
     setApiError("");
     setIsDeletingDealer(true);
     try {
-      await apiRequest(`/dealers/${dealerToDelete.id}`, { method: "DELETE" });
+      const result = await apiRequest(`/dealers/${dealerToDelete.id}`, { method: "DELETE" });
       setDealerList((dealers) => dealers.filter((dealer) => dealer.id !== dealerToDelete.id));
       setSelectedDealer((dealer) => dealer?.id === dealerToDelete.id ? null : dealer);
       if (editingDealerId === dealerToDelete.id) cancelDealerEdit();
       setDealerToDelete(null);
-      notify("Dealer deleted successfully.", "danger", "bi-trash3-fill");
+      notify(result?.message || "Dealer deleted successfully.", "danger", "bi-trash3-fill");
     } catch (error) {
       setDealerToDelete(null);
       setApiError(error.message);
@@ -313,17 +338,40 @@ function Itemsentry() {
       )}
       {sharingBill && <BillShareModal dealerId={sharingBill.dealerId} billId={sharingBill.id} onClose={() => setSharingBill(null)} />}
 
-      {dealerToDelete && (
-        <Modal role="alertdialog" busy={isDeletingDealer} onClose={() => setDealerToDelete(null)} labelledBy="dealer-delete-title" describedBy="dealer-delete-description">
-          <div className="dealer-delete-icon"><i className="bi bi-trash3" aria-hidden="true" /></div>
-          <h2 id="dealer-delete-title">Delete dealer?</h2>
-          <p id="dealer-delete-description">Are you sure you want to delete <strong>{dealerToDelete.name}</strong>? This action cannot be undone.</p>
-          <div className="dealer-delete-actions">
-            <button type="button" className="back-button" disabled={isDeletingDealer} onClick={() => setDealerToDelete(null)} data-autofocus>Cancel</button>
-            <button type="button" className="confirm-delete-btn" disabled={isDeletingDealer} onClick={deleteDealer}>{isDeletingDealer ? "Deleting…" : "Delete dealer"}</button>
-          </div>
-        </Modal>
-      )}
+      {dealerToDelete && (() => {
+        const summary = deleteSummary;
+        const hasHistory = Boolean(summary && !summary.error && (summary.bills || summary.payments));
+        const needsTyping = hasHistory;
+        const typedOk = !needsTyping || deleteConfirmText.trim().toLowerCase() === dealerToDelete.name.trim().toLowerCase();
+        const blocked = !summary || summary.error || summary.canDelete === false;
+        return (
+          <Modal role="alertdialog" busy={isDeletingDealer} onClose={() => setDealerToDelete(null)} labelledBy="dealer-delete-title" describedBy="dealer-delete-description">
+            <div className="dealer-delete-icon"><i className="bi bi-trash3" aria-hidden="true" /></div>
+            <h2 id="dealer-delete-title">Delete {dealerToDelete.name}?</h2>
+            {!summary && <p id="dealer-delete-description">Checking this dealer's bills and payments…</p>}
+            {summary?.error && <p id="dealer-delete-description" className="api-error" role="alert">{summary.error}</p>}
+            {summary && !summary.error && !hasHistory && <p id="dealer-delete-description">This dealer has no bills or payments. This action cannot be undone.</p>}
+            {hasHistory && <>
+              <p id="dealer-delete-description">This permanently deletes the dealer <strong>and all of their history</strong>:</p>
+              <ul className="dealer-delete-impact">
+                <li><i className="bi bi-receipt" aria-hidden="true" /> <strong>{summary.bills}</strong> {summary.bills === 1 ? "bill" : "bills"}</li>
+                <li><i className="bi bi-wallet2" aria-hidden="true" /> <strong>{summary.payments}</strong> {summary.payments === 1 ? "payment" : "payments"}</li>
+                {summary.advancePaise > 0 && <li><i className="bi bi-piggy-bank" aria-hidden="true" /> {formatRupees(summary.advancePaise / 100)} advance balance</li>}
+              </ul>
+              <p className="dealer-delete-tip">To keep the history, edit the dealer and switch them to <strong>Inactive</strong> instead.</p>
+              {summary.canDelete === false
+                ? <p className="api-error" role="alert">Only an administrator or sub-admin can delete a dealer with history.</p>
+                : <label className="dealer-delete-confirm">Type <strong>{dealerToDelete.name}</strong> to confirm
+                    <input className="form-control" value={deleteConfirmText} onChange={(event) => setDeleteConfirmText(event.target.value)} autoComplete="off" disabled={isDeletingDealer} />
+                  </label>}
+            </>}
+            <div className="dealer-delete-actions">
+              <button type="button" className="back-button" disabled={isDeletingDealer} onClick={() => setDealerToDelete(null)} data-autofocus>Cancel</button>
+              <button type="button" className="confirm-delete-btn" disabled={isDeletingDealer || blocked || !typedOk} onClick={deleteDealer}>{isDeletingDealer ? "Deleting…" : hasHistory ? "Delete dealer and history" : "Delete dealer"}</button>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* STEP 1 */}
       {step === 1 && (
@@ -352,6 +400,14 @@ function Itemsentry() {
                 <label>Card background color<input className="form-control form-control-color" type="color" value={dealerForm.cardColor} onChange={(event) => setDealerForm({ ...dealerForm, cardColor: event.target.value })} /></label>
                 <label>Card background image (optional)<input className="form-control" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => readImageFile(event, "cardBackground", setDealerForm, { maxSize: 900, quality: 0.75 })} /></label>
               </div>
+              <label className={`dealer-status-field${dealerForm.active ? "" : " is-off"}`}>
+                <span className={`dealer-status-icon${dealerForm.active ? " is-active" : ""}`} aria-hidden="true"><i className={`bi ${dealerForm.active ? "bi-check-circle-fill" : "bi-pause-circle-fill"}`} /></span>
+                <span className="dealer-status-text"><strong>Dealer status: <span className={dealerForm.active ? "dealer-status-on" : "dealer-status-off"}>{dealerForm.active ? "Active" : "Inactive"}</span></strong><small>{dealerForm.active ? "Can get new bills." : "Kept with all history, but no new bills can be created."}</small></span>
+                <span className={`feature-switch dealer-status-switch${dealerForm.active ? " is-on" : ""}`}>
+                  <input type="checkbox" role="switch" checked={dealerForm.active} onChange={(event) => setDealerForm({ ...dealerForm, active: event.target.checked })} aria-label="Dealer is active" />
+                  <span className="feature-switch-track" aria-hidden="true"><span /></span>
+                </span>
+              </label>
               {(dealerForm.image || dealerForm.cardBackground) && <div className="dealer-image-previews">
                 {dealerForm.image && <span><img className="dealer-photo-preview" src={dealerForm.image} alt="Dealer profile preview" /><button type="button" className="link-button" onClick={() => setDealerForm((current) => ({ ...current, image: "" }))}>Remove photo</button></span>}
                 {dealerForm.cardBackground && <span><img className="dealer-photo-preview dealer-background-preview" src={dealerForm.cardBackground} alt="Card background preview" /><button type="button" className="link-button" onClick={() => setDealerForm((current) => ({ ...current, cardBackground: "" }))}>Remove background</button></span>}
@@ -374,6 +430,14 @@ function Itemsentry() {
             />
           </label>
 
+          <div className="dealer-status-filter" role="radiogroup" aria-label="Show dealers">
+            {statusFilters.map(([id, label]) => (
+              <button key={id} type="button" role="radio" aria-checked={statusFilter === id} className={`dealer-pick-chip${statusFilter === id ? " is-active" : ""}`} onClick={() => setStatusFilter(id)}>
+                {label} <span className="dealer-status-count">{statusCounts[id]}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="row g-3 mt-3">
             {dealersLoading && Array.from({ length: 3 }, (_, index) => (
               <div className="col-lg-4 col-md-6 col-12" key={index}><div className="skeleton skeleton-dealer-card" /></div>
@@ -384,14 +448,14 @@ function Itemsentry() {
               return (
                 <div className="col-xl-4 col-md-6 col-12" key={dealer.id}>
                   <div
-                    className={`dealer-card ${isSelected ? "selected" : ""}`}
+                    className={`dealer-card ${isSelected ? "selected" : ""}${dealer.active ? "" : " is-inactive"}`}
                     style={{
                       backgroundColor: dealer.cardColor || "var(--color-surface)",
                       backgroundImage: dealer.cardBackground
                         ? `linear-gradient(rgb(255 255 255 / 82%), rgb(255 255 255 / 82%)), url("${dealer.cardBackground}")`
                         : undefined,
                     }}
-                    onClick={() => setSelectedDealer(dealer)}
+                    onClick={() => selectDealer(dealer)}
                   >
                     <div className="dealer-card-top">
                       <div className="dealer-avatar">
@@ -413,14 +477,17 @@ function Itemsentry() {
                             <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
                           </svg>
                         </button>
-                        <button type="button" className="delete-dealer-btn" aria-label={`Delete ${dealer.name}`} title="Delete dealer" onClick={(event) => { event.stopPropagation(); setDealerToDelete(dealer); }}>
+                        <button type="button" className="delete-dealer-btn" aria-label={`Delete ${dealer.name}`} title="Delete dealer" onClick={(event) => { event.stopPropagation(); askDeleteDealer(dealer); }}>
                           <i className="bi bi-trash3" aria-hidden="true" />
                         </button>
                       </div>
                     </div>
 
                     <h3 className="dealer-card-name">{dealer.name}</h3>
-                    <span className="dealer-type">{dealer.type}</span>
+                    <span className="dealer-card-tags">
+                      <span className="dealer-type">{dealer.type}</span>
+                      <span className={`dealer-status-badge${dealer.active ? " is-active" : ""}`}><i className={`bi ${dealer.active ? "bi-check-circle-fill" : "bi-pause-circle-fill"}`} aria-hidden="true" /> {dealer.active ? "Active" : "Inactive"}</span>
+                    </span>
 
                     <div className="dealer-info">
                       <p><i className="bi bi-telephone" aria-hidden="true" /> {dealer.phone}</p>
@@ -433,10 +500,10 @@ function Itemsentry() {
                       aria-pressed={isSelected}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedDealer(dealer);
+                        selectDealer(dealer);
                       }}
                     >
-                      {isSelected ? <><i className="bi bi-check2" aria-hidden="true" /> Selected</> : "Select Dealer"}
+                      {!dealer.active ? <><i className="bi bi-pause-circle" aria-hidden="true" /> Inactive</> : isSelected ? <><i className="bi bi-check2" aria-hidden="true" /> Selected</> : "Select Dealer"}
                     </button>
                   </div>
                 </div>
@@ -447,7 +514,7 @@ function Itemsentry() {
               <div className="col-12"><div className="empty-state empty-state-panel"><i className="bi bi-person-plus" aria-hidden="true" /><strong>No dealers saved yet</strong><span>Add your first dealer to start creating bills.</span></div></div>
             )}
             {!dealersLoading && dealerList.length > 0 && filteredDealers.length === 0 && (
-              <div className="col-12"><div className="empty-state"><i className="bi bi-search" aria-hidden="true" /><strong>No dealers match “{search}”</strong><button type="button" className="link-button" onClick={() => setSearch("")}>Clear search</button></div></div>
+              <div className="col-12"><div className="empty-state"><i className="bi bi-search" aria-hidden="true" /><strong>{search ? `No ${statusFilter === "all" ? "" : `${statusFilter} `}dealers match “${search}”` : `No ${statusFilter} dealers`}</strong><button type="button" className="link-button" onClick={() => { setSearch(""); setStatusFilter("all"); }}>Show all dealers</button></div></div>
             )}
           </div>
 

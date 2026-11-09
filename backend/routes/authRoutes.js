@@ -1,9 +1,9 @@
 import { Router } from 'express'
-import { authenticate, requireAdmin } from '../middleware/auth.js'
+import { authenticate, requireAdmin, requirePrimaryAdmin } from '../middleware/auth.js'
 import { authStatus, beginAdminEnrollment, changeOwnPassword, createUser, currentUser, deleteUser, listUsers, login, logout, updateOwnProfile, updateOwnProfilePicture, updateUser, updateUserFeatureAccess, userSummary, verifyAdminEnrollment, verifyLoginRecovery, verifyLoginTotp } from '../controllers/authController.js'
 import { authRateLimit } from '../middleware/rateLimit.js'
 import { profilePictureUpload } from '../middleware/profilePictureUpload.js'
-import { listActivity } from '../controllers/activityController.js'
+import { clearActivity, listActivity } from '../controllers/activityController.js'
 
 const router = Router()
 router.get('/status', authStatus)
@@ -18,6 +18,7 @@ router.patch('/profile', authenticate, updateOwnProfile)
 router.patch('/profile/photo', authenticate, profilePictureUpload, updateOwnProfilePicture)
 router.post('/profile/password', authenticate, authRateLimit({ action: 'password-change', max: 8 }), changeOwnPassword)
 router.get('/activity', authenticate, requireAdmin, listActivity)
+router.delete('/activity', authenticate, requirePrimaryAdmin, clearActivity)
 router.get('/users/summary', authenticate, requireAdmin, userSummary)
 router.get('/users', authenticate, requireAdmin, listUsers)
 router.post('/users', authenticate, requireAdmin, profilePictureUpload, createUser)

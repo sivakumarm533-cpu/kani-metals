@@ -76,7 +76,13 @@ export function dealerPayload(body = {}, { partial = false } = {}) {
     profileImage: !partial || has('profileImage') ? optionalImage(body.profileImage, 'profile photo') : undefined,
     cardColor: !partial || has('cardColor') ? (/^#[0-9a-f]{6}$/i.test(String(body.cardColor || '')) ? body.cardColor : '#fff3e8') : undefined,
     cardBackground: !partial || has('cardBackground') ? optionalImage(body.cardBackground, 'card background image') : undefined,
+    active: has('active') ? activeFlag(body.active) : partial ? undefined : true,
   })
+}
+
+function activeFlag(value) {
+  if (typeof value !== 'boolean') throw badRequest('Dealer status must be active or inactive.')
+  return value
 }
 
 export function productPayload(body = {}, { partial = false } = {}) {
@@ -99,7 +105,8 @@ export function billItemsPayload(items) {
     return {
       name: requiredText(item.name, `name of item ${index + 1}`, 120),
       category: requiredText(item.category, `category of item ${index + 1}`, 60),
-      quantity: finiteNumber(item.quantity, `quantity of item ${index + 1}`),
+      // A bill line needs a quantity above zero (the form already requires at least 0.01).
+      quantity: finiteNumber(item.quantity, `quantity of item ${index + 1}`, { min: 0.001 }),
       unit: requiredText(item.unit, `unit of item ${index + 1}`, 20),
       price: finiteNumber(item.price, `price of item ${index + 1}`),
       image: optionalImage(item.image, `image of item ${index + 1}`),

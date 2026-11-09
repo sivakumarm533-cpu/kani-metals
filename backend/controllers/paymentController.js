@@ -103,7 +103,9 @@ export async function getPaymentOverview(req, res, next) {
       }
     }
     res.json({
-      summary: { totalBillPaise, totalReceivedPaise, pendingPaise: Math.max(0, totalBillPaise - totalReceivedPaise), todayReceivedPaise, pendingDealerCount: pendingDealerIds.size },
+      // Pending is the sum of each bill's own balance. "Billed − received" was wrong: one dealer's
+      // unused advance (extra paid) was subtracted from every other dealer's pending amount.
+      summary: { totalBillPaise, totalReceivedPaise, pendingPaise: billStates.reduce((sum, row) => sum + row.pendingPaise, 0), todayReceivedPaise, pendingDealerCount: pendingDealerIds.size },
       dealers: dealerRows,
       payments: payments.map((payment) => ({ ...payment, dealer: String(payment.dealer), bill: String(payment.bill) })),
       methods: [...methodsSummary].map(([method, amountPaise]) => ({ method, amountPaise })),

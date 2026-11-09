@@ -318,3 +318,43 @@ body {
   .dealer-delete-dialog.dash-customize-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
   .dash-customize-actions .dash-customize-reset { margin-right: 0; }
 }
+
+/* Bill with payments: edit/delete replaced by a short explanation */
+.bill-locked-note { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-pill); color: var(--color-text-muted); background: var(--color-surface-muted); font-size: 12px; font-weight: 600; }
+
+/* Dealer status (active / inactive) */
+.dealer-status-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.dealer-status-count { display: inline-grid; min-width: 22px; height: 20px; margin-left: 4px; padding: 0 6px; place-items: center; border-radius: var(--radius-pill); background: rgb(0 0 0 / 8%); font-size: 11px; }
+.dealer-pick-chip.is-active .dealer-status-count { background: rgb(255 255 255 / 25%); }
+.dealer-card-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.dealer-status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-pill); color: var(--color-text-muted); background: #eef0f3; font-size: 11px; font-weight: 700; }
+.dealer-status-badge.is-active { color: #15803d; background: #dcfce7; }
+.dealer-card.is-inactive { opacity: .72; filter: grayscale(.55); }
+.dealer-card.is-inactive:hover { opacity: .9; }
+.dealer-card.is-inactive .select-dealer-btn { cursor: not-allowed; }
+/* The whole row is one label, so tapping anywhere on it flips the switch. */
+.dealer-status-field { display: flex; align-items: center; gap: 12px; margin: 14px 0 0; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); cursor: pointer; transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease; }
+.dealer-status-field:hover { border-color: var(--color-primary-soft); }
+.dealer-status-field.is-off { background: var(--color-surface-muted); }
+.dealer-status-field:focus-within { border-color: var(--color-primary); }
+.dealer-status-icon { display: grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; border-radius: 50%; color: var(--color-text-subtle); background: #eef0f3; font-size: 18px; }
+.dealer-status-icon.is-active { color: #15803d; background: #dcfce7; }
+.dealer-status-text { display: grid; flex: 1 1 auto; min-width: 0; line-height: 1.35; }
+.dealer-status-text strong { font-size: 14px; font-weight: 700; }
+.dealer-status-text small { color: var(--color-text-muted); font-size: 12px; font-weight: 400; }
+.dealer-status-on { color: #15803d; }
+.dealer-status-off { color: var(--color-text-muted); }
+.dealer-status-switch { flex: 0 0 auto; margin-left: auto; }
+
+/* Delete dealer: what will also be removed */
+.dealer-delete-impact { display: grid; gap: 6px; margin: 10px 0; padding: 10px 12px; border: 1px solid #fecaca; border-radius: var(--radius-sm); background: #fef2f2; color: #991b1b; list-style: none; font-size: 14px; }
+.dealer-delete-impact i { margin-right: 4px; }
+.dealer-delete-tip { margin-top: 4px !important; font-size: 13px !important; }
+.dealer-delete-confirm { display: grid; gap: 6px; margin-top: 12px; color: var(--color-text); font-size: 13px; font-weight: 600; }
+
+/* User activity: clear history (primary admin only) */
+.activity-results-heading .activity-clear-button { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; min-height: 34px; padding: 6px 12px; border: 1px solid #fecaca; border-radius: var(--radius-pill); color: var(--color-danger); background: #fef2f2; font-size: 13px; font-weight: 600; }
+.activity-results-heading .activity-clear-button:hover:not(:disabled) { border-color: var(--color-danger); }
+.activity-results-heading .activity-clear-button:disabled { opacity: .5; cursor: not-allowed; }
+.activity-cleared-note { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-radius: var(--radius-sm); color: #166534; background: #dcfce7; font-size: 13px; }
+.activity-results-heading:has(.activity-clear-button) { flex-wrap: wrap; gap: 8px 12px; }
