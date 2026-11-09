@@ -1,0 +1,168 @@
+/*
+ * One text scale for phones (≤ 720px).
+ * Before this, every screen set its own sizes (8px – 30px), so the same kind of text
+ * looked different from page to page. Each rule below maps a *kind* of text to one size.
+ * Selectors start with :root so they also win over page styles that load later
+ * (Inventory.css, ItemPrices.css). Desktop is not affected.
+ *
+ *   caption  12px  badges, table headings, eyebrows, small notes
+ *   meta     13px  secondary lines under a name, helper text, small buttons
+ *   body     14px  normal text, table cells, buttons
+ *   strong   15px  names and amounts inside lists and tables
+ *   title    16px  card / dialog sub-headings (h3)
+ *   heading  18px  section headings (h2), dialog titles
+ *   page     22px  page titles (h1)
+ *   number   20px  stat-card figures; 24px for the main dashboard figure
+ */
+@media (max-width: 720px) {
+  :root {
+    --m-fs-caption: 12px;
+    --m-fs-meta: 13px;
+    --m-fs-body: 14px;
+    --m-fs-strong: 15px;
+    --m-fs-title: 16px;
+    --m-fs-heading: 18px;
+    --m-fs-page: 22px;
+    --m-fs-number: 20px;
+    --m-fs-number-hero: 24px;
+  }
+
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+  /* ---- Base text ---- */
+  :root .admin-content { font-size: var(--m-fs-body); line-height: 1.5; }
+  :root .admin-content p,
+  :root .admin-content td,
+  :root .admin-content li,
+  :root .admin-content dd { font-size: var(--m-fs-body); }
+
+  /* ---- Page titles and descriptions ---- */
+  :root .admin-content h1,
+  :root .page-title,
+  :root .bill-header h1,
+  :root .settings-page-header h1,
+  :root .bill-product-hero h1 { font-size: var(--m-fs-page); line-height: 1.25; }
+  :root .page-description,
+  :root .bill-header p,
+  :root .settings-page-header p,
+  :root .bill-product-hero p { font-size: var(--m-fs-body); line-height: 1.5; }
+
+  /* ---- Section headings ---- */
+  :root .admin-content h2,
+  :root .dealer-delete-dialog h2,
+  :root .payment-modal h2,
+  :root .activity-changes-dialog h2,
+  :root .user-create-dialog h2 { font-size: var(--m-fs-heading); line-height: 1.3; }
+  :root .admin-content h3,
+  :root .dealer-delete-dialog h3 { font-size: var(--m-fs-title); line-height: 1.35; }
+
+  /* ---- Secondary text: never smaller than the caption size ---- */
+  :root .admin-content small,
+  :root .dealer-delete-dialog small,
+  :root .payment-modal small { font-size: var(--m-fs-caption); line-height: 1.4; }
+  :root .admin-content td small,
+  :root .admin-content li small,
+  :root .feature-row-text small,
+  :root .sidebar-text small,
+  :root .managed-user-cell small,
+  :root .dash-dealer-main small,
+  :root .dash-rate-main small,
+  :root .bill-item-note,
+  :root .activity-row-meta,
+  :root .activity-row-time,
+  :root .price-row-name small,
+  :root .stock-field-help { font-size: var(--m-fs-meta); }
+
+  /* ---- Labels, eyebrows, badges and table headings ---- */
+  :root .admin-content th,
+  :root .eyebrow,
+  :root .payment-eyebrow,
+  :root .activity-eyebrow,
+  :root .bill-compare-eyebrow,
+  :root .sidebar-heading,
+  :root .stock-pill,
+  :root .payment-status-badge,
+  :root .managed-user-role,
+  :root .primary-admin-label,
+  :root .primary-admin-protected,
+  :root .activity-action,
+  :root .activity-entity,
+  :root .activity-date-heading,
+  :root .bill-compare-status,
+  :root .price-chip,
+  :root .price-source,
+  :root .price-card-category,
+  :root .theme-current-badge,
+  :root .dealer-pick-status,
+  :root .responsive-card-table td::before { font-size: var(--m-fs-caption); line-height: 1.35; }
+  /* Form field labels. Some labels wrap a whole choice card, so a bold title inside stays readable. */
+  :root .admin-content label,
+  :root .label-title { font-size: var(--m-fs-meta); }
+  :root .admin-content label strong { font-size: var(--m-fs-strong); }
+  :root .admin-content label small { font-size: var(--m-fs-caption); }
+  /* Labels wrap a form control; keep the field itself at 16px (no iOS zoom). */
+  :root .admin-content label .form-control,
+  :root .admin-content label .form-select,
+  :root .admin-content label input,
+  :root .admin-content label select,
+  :root .admin-content label textarea { font-size: 16px; }
+
+  /* ---- Names and amounts inside lists and tables ---- */
+  :root .admin-content td strong,
+  :root .admin-content li strong,
+  :root .feature-row-text strong,
+  :root .managed-user-cell strong,
+  :root .dash-dealer-main strong,
+  :root .dash-dealer-amount strong,
+  :root .dash-rate-main strong,
+  :root .dash-rate-values strong,
+  :root .quick-link strong,
+  :root .activity-row-title strong,
+  :root .price-row-name strong { font-size: var(--m-fs-strong); line-height: 1.35; }
+
+  /* ---- Stat-card numbers: one size on every screen ---- */
+  :root .summary-card strong,
+  :root .user-summary-card strong,
+  :root .activity-summary-card strong,
+  :root .payment-summary-card strong,
+  :root .bill-compare-metric strong,
+  :root .price-stats dd { font-size: var(--m-fs-number); line-height: 1.2; font-variant-numeric: tabular-nums; }
+  :root .summary-grid-4 .summary-card:first-child strong { font-size: var(--m-fs-number-hero); }
+  /* Stat-card labels and notes */
+  :root .summary-card p,
+  :root .user-summary-card > div > span,
+  :root .activity-summary-card > div > span,
+  :root .payment-summary-card span,
+  :root .bill-compare-metric > div { font-size: var(--m-fs-meta); }
+  :root .summary-card small,
+  :root .user-summary-card small,
+  :root .payment-summary-card small,
+  :root .price-stats dt,
+  :root .price-stats small { font-size: var(--m-fs-caption); }
+  /* Money and quantities line up when they share a column. */
+  :root .admin-content td,
+  :root .dash-dealer-amount,
+  :root .dash-rate-values { font-variant-numeric: tabular-nums; }
+
+  /* ---- Buttons ---- */
+  :root .continue-btn,
+  :root .back-button,
+  :root .whatsapp-btn,
+  :root .confirm-delete-btn { font-size: var(--m-fs-body); }
+  :root .edit-bill-item,
+  :root .remove-bill-item,
+  :root .user-action-edit,
+  :root .user-action-access,
+  :root .user-action-delete,
+  :root .payment-row-actions button,
+  :root .activity-view-button,
+  :root .user-clear-filter,
+  :root .user-password-secondary,
+  :root .user-dialog-actions button,
+  :root .dash-panel-link,
+  :root .sign-out-button { font-size: var(--m-fs-meta); }
+
+  /* ---- Navigation ---- */
+  :root .sidebar-text > span { font-size: var(--m-fs-strong); }
+  :root .bottom-nav-label { font-size: 11px; }
+}

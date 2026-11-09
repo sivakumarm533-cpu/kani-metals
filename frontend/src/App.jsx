@@ -17,6 +17,7 @@ import './pages/pages.css'
 import './styles/system.css'
 import './styles/features.css'
 import './styles/navigation.css'
+import './styles/mobile-typography.css'
 
 // Pages are split into separate chunks so the first load only downloads what is shown.
 const pageImports = {
