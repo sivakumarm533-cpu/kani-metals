@@ -24,6 +24,7 @@ const pageImports = {
   Inventory: () => import('./pages/Inventory.jsx'),
   Products: () => import('./pages/Products.jsx'),
   Cards: () => import('./pages/Cards.jsx'),
+  ItemPrices: () => import('./pages/ItemPrices.jsx'),
   Itemsentry: () => import('./pages/Itemsentry.jsx'),
   DealerBills: () => import('./pages/DealerBills.jsx'),
   Settings: () => import('./pages/Settings.jsx'),
@@ -39,6 +40,7 @@ const Dashboard = lazy(pageImports.Dashboard)
 const Inventory = lazy(pageImports.Inventory)
 const Products = lazy(pageImports.Products)
 const Cards = lazy(pageImports.Cards)
+const ItemPrices = lazy(pageImports.ItemPrices)
 const Itemsentry = lazy(pageImports.Itemsentry)
 const DealerBills = lazy(pageImports.DealerBills)
 const Settings = lazy(pageImports.Settings)
@@ -126,6 +128,7 @@ function AppLayout() {
                 <Route path="/inventory" element={<FeatureRoute feature="inventory"><Inventory /></FeatureRoute>} />
                 <Route path="/products" element={<FeatureRoute feature="products"><Products /></FeatureRoute>} />
                 <Route path="/scrap-items" element={<FeatureRoute feature="scrapItems"><Cards /></FeatureRoute>} />
+                <Route path="/item-prices" element={<FeatureRoute feature="itemPrices"><ItemPrices /></FeatureRoute>} />
                 <Route path="/itemsentry" element={<FeatureRoute feature="itemEntry"><Itemsentry /></FeatureRoute>} />
                 <Route path="/bill-comparison" element={<FeatureRoute feature="billComparison"><BillComparison /></FeatureRoute>} />
                 <Route path="/bill-comparison/product/:productKey" element={<FeatureRoute feature="billComparison"><BillComparisonProduct /></FeatureRoute>} />

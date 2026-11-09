@@ -9,9 +9,12 @@ import authRoutes from './routes/authRoutes.js'
 import backupRoutes, { BACKUP_IMPORT_PATH } from './routes/backupRoutes.js'
 import settingsRoutes from './routes/settingsRoutes.js'
 import dashboardRoutes from './routes/dashboardRoutes.js'
+import itemPriceRoutes from './routes/itemPriceRoutes.js'
+import inventoryRoutes from './routes/inventoryRoutes.js'
 import { authenticate, requireFeature } from './middleware/auth.js'
 import { apiRateLimit, configuredCorsOrigins, corsMiddleware, securityHeaders } from './middleware/security.js'
 import { totpEncryptionKeyConfigured } from './utils/totp.js'
+import { webpImages } from './utils/webp.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 5000
@@ -30,6 +33,8 @@ app.use('/api', apiRateLimit())
 // The backup import route parses its own larger body, but only after admin authentication.
 const defaultJsonParser = express.json({ limit: '8mb' })
 app.use((req, res, next) => (req.path === `/api/admin/backup${BACKUP_IMPORT_PATH}` ? next() : defaultJsonParser(req, res, next)))
+// Photos sent as JPG/PNG (for example from Safari) are stored as WebP.
+app.use(webpImages)
 
 app.use(async (_req, res, next) => {
   try {
@@ -54,6 +59,8 @@ app.use('/api/dealers', requireFeature('itemEntry'), dealerRoutes)
 app.use('/api/products', requireFeature('products'), productRoutes)
 app.use('/api/bills', requireFeature('itemEntry'), billRoutes)
 app.use('/api/payments', requireFeature('dealerPayments'), paymentRoutes)
+app.use('/api/item-prices', requireFeature('itemPrices'), itemPriceRoutes)
+app.use('/api/inventory', requireFeature('inventory'), inventoryRoutes)
 app.use('/api/admin/backup', backupRoutes)
 app.use('/api/app-settings', settingsRoutes)
 app.use('/api/dashboard', dashboardRoutes)

@@ -44,6 +44,9 @@
 .sidebar-text small { overflow: hidden; color: var(--color-text-subtle); font-size: 11px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-link.is-active .sidebar-text small { color: var(--color-primary-strong); opacity: .8; }
 [data-chrome="dark"] .sidebar-text small { color: #8b93b8; }
+/* Active item on the dark menu: light text, not the dark theme shade. */
+[data-chrome="dark"] .sidebar-link.is-active .sidebar-text small, [data-chrome="dark"] .sidebar-link:hover .sidebar-text small { color: #c7d2fe; opacity: 1; }
+[data-chrome="dark"] .sidebar-link.is-active::before { background: #a5b4fc; }
 
 /* ---------- Mobile bottom bar ---------- */
 .bottom-nav {
@@ -202,7 +205,7 @@
 .profile-hero-text > p { margin: 0 0 10px; overflow: hidden; color: var(--color-text-muted); text-overflow: ellipsis; }
 .profile-hero-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .profile-role { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: var(--radius-pill); color: #475569; background: #eef2f7; font-size: 12px; font-weight: 700; }
-.profile-role-admin { color: #9a3412; background: #ffedd5; }
+.profile-role-admin { color: var(--color-primary-strong); background: var(--color-primary-soft); }
 .profile-role-subadmin { color: #5b21b6; background: #ede9fe; }
 .profile-since { color: var(--color-text-subtle); font-size: 12px; }
 .profile-remove-photo { margin-top: 8px; padding: 0; font-size: 12px; }
@@ -266,7 +269,7 @@
 .nav-style-option { flex-direction: column; align-items: flex-start; gap: 4px; }
 .nav-style-option strong { font-size: 13px; }
 .nav-style-option small { color: var(--color-text-subtle); font-size: 11px; line-height: 1.3; }
-.nav-style-sample { display: flex; width: 100%; height: 22px; align-items: center; justify-content: space-around; padding: 0 6px; border-radius: 11px; background: #fff; box-shadow: inset 0 0 0 1px var(--color-border); }
+.nav-style-sample { display: flex; width: 100%; height: 22px; align-items: center; justify-content: space-around; padding: 0 6px; border-radius: 11px; background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--color-border); }
 .nav-style-sample i, .nav-style-sample b { display: block; width: 9px; height: 9px; border-radius: 3px; background: #9ca3af; }
 .nav-style-sample b { width: 18px; height: 14px; border-radius: 6px; background: var(--color-primary); }
 .nav-style-sample-color { background: var(--color-primary); box-shadow: none; }
@@ -322,7 +325,7 @@
 .feature-switch { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; gap: 8px; cursor: pointer; }
 .feature-switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .feature-switch-track { position: relative; width: 48px; height: 28px; border-radius: 14px; background: #cbd2db; transition: background var(--duration-base) var(--ease-out); }
-.feature-switch-track span { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 25%); transition: transform var(--duration-base) var(--ease-out); }
+.feature-switch-track span { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--color-surface); box-shadow: 0 1px 3px rgb(0 0 0 / 25%); transition: transform var(--duration-base) var(--ease-out); }
 .feature-switch.is-on .feature-switch-track { background: var(--color-success); }
 .feature-switch.is-on .feature-switch-track span { transform: translateX(20px); }
 .feature-switch-state { width: 24px; color: var(--color-text-muted); font-size: 12px; font-weight: 700; }

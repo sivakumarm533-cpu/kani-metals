@@ -73,7 +73,7 @@ body {
   overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   overscroll-behavior: contain;
 }
 .bill-share-preview img { display: block; width: 100%; height: auto; }
@@ -135,15 +135,15 @@ body {
 .theme-current-badge { position: absolute; top: 10px; right: 10px; padding: 3px 8px; border-radius: var(--radius-pill); background: rgb(255 255 255 / 92%); color: var(--color-text); font-size: 11px; font-weight: 700; box-shadow: var(--shadow-xs); }
 
 .theme-preview { display: grid; height: 132px; border-bottom: 1px solid var(--color-border); background: #f5f6f8; }
-.theme-preview-bar { display: flex; align-items: center; gap: 8px; height: 22px; padding: 0 10px; border-top: 3px solid var(--preview-accent); background: #fff; }
+.theme-preview-bar { display: flex; align-items: center; gap: 8px; height: 22px; padding: 0 10px; border-top: 3px solid var(--preview-accent); background: var(--color-surface); }
 .theme-preview-bar i { width: 34px; height: 7px; border-radius: 4px; background: var(--preview-accent); }
-.theme-preview-bar b { width: 14px; height: 14px; margin-left: auto; border-radius: 50%; background: color-mix(in srgb, var(--preview-accent) 25%, #fff); }
+.theme-preview-bar b { width: 14px; height: 14px; margin-left: auto; border-radius: 50%; background: color-mix(in srgb, var(--preview-accent) 25%, var(--color-surface)); }
 .theme-preview-body { display: grid; grid-template-columns: 52px 1fr; }
-.theme-preview-side { display: grid; align-content: start; gap: 6px; padding: 8px 6px; border-right: 1px solid #eceef1; background: #fff; }
+.theme-preview-side { display: grid; align-content: start; gap: 6px; padding: 8px 6px; border-right: 1px solid #eceef1; background: var(--color-surface); }
 .theme-preview-side i { height: 7px; border-radius: 4px; background: #e5e7eb; }
 .theme-preview-side i.is-active { background: var(--preview-accent); }
 .theme-preview-main { display: grid; place-items: center; padding: 10px; background-color: #f5f6f8; }
-.theme-preview-card { display: grid; gap: 5px; width: 78%; padding: 9px; border-radius: 7px; background: #fff; box-shadow: 0 2px 6px rgb(16 24 40 / 8%); }
+.theme-preview-card { display: grid; gap: 5px; width: 78%; padding: 9px; border-radius: 7px; background: var(--color-surface); box-shadow: 0 2px 6px rgb(16 24 40 / 8%); }
 .theme-preview-card i { height: 6px; border-radius: 3px; background: #e5e7eb; }
 .theme-preview-card i:first-child { width: 60%; background: #d1d5db; }
 .theme-preview-card b { width: 46%; height: 12px; border-radius: 4px; background: var(--preview-accent); }
@@ -207,7 +207,7 @@ body {
 .dash-dealer-main, .dash-rate-main { display: grid; flex: 1; gap: 3px; min-width: 0; }
 .dash-dealer-main strong, .dash-rate-main strong { overflow: hidden; color: var(--color-text); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .dash-dealer-main small, .dash-rate-main small { overflow: hidden; color: var(--color-text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.dash-progress { display: block; height: 5px; margin-top: 3px; overflow: hidden; border-radius: var(--radius-pill); background: #ffe8d6; }
+.dash-progress { display: block; height: 5px; margin-top: 3px; overflow: hidden; border-radius: var(--radius-pill); background: var(--color-primary-soft); }
 .dash-progress span { display: block; height: 100%; border-radius: inherit; background: var(--color-success); }
 .dash-dealer-amount, .dash-rate-values { display: grid; justify-items: end; gap: 2px; text-align: right; }
 .dash-dealer-amount strong { color: var(--color-primary-strong); font-size: 15px; white-space: nowrap; }
@@ -217,7 +217,7 @@ body {
 .dash-trend { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border-radius: 10px; font-size: 16px; }
 .dash-trend-up { background: var(--color-danger-soft); color: var(--color-danger); }
 .dash-trend-down { background: var(--color-success-soft); color: var(--color-success); }
-.dash-trend-same { background: #f1f5f9; color: #64748b; }
+.dash-trend-same { background: var(--color-surface-muted); color: var(--color-text-muted); }
 .dash-trend-new { background: var(--color-primary-soft); color: var(--color-primary); }
 .dash-trend-text-up { color: var(--color-danger) !important; }
 .dash-trend-text-down { color: var(--color-success) !important; }
@@ -268,3 +268,8 @@ body {
 @media (max-width: 360px) {
   .theme-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Bill: pick an item from inventory */
+.inventory-pick .label-title i { color: var(--color-primary); }
+.inventory-pick-note { display: block; margin-top: 6px; padding: 7px 10px; border-radius: var(--radius-sm); color: var(--color-text-muted); background: var(--color-primary-faint); font-size: 12px; }
+.inventory-pick-note b { color: var(--color-text); }

@@ -33,7 +33,8 @@ export async function compressImage(file, { maxSize = 640, quality = 0.82 } = {}
   if (!file) return ''
   const canvas = await drawResized(file, maxSize)
   const webp = canvas.toDataURL('image/webp', quality)
-  // Older Safari versions cannot encode WebP and silently return PNG; use JPEG there.
+  // Safari cannot encode WebP and silently returns PNG; send JPEG there and the
+  // server converts it to WebP (backend/utils/webp.js), so every stored image is WebP.
   return webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', quality)
 }
 

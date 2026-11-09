@@ -1,4 +1,7 @@
-export function profilePictureDataUrl(file) {
+import { toWebpBuffer } from './webp.js'
+
+/** Checks the upload really is an image and stores it as a WebP data URL. */
+export async function profilePictureDataUrl(file) {
   if (!file?.buffer?.length) return ''
   const { buffer, mimetype } = file
   const isPng = mimetype === 'image/png' && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
@@ -9,5 +12,6 @@ export function profilePictureDataUrl(file) {
     error.statusCode = 400
     throw error
   }
-  return `data:${mimetype};base64,${buffer.toString('base64')}`
+  const webp = isWebp ? buffer : await toWebpBuffer(buffer)
+  return `data:image/webp;base64,${webp.toString('base64')}`
 }

@@ -1,0 +1,28 @@
+/*
+ * Auto-hiding scrollbars: thin and invisible at rest, shown in the theme colour
+ * while scrolling (see utils/scrollbars.js). The track keeps its width, so the
+ * layout never jumps when the thumb appears.
+ */
+:root {
+  --scrollbar-thumb: rgb(var(--color-primary-rgb, 243 111 18) / 45%);
+  --scrollbar-thumb-hover: rgb(var(--color-primary-rgb, 243 111 18) / 70%);
+}
+
+/* Firefox and Chromium 121+ */
+@supports (scrollbar-color: auto) {
+  * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  [data-scrolling] { scrollbar-color: var(--scrollbar-thumb) transparent; }
+}
+
+/* Safari and older Chromium */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 99px; background-clip: padding-box; background-color: transparent; }
+[data-scrolling]::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); }
+[data-scrolling]::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Windows high-contrast mode: always show the system scrollbars. */
+@media (forced-colors: active) {
+  * { scrollbar-color: auto; }
+}

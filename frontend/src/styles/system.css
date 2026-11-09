@@ -467,7 +467,7 @@ button:disabled { cursor: not-allowed; }
 }
 .auth-card { gap: 18px; padding: clamp(22px, 5vw, 34px); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); animation: modal-content-enter 280ms var(--ease-out) both; }
 .auth-brand { display: flex; align-items: center; gap: 12px; }
-.auth-mark { width: 52px; height: 52px; padding: 4px; border: 1px solid var(--color-border); border-radius: 14px; background: #fff; object-fit: contain; }
+.auth-mark { width: 52px; height: 52px; padding: 4px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); object-fit: contain; }
 .auth-brand > span { display: grid; color: var(--color-text); font-size: 16px; font-weight: 700; line-height: 1.2; }
 .auth-brand small { color: var(--color-text-muted); font-size: 12px; font-weight: 500; }
 .auth-heading h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.01em; }

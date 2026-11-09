@@ -310,7 +310,7 @@ export async function createUser(req, res, next) {
     if (await User.exists({ email: normalizedEmail })) return res.status(409).json({ message: 'An account with this email already exists.' })
     const user = await User.create({
       name: name.trim(), email: normalizedEmail, passwordHash: await bcrypt.hash(password, 12), role,
-      ...(req.file ? { profilePicture: profilePictureDataUrl(req.file) } : {}),
+      ...(req.file ? { profilePicture: await profilePictureDataUrl(req.file) } : {}),
     })
     await recordActivity(req, { action: 'create', entity: 'user', entityId: user._id, before: null, after: user })
     res.status(201).json(publicUser(user))
@@ -341,7 +341,7 @@ export async function updateUser(req, res, next) {
       if (await User.exists({ email: normalizedEmail, _id: { $ne: user._id } })) return res.status(409).json({ message: 'An account with this email already exists.' })
       user.email = normalizedEmail
     }
-    if (req.file) user.profilePicture = profilePictureDataUrl(req.file)
+    if (req.file) user.profilePicture = await profilePictureDataUrl(req.file)
     if (req.body.removeProfilePicture === 'true') user.profilePicture = ''
     await user.save()
     await recordActivity(req, { action: 'update', entity: 'user', entityId: user._id, before, after: user })
@@ -355,7 +355,7 @@ export async function updateOwnProfilePicture(req, res, next) {
     const user = await User.findById(req.user._id).select('+profilePicture')
     if (!user) return res.status(404).json({ message: 'User not found.' })
     const before = user.toObject()
-    user.profilePicture = profilePictureDataUrl(req.file)
+    user.profilePicture = await profilePictureDataUrl(req.file)
     await user.save()
     await recordActivity(req, { action: 'update', entity: 'user', entityId: user._id, entityLabel: `${user.name} profile picture`, before, after: user })
     res.json({ user: publicUser(user) })

@@ -3,7 +3,7 @@
  * Administrators and sub-admins always have every feature.
  * Keep the keys in sync with frontend/src/config/navigation.js.
  */
-export const FEATURE_KEYS = ['inventory', 'products', 'scrapItems', 'itemEntry', 'dealerPayments', 'billComparison']
+export const FEATURE_KEYS = ['inventory', 'products', 'scrapItems', 'itemEntry', 'dealerPayments', 'billComparison', 'itemPrices']
 
 /** Screens a user can pin to the mobile bottom bar. */
 export const BOTTOM_NAV_KEYS = ['dashboard', ...FEATURE_KEYS, 'profile', 'settings']

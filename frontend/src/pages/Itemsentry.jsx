@@ -7,6 +7,7 @@ import LoadError from "../components/LoadError.jsx";
 import BillShareModal from "../components/BillShareModal.jsx";
 import { useToast } from "../hooks/useToast.js";
 import { compressImage } from "../utils/image.js";
+import { useProducts } from "../hooks/useProducts.js";
 import { formatRupees, localDateInputValue as getTodayDate } from "../utils/format.js";
 
 const itemCategories = ["Metal", "Plastic", "Paper", "Electronics"];
@@ -39,6 +40,22 @@ function Itemsentry() {
   const [sharingBill, setSharingBill] = useState(null);
   const [editingItemId, setEditingItemId] = useState(null);
   const [itemForm, setItemForm] = useState(emptyItemForm);
+  // Inventory items can be picked to fill the line. Bills never change stock.
+  const { products: inventoryItems } = useProducts();
+  const [pickedItemId, setPickedItemId] = useState("");
+  const pickedItem = inventoryItems.find((item) => item._id === pickedItemId) || null;
+  const categoryOptions = [...new Set([...itemCategories, itemForm.category].filter(Boolean))];
+  const unitOptions = [["kg", "Kilogram (kg)"], ["pcs", "Pieces (pcs)"], ["ton", "Ton"]];
+  if (itemForm.unit && !unitOptions.some(([value]) => value === itemForm.unit)) unitOptions.push([itemForm.unit, itemForm.unit]);
+
+  function pickInventoryItem(id) {
+    setPickedItemId(id);
+    const item = inventoryItems.find((entry) => entry._id === id);
+    if (!item) return;
+    setItemForm((current) => ({ ...current, name: item.name, category: item.category, unit: item.unit, price: item.price ? String(item.price) : current.price, image: item.image || "" }));
+    resetItemImageInput();
+    document.getElementById("quantity")?.focus();
+  }
 
   useEffect(() => {
     let active = true;
@@ -83,6 +100,7 @@ function Itemsentry() {
       : items.map((item) => item.id === editingItemId ? newItem : item));
     setEditingItemId(null);
     setItemForm(emptyItemForm());
+    setPickedItemId("");
     resetItemImageInput();
    
     document.getElementById("itemName")?.focus();
@@ -105,6 +123,7 @@ function Itemsentry() {
   function cancelItemEdit() {
     setEditingItemId(null);
     setItemForm(emptyItemForm());
+    setPickedItemId("");
     resetItemImageInput();
   }
 
@@ -127,6 +146,7 @@ function Itemsentry() {
       setBillItems([]);
       setEditingItemId(null);
       setItemForm(emptyItemForm());
+    setPickedItemId("");
       setBillDate(getTodayDate());
     } catch (error) {
       setApiError(error.message);
@@ -483,6 +503,18 @@ function Itemsentry() {
             <div className="row g-4 mt-1">
               <div className="col-lg-7 col-12">
                 <div className="row g-3">
+                  {inventoryItems.length > 0 && (
+                    <div className="col-12">
+                      <div className="form-group inventory-pick">
+                        <label className="label-title" htmlFor="inventoryPick"><i className="bi bi-boxes" aria-hidden="true" /> Pick from inventory <small className="text-muted">Optional</small></label>
+                        <select id="inventoryPick" className="form-select" value={pickedItemId} onChange={(event) => pickInventoryItem(event.target.value)}>
+                          <option value="">Type a new item, or choose one…</option>
+                          {inventoryItems.map((item) => <option key={item._id} value={item._id}>{item.name} ({item.unit}){item.price ? ` · ${formatRupees(item.price)}` : ""} · stock {item.quantity}</option>)}
+                        </select>
+                        {pickedItem && <small className="inventory-pick-note">Filled from inventory. In stock: <b>{pickedItem.quantity} {pickedItem.unit}</b>. Saving the bill does not change stock.</small>}
+                      </div>
+                    </div>
+                  )}
                   <div className="col-md-6 col-12">
                     <div className="form-group">
                       <label className="label-title" htmlFor="itemName">Item Name</label>
@@ -495,7 +527,7 @@ function Itemsentry() {
                       <label className="label-title" htmlFor="category">Category</label>
                       <select id="category" className="form-select" value={itemForm.category} onChange={(event) => setItemForm({ ...itemForm, category: event.target.value })} required>
                         <option value="" disabled>Select category</option>
-                        {itemCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                        {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
                       </select>
                     </div>
                   </div>
@@ -511,9 +543,7 @@ function Itemsentry() {
                     <div className="form-group">
                       <label className="label-title" htmlFor="unit">Unit</label>
                       <select id="unit" className="form-select" value={itemForm.unit} onChange={(event) => setItemForm({ ...itemForm, unit: event.target.value })}>
-                        <option value="kg">Kilogram (kg)</option>
-                        <option value="pcs">Pieces (pcs)</option>
-                        <option value="ton">Ton</option>
+                        {unitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                       </select>
                     </div>
                   </div>
