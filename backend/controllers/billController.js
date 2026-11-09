@@ -3,6 +3,8 @@ import Dealer from '../models/Dealer.js'
 import mongoose from 'mongoose'
 import Payment from '../models/Payment.js'
 import { recordActivity } from '../utils/activity.js'
+import { useAdvanceOnBill } from '../utils/advance.js'
+import { formatPaise } from '../utils/money.js'
 import { billItemsPayload, billTotal, objectId, validDate } from '../utils/validation.js'
 
 export async function listBills(req, res, next) {
@@ -12,7 +14,8 @@ export async function listBills(req, res, next) {
       if (!mongoose.isValidObjectId(req.query.dealer)) return res.status(400).json({ message: 'Dealer ID is invalid.' })
       filter.dealer = req.query.dealer
     }
-    res.json(await Bill.find(filter).populate('dealer').sort({ issuedDate: -1, createdAt: -1 }).lean())
+    // Only the dealer's name and contact are needed here; loading its images for every bill made this list very large.
+    res.json(await Bill.find(filter).populate('dealer', 'name phone location category').sort({ issuedDate: -1, createdAt: -1 }).lean())
   }
   catch (error) { next(error) }
 }
@@ -43,7 +46,17 @@ export async function createBill(req, res, next) {
     if (!await Dealer.exists({ _id: dealerId })) return res.status(404).json({ message: 'The selected dealer no longer exists.' })
     const bill = await Bill.create({ dealer: dealerId, issuedDate, items, total: billTotal(items) })
     await recordActivity(req, { action: 'create', entity: 'bill', entityId: bill._id, before: null, after: bill })
-    res.status(201).json(await bill.populate('dealer'))
+    // Extra money the dealer paid earlier is used on this new bill automatically.
+    let advanceUsedPaise = 0
+    try {
+      const advancePayment = await useAdvanceOnBill({ dealerId, billId: bill._id, userId: req.user._id })
+      if (advancePayment) {
+        advanceUsedPaise = advancePayment.amountPaise
+        await recordActivity(req, { action: 'create', entity: 'payment', entityId: advancePayment._id, entityLabel: `Advance ${formatPaise(advanceUsedPaise)} used on new bill`, before: null, after: advancePayment })
+      }
+    } catch (error) { console.error('Applying dealer advance failed:', error.message) }
+    await bill.populate('dealer', 'name phone location category advancePaise')
+    res.status(201).json({ ...bill.toObject(), advanceUsedPaise })
   } catch (error) { next(error) }
 }
 

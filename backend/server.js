@@ -9,7 +9,7 @@ import authRoutes from './routes/authRoutes.js'
 import backupRoutes, { BACKUP_IMPORT_PATH } from './routes/backupRoutes.js'
 import settingsRoutes from './routes/settingsRoutes.js'
 import dashboardRoutes from './routes/dashboardRoutes.js'
-import { authenticate } from './middleware/auth.js'
+import { authenticate, requireFeature } from './middleware/auth.js'
 import { apiRateLimit, configuredCorsOrigins, corsMiddleware, securityHeaders } from './middleware/security.js'
 import { totpEncryptionKeyConfigured } from './utils/totp.js'
 
@@ -50,10 +50,10 @@ app.get('/api/health', (_req, res) => res.json({
 }))
 app.use('/api/auth', authRoutes)
 app.use('/api', authenticate)
-app.use('/api/dealers', dealerRoutes)
-app.use('/api/products', productRoutes)
-app.use('/api/bills', billRoutes)
-app.use('/api/payments', paymentRoutes)
+app.use('/api/dealers', requireFeature('itemEntry'), dealerRoutes)
+app.use('/api/products', requireFeature('products'), productRoutes)
+app.use('/api/bills', requireFeature('itemEntry'), billRoutes)
+app.use('/api/payments', requireFeature('dealerPayments'), paymentRoutes)
 app.use('/api/admin/backup', backupRoutes)
 app.use('/api/app-settings', settingsRoutes)
 app.use('/api/dashboard', dashboardRoutes)

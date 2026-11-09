@@ -1,7 +1,7 @@
 import Bill from '../models/Bill.js'
 import Dealer from '../models/Dealer.js'
 import Payment from '../models/Payment.js'
-import { rupeesToPaise } from '../utils/money.js'
+import { appliedPaise, rupeesToPaise } from '../utils/money.js'
 
 const toPaise = (rupees) => rupeesToPaise(String(rupees ?? 0)) ?? 0
 
@@ -13,7 +13,7 @@ export async function getDashboardSummary(_req, res, next) {
   try {
     const [bills, payments, rateGroups] = await Promise.all([
       Bill.find().select('dealer total issuedDate').lean(),
-      Payment.find({ paymentStatus: { $in: ['received', 'cleared'] } }).select('bill amountPaise paymentDate dealer').lean(),
+      Payment.find({ paymentStatus: { $in: ['received', 'cleared'] } }).select('bill amountPaise excessPaise paymentDate dealer').lean(),
       Bill.aggregate([
         { $unwind: '$items' },
         { $match: { 'items.name': { $type: 'string', $ne: '' } } },
@@ -37,7 +37,7 @@ export async function getDashboardSummary(_req, res, next) {
     const lastPaymentByDealer = new Map()
     for (const payment of payments) {
       const billId = String(payment.bill)
-      paidByBill.set(billId, (paidByBill.get(billId) || 0) + payment.amountPaise)
+      paidByBill.set(billId, (paidByBill.get(billId) || 0) + appliedPaise(payment))
       const dealerId = String(payment.dealer)
       if (!lastPaymentByDealer.has(dealerId) || payment.paymentDate > lastPaymentByDealer.get(dealerId)) lastPaymentByDealer.set(dealerId, payment.paymentDate)
     }

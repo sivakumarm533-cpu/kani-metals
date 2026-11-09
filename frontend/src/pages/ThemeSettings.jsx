@@ -21,7 +21,7 @@ function ThemePreview({ theme }) {
 }
 
 export default function ThemeSettings() {
-  const { theme: savedTheme, saveSettings, loaded } = useAppSettings()
+  const { theme: savedTheme, saveSettings, loaded, personalTheme, effectiveTheme } = useAppSettings()
   const [selected, setSelected] = useState(savedTheme)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -50,7 +50,7 @@ export default function ThemeSettings() {
 
   function resetPreview() {
     setTouched(false)
-    applyTheme(savedTheme, { persist: false })
+    applyTheme(effectiveTheme, { persist: false })
   }
 
   const changed = current !== savedTheme
@@ -58,7 +58,7 @@ export default function ThemeSettings() {
     <section className="boarder-box settings-page theme-settings-page">
       <Toast toast={toast} />
       <header className="bill-header settings-page-header">
-        <div><h1 className="page-title">Theme settings</h1><p>Choose the colour and background pattern used across the application. Click a theme to preview it, then apply it for all users.</p></div>
+        <div><h1 className="page-title">Theme settings</h1><p>Choose the colour and background pattern used across the application. Click a theme to preview it, then apply it for all users.</p>{personalTheme && <p className="profile-hint"><i className="bi bi-info-circle" aria-hidden="true" /> You use a personal theme ({findTheme(personalTheme).name}), so after saving you will keep seeing that. Change it on your profile page.</p>}</div>
         <div className="theme-header-actions">
           {changed && <button type="button" className="back-button" onClick={resetPreview} disabled={saving}>Cancel preview</button>}
           <button type="button" className="continue-btn" onClick={save} disabled={!changed || saving || !loaded}>{saving ? <><span className="btn-spinner" aria-hidden="true" /> Applying…</> : <><i className="bi bi-check2" aria-hidden="true" /> Apply theme</>}</button>

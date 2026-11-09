@@ -2,7 +2,7 @@ import Dealer from '../models/Dealer.js'
 import Product from '../models/Product.js'
 import Bill from '../models/Bill.js'
 import Payment from '../models/Payment.js'
-import { paymentCountsAsReceived } from '../utils/money.js'
+import { appliedPaise, paymentCountsAsReceived } from '../utils/money.js'
 import { recordActivity } from '../utils/activity.js'
 
 const models = { dealers: Dealer, products: Product, bills: Bill, payments: Payment }
@@ -34,12 +34,18 @@ export async function importBackup(req, res, next) {
     const dealersById = new Map(backupData.dealers.map((record) => [String(record._id), record]))
     const billsById = new Map(backupData.bills.map((record) => [String(record._id), record]))
     const receivedByBill = new Map()
+    const advanceByDealer = new Map()
     for (const payment of backupData.payments) {
       const bill = billsById.get(String(payment.bill))
       if (!bill || String(bill.dealer) !== String(payment.dealer) || !dealersById.has(String(payment.dealer))) return res.status(400).json({ message: 'Backup contains a payment that does not match its dealer and bill.' })
-      if (paymentCountsAsReceived(payment)) receivedByBill.set(String(payment.bill), (receivedByBill.get(String(payment.bill)) || 0) + payment.amountPaise)
+      if (!paymentCountsAsReceived(payment)) continue
+      receivedByBill.set(String(payment.bill), (receivedByBill.get(String(payment.bill)) || 0) + appliedPaise(payment))
+      const dealerKey = String(payment.dealer)
+      const advanceChange = (payment.excessType === 'roundoff' ? 0 : payment.excessPaise || 0) - (payment.paymentMethod === 'advance' ? payment.amountPaise : 0)
+      advanceByDealer.set(dealerKey, (advanceByDealer.get(dealerKey) || 0) + advanceChange)
     }
     for (const bill of backupData.bills) bill.receivedPaise = receivedByBill.get(String(bill._id)) || 0
+    for (const dealer of backupData.dealers) dealer.advancePaise = Math.max(0, advanceByDealer.get(String(dealer._id)) || 0)
 
     const previous = {}
     for (const key of Object.keys(models)) previous[key] = await models[key].find().lean()

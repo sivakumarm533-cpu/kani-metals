@@ -17,4 +17,8 @@ const billSchema = new mongoose.Schema({
   receivedPaise: { type: Number, default: 0, min: 0 },
 }, { timestamps: true })
 
+// Bills are listed per dealer and newest first on almost every screen.
+billSchema.index({ dealer: 1, issuedDate: -1 })
+billSchema.index({ issuedDate: -1, createdAt: -1 })
+
 export default mongoose.model('Bill', billSchema)

@@ -7,14 +7,36 @@ export const AUTH_TOKEN_KEY = 'kani-auth-token'
 export const AUTH_EXPIRED_EVENT = 'kani-auth-expired'
 
 export function getAuthToken() {
-  try { return localStorage.getItem(AUTH_TOKEN_KEY) } catch { return null }
+  try { return localStorage.getItem(AUTH_TOKEN_KEY) || memoryToken } catch { return memoryToken }
 }
 
+let memoryToken = null
+
 export function setAuthToken(token) {
+  memoryToken = token || null
   try {
     if (token) localStorage.setItem(AUTH_TOKEN_KEY, token)
-    else localStorage.removeItem(AUTH_TOKEN_KEY)
+    else { localStorage.removeItem(AUTH_TOKEN_KEY); localStorage.removeItem(AUTH_USER_KEY) }
   } catch { /* storage unavailable (private mode); the session lasts for this page only */ }
+}
+
+/**
+ * The signed-in user is cached so the app can open instantly on the next visit
+ * while the session is confirmed with the server in the background.
+ */
+export const AUTH_USER_KEY = 'kani-auth-user'
+
+export function getCachedUser() {
+  try { return JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null') } catch { return null }
+}
+
+export function setCachedUser(user) {
+  try {
+    if (!user) { localStorage.removeItem(AUTH_USER_KEY); return }
+    try { localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user)) }
+    // A large profile photo can exceed the storage quota; keep everything else.
+    catch { localStorage.setItem(AUTH_USER_KEY, JSON.stringify({ ...user, profilePicture: '' })) }
+  } catch { /* storage unavailable */ }
 }
 
 // Sign-in endpoints legitimately answer 401 for a wrong password; that must not end an existing session.

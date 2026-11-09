@@ -4,6 +4,18 @@ import { apiRequest } from '../services/api.js'
 import { useAuth } from '../auth/authContextValue.js'
 import AuthLayout from '../components/AuthLayout.jsx'
 
+const REMEMBER_KEY = 'kani-remember-me'
+const EMAIL_KEY = 'kani-last-email'
+const readStored = (key, fallback) => { try { return localStorage.getItem(key) ?? fallback } catch { return fallback } }
+const writeStored = (key, value) => { try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value) } catch { /* storage unavailable */ } }
+
+/** Asks the browser's password manager to save the sign-in (Chrome, Edge, Android). */
+async function offerToSavePassword(email, password) {
+  try {
+    if (window.PasswordCredential && navigator.credentials?.store) await navigator.credentials.store(new window.PasswordCredential({ id: email, password }))
+  } catch { /* the browser declined or does not support it */ }
+}
+
 const headings = {
   password: ['Sign in', 'Access the Kani Metals admin panel.'],
   enroll: ['Set up Google Authenticator', 'Scan the QR code, then verify one current code to enable two-step sign-in.'],
@@ -16,7 +28,8 @@ export default function Login() {
   const { user, loading, signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [email, setEmail] = useState('')
+  const [remember, setRemember] = useState(() => readStored(REMEMBER_KEY, 'true') !== 'false')
+  const [email, setEmail] = useState(() => (readStored(REMEMBER_KEY, 'true') !== 'false' ? readStored(EMAIL_KEY, '') : ''))
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [challenge, setChallenge] = useState('')
@@ -33,6 +46,9 @@ export default function Login() {
   if (!loading && user && mode !== 'recovery-codes') return <Navigate to={destination} replace />
 
   function finish(auth) {
+    writeStored(REMEMBER_KEY, String(remember))
+    writeStored(EMAIL_KEY, remember ? email.trim() : null)
+    if (remember && password) offerToSavePassword(email.trim(), password)
     signIn(auth)
     navigate(destination, { replace: true })
   }
@@ -40,7 +56,7 @@ export default function Login() {
   async function submit(event) {
     event.preventDefault(); setBusy(true); setError('')
     try {
-      const result = await apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+      const result = await apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, remember }) })
       if (result.requiresTotpEnrollment) {
         setChallenge(result.enrollmentChallenge); setQrCodeDataUrl(result.qrCodeDataUrl); setCode(''); setMode('enroll'); return
       }
@@ -87,15 +103,16 @@ export default function Login() {
 
   return <AuthLayout title={heading} intro={intro}>
     {error && <div className="api-error" role="alert">{error}</div>}
-    {mode === 'password' && <form onSubmit={submit} aria-busy={busy}>
-      <label>Email<input className="form-control" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required autoFocus /></label>
+    {mode === 'password' && <form onSubmit={submit} aria-busy={busy} method="post" action="/login" name="login">
+      <label htmlFor="login-email">Email<input id="login-email" name="email" className="form-control" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required autoFocus={!email} /></label>
       <label>Password
         <span className="password-field">
-          <input className="form-control" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+          <input id="login-password" name="password" className="form-control" type={showPassword ? 'text' : 'password'} autoComplete="current-password" autoFocus={Boolean(email)} value={password} onChange={(event) => setPassword(event.target.value)} required />
           <button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}><i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`} aria-hidden="true" /></button>
         </span>
       </label>
-      <button className="continue-btn btn-block" disabled={busy}>{busy ? <><span className="btn-spinner" aria-hidden="true" /> Checking…</> : 'Continue'}</button>
+      <label className="remember-me"><input type="checkbox" name="remember" checked={remember} onChange={(event) => setRemember(event.target.checked)} /><span><strong>Keep me signed in</strong><small>Stay signed in on this device for 30 days. Untick on shared computers.</small></span></label>
+      <button className="continue-btn btn-block" disabled={busy}>{busy ? <><span className="btn-spinner" aria-hidden="true" /> Checking…</> : 'Sign in'}</button>
     </form>}
     {mode === 'enroll' && <form onSubmit={verifyTotp} aria-busy={busy}>
       {qrCodeDataUrl && <img className="totp-qr-code" src={qrCodeDataUrl} alt="Google Authenticator setup QR code" />}

@@ -20,6 +20,11 @@ export function formatPaise(paise) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
 }
 
+/** The part of a payment that counts against its own bill (any extra became dealer advance). */
+export function appliedPaise(payment) {
+  return Math.max(0, (payment.amountPaise || 0) - (payment.excessPaise || 0))
+}
+
 export function paymentCountsAsReceived(payment) {
   return payment.paymentStatus === 'received' || payment.paymentStatus === 'cleared'
 }

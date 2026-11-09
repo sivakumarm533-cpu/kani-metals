@@ -4,6 +4,25 @@ import { useLocation } from 'react-router-dom'
 import { apiFetch, apiRequest } from '../services/api.js'
 import Modal from '../components/Modal.jsx'
 import { compressImageFile } from '../utils/image.js'
+import { useAuth } from '../auth/authContextValue.js'
+import { roleLabel } from '../config/navigation.js'
+
+const roleBadge = (role) => (role === 'admin' ? 'Admin' : role === 'subadmin' ? 'Sub-admin' : 'User')
+const roleDescription = (role) => (role === 'admin' ? 'Primary administrator' : role === 'subadmin' ? 'Can manage users and settings' : 'Team member')
+
+function RoleChooser({ value, onChange, disabled }) {
+  return <fieldset className="role-chooser" disabled={disabled}>
+    <legend>Access level</legend>
+    {[
+      { id: 'user', title: 'Team member', text: 'Uses the features you switch on in Feature access.', icon: 'bi-person' },
+      { id: 'subadmin', title: 'Sub-admin', text: 'Admin rights: all features, users, activity and settings. Cannot restore backups or manage other sub-admins.', icon: 'bi-shield-check' },
+    ].map((option) => <label key={option.id} className={`role-option${value === option.id ? ' is-selected' : ''}`}>
+      <input type="radio" name="role" value={option.id} checked={value === option.id} onChange={() => onChange(option.id)} />
+      <i className={`bi ${option.icon}`} aria-hidden="true" />
+      <span><strong>{option.title}</strong><small>{option.text}</small></span>
+    </label>)}
+  </fieldset>
+}
 
 function UserAvatar({ user, size = 'normal' }) {
   return <span className={`user-avatar user-avatar-${size}`}>{user.profilePicture ? <img src={user.profilePicture} alt={`${user.name} profile`} /> : <span>{user.name?.trim()?.[0]?.toUpperCase() || '?'}</span>}</span>
@@ -207,15 +226,18 @@ function ActivityPage() {
 
 export default function Settings() {
   const location = useLocation()
+  const { user: currentUser } = useAuth()
+  const isPrimaryAdmin = currentUser?.role === 'admin'
+  const canManage = (user) => user.role === 'user' || (user.role === 'subadmin' && isPrimaryAdmin)
   const isBackupPage = location.pathname.endsWith('/backup')
   const isActivityPage = location.pathname.endsWith('/activity')
   const [users, setUsers] = useState([])
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'user' })
   const [profileFile, setProfileFile] = useState(null)
   const [editingUser, setEditingUser] = useState(null)
-  const [editForm, setEditForm] = useState({ name: '', email: '' })
+  const [editForm, setEditForm] = useState({ name: '', email: '', role: 'user' })
   const [editProfileFile, setEditProfileFile] = useState(null)
-  const [usersSummary, setUsersSummary] = useState({ totalUsers: 0, activeUsers: 0, administrators: 0, regularUsers: 0 })
+  const [usersSummary, setUsersSummary] = useState({ totalUsers: 0, activeUsers: 0, administrators: 0, subAdmins: 0, regularUsers: 0 })
   const [usersResultKey, setUsersResultKey] = useState('')
   const [usersRetry, setUsersRetry] = useState(0)
   const [userSearch, setUserSearch] = useState('')
@@ -271,7 +293,7 @@ export default function Settings() {
   }
 
   function openCreateUser() {
-    setForm({ name: '', email: '', password: '' })
+    setForm({ name: '', email: '', password: '', role: 'user' })
     setProfileFile(null)
     if (createProfileFileRef.current) createProfileFileRef.current.value = ''
     setShowPassword(false)
@@ -296,16 +318,16 @@ export default function Settings() {
       Object.entries(form).forEach(([key, value]) => body.append(key, value))
       if (profileFile) body.append('profilePicture', await compressImageFile(profileFile))
       const user = await apiRequest('/auth/users', { method: 'POST', body })
-      setUsers((current) => [user, ...current]); setForm({ name: '', email: '', password: '' }); setProfileFile(null)
-      setUsersSummary((current) => ({ ...current, totalUsers: current.totalUsers + 1, regularUsers: current.regularUsers + 1 }))
+      setUsers((current) => [user, ...current]); setForm({ name: '', email: '', password: '', role: 'user' }); setProfileFile(null)
+      apiRequest('/auth/users/summary').then(setUsersSummary).catch(() => {})
       if (createProfileFileRef.current) createProfileFileRef.current.value = ''
       if (createUserDialogRef.current?.open) createUserDialogRef.current.close()
-      setToastType('success'); setToastMessage('User account created successfully.')
+      setToastType('success'); setToastMessage(user.role === 'subadmin' ? 'Sub-admin account created successfully.' : 'User account created successfully.')
     } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
 
   function openEditUser(user) {
-    setEditingUser(user); setEditForm({ name: user.name, email: user.email }); setEditProfileFile(null); setError('')
+    setEditingUser(user); setEditForm({ name: user.name, email: user.email, role: user.role }); setEditProfileFile(null); setError('')
   }
 
   async function updateUser(event) {
@@ -314,10 +336,11 @@ export default function Settings() {
     setBusy(true); setError('')
     try {
       const body = new FormData()
-      Object.entries(editForm).forEach(([key, value]) => body.append(key, value))
+      Object.entries(editForm).forEach(([key, value]) => { if (key !== 'role' || isPrimaryAdmin) body.append(key, value) })
       if (editProfileFile) body.append('profilePicture', await compressImageFile(editProfileFile))
       const updated = await apiRequest(`/auth/users/${editingUser._id}`, { method: 'PATCH', body })
       setUsers((current) => current.map((user) => user._id === updated._id ? updated : user))
+      apiRequest('/auth/users/summary').then(setUsersSummary).catch(() => {})
       setEditingUser(null); setToastType('info'); setToastMessage('User account updated.')
     } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
@@ -328,7 +351,6 @@ export default function Settings() {
     try {
       await apiRequest(`/auth/users/${userToDelete._id}`, { method: 'DELETE' })
       setUsers((current) => current.filter((entry) => entry._id !== userToDelete._id))
-      setUsersSummary((current) => ({ ...current, totalUsers: Math.max(0, current.totalUsers - 1), regularUsers: Math.max(0, current.regularUsers - 1) }))
       apiRequest('/auth/users/summary').then(setUsersSummary).catch(() => {})
       setUserToDelete(null); setToastType('danger'); setToastMessage('User deleted successfully.')
     } catch (err) { setError(err.message) } finally { setBusy(false) }
@@ -367,7 +389,7 @@ export default function Settings() {
   }
 
   const heading = isBackupPage ? 'Database backup' : isActivityPage ? 'User activity' : 'User Management'
-  const description = isBackupPage ? 'Export or restore business records.' : isActivityPage ? 'Review who changed dealers, products, bills, and user accounts.' : 'Manage team members and control access to your Kani Metals workspace.'
+  const description = isBackupPage ? 'Export or restore business records.' : isActivityPage ? 'Review who changed dealers, products, bills, and user accounts.' : isPrimaryAdmin ? 'Add team members and give trusted people sub-admin rights.' : 'Add and manage team members.'
 
   return <section className="boarder-box settings-page">
     {toastMessage && createPortal(<div key={`${toastType}-${toastMessage}`} className={`app-toast app-toast-${toastType}`} role="status"><i className={`bi ${toastType === 'danger' ? 'bi-trash3-fill' : toastType === 'info' ? 'bi-pencil-square' : 'bi-check-circle-fill'}`} aria-hidden="true" />{toastMessage}</div>, document.body)}
@@ -383,28 +405,28 @@ export default function Settings() {
         {[
           { label: 'Total Users', count: usersSummary.totalUsers, icon: 'bi-people', tone: 'orange' },
           { label: 'Active Users', count: usersSummary.activeUsers, icon: 'bi-person-check', tone: 'green', note: 'With active login sessions' },
-          { label: 'Administrators', count: usersSummary.administrators, icon: 'bi-shield-lock', tone: 'purple' },
+          { label: 'Admins & sub-admins', count: (usersSummary.administrators || 0) + (usersSummary.subAdmins || 0), icon: 'bi-shield-lock', tone: 'purple', note: `${usersSummary.subAdmins || 0} sub-admin${usersSummary.subAdmins === 1 ? '' : 's'}` },
           { label: 'Regular Users', count: usersSummary.regularUsers, icon: 'bi-person', tone: 'blue' },
         ].map((card) => <article className={`user-summary-card user-summary-${card.tone}`} key={card.label}><span className="user-summary-icon"><i className={`bi ${card.icon}`} aria-hidden="true" /></span><div><span>{card.label}</span><strong>{usersLoading ? '…' : Number(card.count || 0).toLocaleString('en-IN')}</strong>{card.note && <small>{card.note}</small>}</div></article>)}
       </section>
       <section className="user-management-panel">
-        <div className="user-management-toolbar"><label className="user-search"><span>Search users</span><span className="user-search-input"><i className="bi bi-search" aria-hidden="true" /><input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Search by name or email" /></span></label><label className="user-role-filter"><span>Role</span><select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}><option value="">All roles</option><option value="admin">Administrator</option><option value="user">Regular user</option></select></label><button type="button" className="user-clear-filter" onClick={() => { setUserSearch(''); setRoleFilter('') }} disabled={!userSearch && !roleFilter}>Clear filters</button><span className="user-result-count">{usersLoading ? 'Loading users…' : `${visibleUsers.length} of ${users.length} users`}</span></div>
+        <div className="user-management-toolbar"><label className="user-search"><span>Search users</span><span className="user-search-input"><i className="bi bi-search" aria-hidden="true" /><input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Search by name or email" /></span></label><label className="user-role-filter"><span>Role</span><select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}><option value="">All roles</option><option value="admin">Administrator</option><option value="subadmin">Sub-admin</option><option value="user">Team member</option></select></label><button type="button" className="user-clear-filter" onClick={() => { setUserSearch(''); setRoleFilter('') }} disabled={!userSearch && !roleFilter}>Clear filters</button><span className="user-result-count">{usersLoading ? 'Loading users…' : `${visibleUsers.length} of ${users.length} users`}</span></div>
         {usersLoadError && !usersLoading && <div className="user-load-error" role="alert"><i className="bi bi-exclamation-circle" aria-hidden="true" /><span>{usersLoadError}</span><button type="button" onClick={retryUsersLoad}>Retry</button></div>}
         <div className="user-table-wrap">
           <table className="user-management-table"><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Created date</th><th>Actions</th></tr></thead><tbody>
-            {usersLoading ? Array.from({ length: 5 }, (_, index) => <tr className="user-skeleton-row" key={index}><td colSpan="5"><span /></td></tr>) : visibleUsers.map((user) => { const createdAt = user.createdAt ? new Date(user.createdAt) : null; const createdDate = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt.toLocaleDateString() : '—'; return <tr className={user.role === 'admin' ? 'user-primary-admin' : ''} key={user._id}><td><div className="managed-user-cell"><UserAvatar user={user} /><span><strong>{user.name}</strong><small>{user.role === 'admin' ? 'Workspace administrator' : 'Team member'}</small></span>{user.role === 'admin' && <span className="primary-admin-label">Primary</span>}</div></td><td className="managed-user-email">{user.email}</td><td><span className={`managed-user-role managed-user-role-${user.role}`}>{user.role === 'admin' ? 'Admin' : 'User'}</span></td><td>{createdDate}</td><td><div className="managed-user-actions">{user.role === 'admin' ? <span className="primary-admin-protected"><i className="bi bi-shield-lock" aria-hidden="true" /> Protected</span> : <><button type="button" className="user-action-edit" onClick={() => openEditUser(user)} aria-label={`Edit ${user.name}`}><i className="bi bi-pencil-square" aria-hidden="true" /> Edit</button><button type="button" className="user-action-delete" onClick={() => setUserToDelete(user)} aria-label={`Delete ${user.name}`}><i className="bi bi-trash3" aria-hidden="true" /></button></>}</div></td></tr> })}
+            {usersLoading ? Array.from({ length: 5 }, (_, index) => <tr className="user-skeleton-row" key={index}><td colSpan="5"><span /></td></tr>) : visibleUsers.map((user) => { const createdAt = user.createdAt ? new Date(user.createdAt) : null; const createdDate = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt.toLocaleDateString() : '—'; return <tr className={user.role !== 'user' ? 'user-primary-admin' : ''} key={user._id}><td><div className="managed-user-cell"><UserAvatar user={user} /><span><strong>{user.name}</strong><small>{roleDescription(user.role)}</small></span>{user.role === 'admin' && <span className="primary-admin-label">Primary</span>}</div></td><td className="managed-user-email">{user.email}</td><td><span className={`managed-user-role managed-user-role-${user.role}`}>{roleBadge(user.role)}</span></td><td>{createdDate}</td><td><div className="managed-user-actions">{!canManage(user) ? <span className="primary-admin-protected"><i className="bi bi-shield-lock" aria-hidden="true" /> Protected</span> : <><button type="button" className="user-action-edit" onClick={() => openEditUser(user)} aria-label={`Edit ${user.name}`}><i className="bi bi-pencil-square" aria-hidden="true" /> Edit</button><button type="button" className="user-action-delete" onClick={() => setUserToDelete(user)} aria-label={`Delete ${user.name}`}><i className="bi bi-trash3" aria-hidden="true" /></button></>}</div></td></tr> })}
             {!usersLoading && !error && visibleUsers.length === 0 && <tr><td colSpan="5"><div className="user-empty-state"><span><i className="bi bi-person-lines-fill" aria-hidden="true" /></span><strong>{users.length ? 'No users match these filters' : 'No users yet'}</strong><small>{users.length ? 'Try another name or role, or clear the filters.' : 'Add a user to get started with your team.'}</small>{users.length > 0 && <button type="button" onClick={() => { setUserSearch(''); setRoleFilter('') }}>Clear filters</button>}</div></td></tr>}
           </tbody></table>
         </div>
         <div className="user-mobile-list">
-          {usersLoading ? Array.from({ length: 4 }, (_, index) => <div className="user-mobile-skeleton" key={index} />) : visibleUsers.map((user) => <article className={`user-mobile-card${user.role === 'admin' ? ' is-primary-admin' : ''}`} key={user._id}><div className="user-mobile-card-top"><div className="managed-user-cell"><UserAvatar user={user} /><span><strong>{user.name}</strong><small>{user.role === 'admin' ? 'Workspace administrator' : 'Team member'}</small></span></div><span className={`managed-user-role managed-user-role-${user.role}`}>{user.role === 'admin' ? 'Admin' : 'User'}</span></div><p>{user.email}</p><small>Created {user.createdAt && !Number.isNaN(new Date(user.createdAt).getTime()) ? new Date(user.createdAt).toLocaleDateString() : '—'}</small><div className="managed-user-actions">{user.role === 'admin' ? <span className="primary-admin-protected"><i className="bi bi-shield-lock" aria-hidden="true" /> Primary admin protected</span> : <><button type="button" className="user-action-edit" onClick={() => openEditUser(user)}><i className="bi bi-pencil-square" aria-hidden="true" /> Edit</button><button type="button" className="user-action-delete" onClick={() => setUserToDelete(user)}><i className="bi bi-trash3" aria-hidden="true" /> Delete</button></>}</div></article>)}
+          {usersLoading ? Array.from({ length: 4 }, (_, index) => <div className="user-mobile-skeleton" key={index} />) : visibleUsers.map((user) => <article className={`user-mobile-card${user.role !== 'user' ? ' is-primary-admin' : ''}`} key={user._id}><div className="user-mobile-card-top"><div className="managed-user-cell"><UserAvatar user={user} /><span><strong>{user.name}</strong><small>{roleDescription(user.role)}</small></span></div><span className={`managed-user-role managed-user-role-${user.role}`}>{roleBadge(user.role)}</span></div><p>{user.email}</p><small>Created {user.createdAt && !Number.isNaN(new Date(user.createdAt).getTime()) ? new Date(user.createdAt).toLocaleDateString() : '—'}</small><div className="managed-user-actions">{!canManage(user) ? <span className="primary-admin-protected"><i className="bi bi-shield-lock" aria-hidden="true" /> {user.role === 'admin' ? 'Primary admin protected' : 'Managed by the primary admin'}</span> : <><button type="button" className="user-action-edit" onClick={() => openEditUser(user)}><i className="bi bi-pencil-square" aria-hidden="true" /> Edit</button><button type="button" className="user-action-delete" onClick={() => setUserToDelete(user)}><i className="bi bi-trash3" aria-hidden="true" /> Delete</button></>}</div></article>)}
           {!usersLoading && !error && visibleUsers.length === 0 && <div className="user-empty-state"><span><i className="bi bi-person-lines-fill" aria-hidden="true" /></span><strong>{users.length ? 'No users match these filters' : 'No users yet'}</strong><small>{users.length ? 'Try another name or role, or clear the filters.' : 'Add a user to get started with your team.'}</small></div>}
         </div>
       </section>
     </>}
 
     {!isBackupPage && !isActivityPage && <dialog className="user-create-dialog" ref={createUserDialogRef} onClose={() => setCreateUserOpen(false)} aria-labelledby="create-user-title">
-      <header className="user-dialog-header"><div><span className="activity-eyebrow">TEAM ACCESS</span><h2 id="create-user-title">Create user account</h2><p>Add a team member to your workspace.</p></div><button type="button" className="activity-dialog-close" onClick={() => createUserDialogRef.current?.close()} aria-label="Close create user dialog"><i className="bi bi-x-lg" aria-hidden="true" /></button></header>
+      <header className="user-dialog-header"><div><span className="activity-eyebrow">TEAM ACCESS</span><h2 id="create-user-title">Create user account</h2><p>Add a team member or sub-admin to your workspace.</p></div><button type="button" className="activity-dialog-close" onClick={() => createUserDialogRef.current?.close()} aria-label="Close create user dialog"><i className="bi bi-x-lg" aria-hidden="true" /></button></header>
       <form className="user-create-form" onSubmit={createUser}>
         {error && <p className="api-error" role="alert">{error}</p>}
         <label>Full name<input className="form-control" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} maxLength="100" autoComplete="name" required /></label>
@@ -412,12 +434,13 @@ export default function Settings() {
         <label>Temporary password<span className="user-password-control"><input className="form-control" type={showPassword ? 'text' : 'password'} minLength="12" autoComplete="new-password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}><i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`} aria-hidden="true" /></button></span></label>
         <div className="user-password-actions"><button type="button" className="user-password-secondary" onClick={generatePassword}><i className="bi bi-shuffle" aria-hidden="true" /> Generate secure password</button><button type="button" className="user-password-secondary" onClick={copyPassword} disabled={!form.password}><i className="bi bi-copy" aria-hidden="true" /> Copy password</button></div>
         <div className="user-password-warning"><i className="bi bi-shield-exclamation" aria-hidden="true" /><span>Share temporary passwords securely. Users should change their password after signing in.</span></div>
+        {isPrimaryAdmin && <RoleChooser value={form.role} onChange={(role) => setForm({ ...form, role })} disabled={busy} />}
         <label className="user-photo-field">Profile picture <input ref={createProfileFileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setProfileFile(event.target.files?.[0] || null)} /><small>Optional. JPG, PNG, or WebP up to 900 KB.</small></label>
-        <footer className="user-dialog-actions"><button type="button" className="back-button" disabled={busy} onClick={() => createUserDialogRef.current?.close()}>Cancel</button><button className="continue-btn" disabled={busy}>{busy ? <><span className="user-button-spinner" /> Creating…</> : <><i className="bi bi-person-plus" aria-hidden="true" /> Create User</>}</button></footer>
+        <footer className="user-dialog-actions"><button type="button" className="back-button" disabled={busy} onClick={() => createUserDialogRef.current?.close()}>Cancel</button><button className="continue-btn" disabled={busy}>{busy ? <><span className="user-button-spinner" /> Creating…</> : <><i className="bi bi-person-plus" aria-hidden="true" /> {form.role === 'subadmin' ? 'Create sub-admin' : 'Create user'}</>}</button></footer>
       </form>
     </dialog>}
 
-    {editingUser && <Modal className="dealer-delete-dialog user-edit-dialog" busy={busy} onClose={() => setEditingUser(null)} labelledBy="user-edit-title"><h2 id="user-edit-title">Edit user</h2>{error && <p className="api-error" role="alert">{error}</p>}<form className="settings-user-form" onSubmit={updateUser}><label>Name<input className="form-control" value={editForm.name} onChange={(event) => setEditForm({ ...editForm, name: event.target.value })} required /></label><label>Email<input className="form-control" type="email" value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} required /></label><label>New profile picture<input className="form-control" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setEditProfileFile(event.target.files?.[0] || null)} /></label><div className="dealer-delete-actions"><button type="button" className="back-button" disabled={busy} onClick={() => setEditingUser(null)}>Cancel</button><button className="continue-btn" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button></div></form></Modal>}
+    {editingUser && <Modal className="dealer-delete-dialog user-edit-dialog" busy={busy} onClose={() => setEditingUser(null)} labelledBy="user-edit-title"><h2 id="user-edit-title">Edit {roleLabel(editingUser.role).toLowerCase()}</h2>{error && <p className="api-error" role="alert">{error}</p>}<form className="settings-user-form" onSubmit={updateUser}><label>Name<input className="form-control" value={editForm.name} onChange={(event) => setEditForm({ ...editForm, name: event.target.value })} required /></label><label>Email<input className="form-control" type="email" value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} required /></label>{isPrimaryAdmin && <RoleChooser value={editForm.role} onChange={(role) => setEditForm({ ...editForm, role })} disabled={busy} />}<label>New profile picture<input className="form-control" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setEditProfileFile(event.target.files?.[0] || null)} /></label><div className="dealer-delete-actions"><button type="button" className="back-button" disabled={busy} onClick={() => setEditingUser(null)}>Cancel</button><button className="continue-btn" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button></div></form></Modal>}
     {userToDelete && <Modal role="alertdialog" busy={busy} onClose={() => setUserToDelete(null)} labelledBy="user-delete-title" describedBy="user-delete-description"><div className="dealer-delete-icon"><i className="bi bi-trash3" aria-hidden="true" /></div><h2 id="user-delete-title">Delete user?</h2><p id="user-delete-description">Delete <strong>{userToDelete.name}</strong> ({userToDelete.email})? They will lose access to the workspace immediately. This action cannot be undone.</p><div className="dealer-delete-actions"><button type="button" className="back-button" disabled={busy} onClick={() => setUserToDelete(null)} data-autofocus>Cancel</button><button type="button" className="confirm-delete-btn" disabled={busy} onClick={removeUser}>{busy ? 'Deleting…' : 'Delete user'}</button></div></Modal>}
   </section>
 }

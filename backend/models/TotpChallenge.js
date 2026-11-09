@@ -8,6 +8,8 @@ const totpChallengeSchema = new mongoose.Schema({
   name: { type: String, maxlength: 100 },
   passwordHash: { type: String, select: false },
   secretEncrypted: { type: String, select: false },
+  /** Whether the session created after this challenge should last 30 days. */
+  remember: { type: Boolean, default: false },
   attempts: { type: Number, default: 0 },
   expiresAt: { type: Date, required: true, expires: 0 },
 }, { timestamps: true })

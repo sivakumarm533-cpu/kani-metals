@@ -7,8 +7,7 @@ import { localDateInputValue } from '../utils/format.js'
 import Modal from '../components/Modal.jsx'
 import BillShareModal from '../components/BillShareModal.jsx'
 
-const methodLabels = { gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', upi_other: 'UPI (Other)', net_banking: 'Net Banking', cheque: 'Cheque', bank_deposit: 'Bank Deposit', cash: 'Cash', other: 'Other' }
-const received = (payment) => ['received', 'cleared'].includes(payment.paymentStatus)
+const methodLabels = { gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', upi_other: 'UPI (Other)', net_banking: 'Net Banking', cheque: 'Cheque', bank_deposit: 'Bank Deposit', cash: 'Cash', other: 'Other', advance: 'From advance' }
 const money = (paise = 0) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(paise) / 100)
 const dateLabel = (value) => value ? new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 const billRef = (bill) => `BILL-${new Date(bill.issuedDate).toISOString().slice(0, 10).replaceAll('-', '')}-${String(bill._id).slice(-6).toUpperCase()}`
@@ -32,21 +31,13 @@ function PaymentProgress({ total, paid }) {
   return <section className="payment-progress-card"><div className="payment-section-heading"><div><span className="payment-eyebrow">PAYMENT OVERVIEW</span><h2>Received and pending</h2></div><span className="payment-percent">{percent.toFixed(1)}% received</span></div><div className="payment-progress-track" role="img" aria-label={`${percent.toFixed(1)} percent received`}><span style={{ width: `${percent}%` }} /></div><div className="payment-progress-legend"><span><i className="payment-dot received-dot" />Received <strong>{money(paid)}</strong></span><span><i className="payment-dot pending-dot" />Pending <strong>{money(Math.max(0, total - paid))}</strong></span></div></section>
 }
 
-function MonthlyChart({ months }) {
-  const max = Math.max(1, ...months.flatMap((month) => [month.billedPaise, month.receivedPaise, month.pendingPaise]))
-  return <section className="payment-chart-card"><div className="payment-section-heading"><div><span className="payment-eyebrow">MONTHLY</span><h2>Bills and payments</h2></div></div><div className="payment-chart-legend"><span><i className="billed-dot" />Billed</span><span><i className="received-dot" />Received</span><span><i className="pending-dot" />Pending</span></div><div className="payment-month-chart">{months.map((month) => <div className="payment-month-column" key={month.month} title={`${month.label}: billed ${money(month.billedPaise)}, received ${money(month.receivedPaise)}, pending ${money(month.pendingPaise)}`}><div className="payment-month-bars"><span className="billed-bar" style={{ height: `${Math.max(month.billedPaise ? 3 : 0, month.billedPaise / max * 140)}px` }} /><span className="received-bar" style={{ height: `${Math.max(month.receivedPaise ? 3 : 0, month.receivedPaise / max * 140)}px` }} /><span className="pending-bar" style={{ height: `${Math.max(month.pendingPaise ? 3 : 0, month.pendingPaise / max * 140)}px` }} /></div><small>{month.label}</small></div>)}</div></section>
-}
-
-function MethodChart({ methods, total }) {
-  const rows = [...methods].sort((a, b) => b.amountPaise - a.amountPaise)
-  return <section className="payment-chart-card"><div className="payment-section-heading"><div><span className="payment-eyebrow">RECEIVED BY METHOD</span><h2>Payment methods</h2></div></div>{rows.length ? <div className="payment-method-list">{rows.map((row) => <div className="payment-method-row" key={row.method}><div><strong>{methodLabels[row.method] || row.method}</strong><span>{total ? `${(row.amountPaise / total * 100).toFixed(1)}%` : '0%'}</span></div><div className="payment-method-track"><span style={{ width: `${total ? row.amountPaise / total * 100 : 0}%` }} /></div><b>{money(row.amountPaise)}</b></div>)}</div> : <p className="payment-empty-note">Cleared and received payments will appear here.</p>}</section>
-}
-
 function PaymentModal({ dealers, initialDealer, initialBill, onClose, onSaved, notify }) {
   const [dealerId, setDealerId] = useState(initialDealer || '')
   const [billId, setBillId] = useState(initialBill || '')
   const [billData, setBillData] = useState({ dealerId: '', bills: [] })
   const [method, setMethod] = useState('gpay')
+  // No default: when a payment is more than the balance, the user must pick round-off or advance.
+  const [extraHandling, setExtraHandling] = useState('')
   const [form, setForm] = useState(() => ({ amount: '', paymentDate: localDateInputValue(), reference: '', notes: '', bankName: '', chequeDate: '' }))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -60,13 +51,27 @@ function PaymentModal({ dealers, initialDealer, initialBill, onClose, onSaved, n
   const bill = bills.find((row) => row._id === billId)
   const chosenDealer = dealers.find((row) => row.dealer._id === dealerId)
   const state = chosenDealer?.bills.find((row) => row._id === billId)
+  const advancePaise = chosenDealer?.dealer.advancePaise || 0
+  const fromAdvance = method === 'advance'
+  const pendingPaise = bill ? state?.pendingPaise ?? Number(decimalToCents(bill.total) || 0n) : null
+  const enteredPaise = /^\d+(\.\d{1,2})?$/.test(form.amount) ? Math.round(Number(form.amount) * 100) : 0
+  // Paying more than the balance is allowed; the extra becomes the dealer's advance.
+  const extraPaise = pendingPaise !== null && !fromAdvance ? Math.max(0, enteredPaise - pendingPaise) : 0
+  const advanceLimitPaise = pendingPaise !== null ? Math.min(advancePaise, pendingPaise) : advancePaise
+
+  function chooseMethod(next) {
+    setMethod(next)
+    if (next === 'advance' && advanceLimitPaise > 0) setForm((current) => ({ ...current, amount: (advanceLimitPaise / 100).toFixed(2) }))
+  }
+
   async function submit(event) {
     event.preventDefault()
     if (busy) return
+    if (extraPaise > 0 && !extraHandling) { setError('Choose Round off or Make it advance for the extra amount.'); return }
     setBusy(true); setError('')
     try {
-      await apiRequest('/payments', { method: 'POST', body: JSON.stringify({ dealer: dealerId, bill: billId, amount: form.amount, paymentMethod: method, transactionReference: form.reference, paymentDate: form.paymentDate, notes: form.notes, methodDetails: { bankName: form.bankName, chequeDate: form.chequeDate } }) })
-      notify(method === 'cheque' ? 'Cheque recorded. It will count after clearing.' : 'Payment recorded successfully.', 'success')
+      const result = await apiRequest('/payments', { method: 'POST', body: JSON.stringify({ dealer: dealerId, bill: billId, amount: form.amount, paymentMethod: method, extraHandling, transactionReference: form.reference, paymentDate: form.paymentDate, notes: form.notes, methodDetails: { bankName: form.bankName, chequeDate: form.chequeDate } }) })
+      notify(result.message || 'Payment recorded successfully.', 'success')
       await onSaved(); onClose()
     } catch (issue) { setError(issue.message) } finally { setBusy(false) }
   }
@@ -75,9 +80,23 @@ function PaymentModal({ dealers, initialDealer, initialBill, onClose, onSaved, n
   return <Modal className="payment-modal" backdropClassName="payment-modal-backdrop" busy={busy} onClose={onClose} labelledBy="payment-modal-title"><div className="payment-modal-heading"><div><span className="payment-eyebrow">NEW PAYMENT</span><h2 id="payment-modal-title">Record a payment</h2></div><button type="button" className="payment-close" aria-label="Close dialog" onClick={onClose}>×</button></div><form onSubmit={submit} className="payment-form">
     <label>Dealer<select required value={dealerId} onChange={(event) => { setDealerId(event.target.value); setBillId(''); setError('') }}><option value="">Choose a dealer</option>{dealers.map(({ dealer }) => <option key={dealer._id} value={dealer._id}>{dealer.name} · {dealer.phone}</option>)}</select></label>
     <label>Bill<select required disabled={!dealerId} value={billId} onChange={(event) => setBillId(event.target.value)}><option value="">Choose a bill</option>{bills.map((row) => { const summary = chosenDealer?.bills.find((entry) => entry._id === row._id); return <option key={row._id} value={row._id}>{billRef(row)} · Pending {money(summary?.pendingPaise ?? Math.round(row.total * 100))}</option> })}</select></label>
-    {bill && <div className="payment-bill-preview"><span>Bill amount<strong>{money(Number(decimalToCents(bill.total) || 0n))}</strong></span><span>Already received<strong>{money(state?.receivedPaise || 0)}</strong></span><span>Remaining balance<strong>{money(state?.pendingPaise ?? Number(decimalToCents(bill.total) || 0n))}</strong></span></div>}
-    <div className="payment-form-grid"><label>Payment amount (₹)<input required type="number" min="0.01" step="0.01" max={state ? (state.pendingPaise / 100).toFixed(2) : undefined} value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} /></label><label>Payment date<input required type="date" value={form.paymentDate} onChange={(event) => setForm({ ...form, paymentDate: event.target.value })} /></label></div>
-    <label>Payment method<select required value={method} onChange={(event) => setMethod(event.target.value)}>{Object.entries(methodLabels).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
+    {bill && <div className="payment-bill-preview"><span>Bill amount<strong>{money(Number(decimalToCents(bill.total) || 0n))}</strong></span><span>Already received<strong>{money(state?.receivedPaise || 0)}</strong></span><span>Remaining balance<strong>{money(pendingPaise)}</strong></span></div>}
+    {advancePaise > 0 && <p className="payment-advance-note"><i className="bi bi-piggy-bank" aria-hidden="true" /> This dealer has <strong>{money(advancePaise)}</strong> advance (extra paid earlier). Choose <strong>From advance</strong> to use it on this bill.</p>}
+    <div className="payment-form-grid"><label>Payment amount (₹)<input required type="number" min="0.01" step="0.01" max={fromAdvance ? (advanceLimitPaise / 100).toFixed(2) : undefined} value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} /></label><label>Payment date<input required type="date" value={form.paymentDate} onChange={(event) => setForm({ ...form, paymentDate: event.target.value })} /></label></div>
+    {extraPaise > 0 && <fieldset className="payment-extra-choice">
+      <legend><i className="bi bi-info-circle-fill" aria-hidden="true" /> This is <strong>{money(extraPaise)} more</strong> than the balance. The bill will be marked paid. What should happen to the extra {money(extraPaise)}?{method === 'cheque' ? ' (Applied when the cheque clears.)' : ''}</legend>
+      <label className={`payment-extra-option${extraHandling === 'roundoff' ? ' is-selected' : ''}`}>
+        <input type="radio" name="extraHandling" value="roundoff" checked={extraHandling === 'roundoff'} onChange={() => setExtraHandling('roundoff')} required />
+        <i className="bi bi-scissors" aria-hidden="true" />
+        <span><strong>Round off</strong><small>Ignore the extra. Nothing is carried forward.</small></span>
+      </label>
+      <label className={`payment-extra-option${extraHandling === 'advance' ? ' is-selected' : ''}`}>
+        <input type="radio" name="extraHandling" value="advance" checked={extraHandling === 'advance'} onChange={() => setExtraHandling('advance')} />
+        <i className="bi bi-piggy-bank" aria-hidden="true" />
+        <span><strong>Make it advance</strong><small>Keep {money(extraPaise)} for {chosenDealer?.dealer.name || 'this dealer'} and use it on their next bill.</small></span>
+      </label>
+    </fieldset>}
+    <label>Payment method<select required value={method} onChange={(event) => chooseMethod(event.target.value)}>{Object.entries(methodLabels).filter(([key]) => key !== 'advance' || advancePaise > 0).map(([key, label]) => <option value={key} key={key}>{key === 'advance' ? `${label} (${money(advancePaise)} available)` : label}</option>)}</select></label>
     {needsReference && <label>{referenceLabel}<input required={['cheque', 'bank_deposit'].includes(method)} value={form.reference} onChange={(event) => setForm({ ...form, reference: event.target.value })} placeholder={method === 'cheque' ? 'Cheque number' : 'Enter reference if available'} /></label>}
     {['cheque', 'bank_deposit'].includes(method) && <label>Bank name<input required value={form.bankName} onChange={(event) => setForm({ ...form, bankName: event.target.value })} /></label>}
     {method === 'cheque' && <label>Cheque date<input required type="date" value={form.chequeDate} onChange={(event) => setForm({ ...form, chequeDate: event.target.value })} /></label>}
@@ -98,10 +117,6 @@ export default function DealerPayments() {
   const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [methodFilter, setMethodFilter] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [sort, setSort] = useState('pending')
   const [modal, setModal] = useState(false)
   const [reverseTarget, setReverseTarget] = useState(null)
   const [reverseReason, setReverseReason] = useState('')
@@ -139,30 +154,18 @@ export default function DealerPayments() {
   const dealerRows = useMemo(() => overview?.dealers || [], [overview])
   const detailBill = details?.bills.find((row) => String(row.bill._id) === selectedBillId) || null
   const billPayments = details?.payments.filter((payment) => !selectedBillId || String(payment.bill?._id || payment.bill) === selectedBillId) || []
+  // The list shows only who each dealer is; amounts and history open on the dealer's own page.
   const filteredRows = useMemo(() => {
-    const filteredPaymentRows = (overview?.payments || []).filter((payment) => {
-      const date = new Date(payment.paymentDate)
-      return (!from || date >= new Date(`${from}T00:00:00`)) && (!to || date <= new Date(`${to}T23:59:59.999`)) && (!methodFilter || payment.paymentMethod === methodFilter)
-    })
-    const activityByDealer = new Map()
-    for (const payment of filteredPaymentRows) {
-      const id = String(payment.dealer)
-      activityByDealer.set(id, (activityByDealer.get(id) || 0) + 1)
-    }
     const search = query.trim().toLowerCase()
-    let rows = dealerRows.filter((row) => {
-      if (search && !`${row.dealer.name} ${row.dealer.phone} ${row.dealer.location}`.toLowerCase().includes(search)) return false
-      if (statusFilter !== 'all' && row.status !== statusFilter) return false
-      if ((from || to || methodFilter) && !activityByDealer.has(String(row.dealer._id))) return row.billCount === 0 && statusFilter === 'unpaid'
-      return true
-    }).map((row) => ({ ...row, filteredReceivedPaise: filteredPaymentRows.filter((payment) => String(payment.dealer) === String(row.dealer._id) && received(payment)).reduce((sum, payment) => sum + payment.amountPaise, 0) }))
-    rows = [...rows]
-    rows.sort((a, b) => sort === 'received' ? b.receivedPaise - a.receivedPaise : sort === 'name' ? a.dealer.name.localeCompare(b.dealer.name) : b.pendingPaise - a.pendingPaise)
-    return rows
-  }, [overview, dealerRows, from, to, methodFilter, query, statusFilter, sort])
+    return dealerRows
+      .filter((row) => !search || `${row.dealer.name} ${row.dealer.phone} ${row.dealer.location || ''}`.toLowerCase().includes(search))
+      .filter((row) => statusFilter === 'all' || (statusFilter === 'pending' ? row.pendingPaise > 0 : row.pendingPaise === 0))
+      .sort((a, b) => a.dealer.name.localeCompare(b.dealer.name))
+  }, [dealerRows, query, statusFilter])
+  const pendingCount = dealerRows.filter((row) => row.pendingPaise > 0).length
 
   async function changeCheque(payment, status) {
-    try { await apiRequest(`/payments/${payment._id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); notify(status === 'cleared' ? 'Cheque cleared and added to received total.' : 'Cheque marked as bounced.', status === 'cleared' ? 'success' : 'danger'); await refresh() }
+    try { const result = await apiRequest(`/payments/${payment._id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); notify(result.message || (status === 'cleared' ? 'Cheque cleared and added to received total.' : 'Cheque marked as bounced.'), status === 'cleared' ? 'success' : 'danger'); await refresh() }
     catch (issue) { notify(issue.message, 'danger') }
   }
   async function reversePayment() {
@@ -176,30 +179,41 @@ export default function DealerPayments() {
     const text = `Hello ${details?.dealer.name || 'Dealer'}, this is a payment reminder from Kani Metals. Your outstanding balance is ${money(details?.summary.pendingPaise)} across ${pending.map((row) => billRef(row.bill)).join(', ') || 'your pending bills'}. Please let us know when payment can be arranged. Thank you.`
     try { await navigator.clipboard.writeText(text); notify('Payment reminder copied. You can paste it into WhatsApp.', 'success') } catch { notify('Could not copy the reminder. Please check browser clipboard permission.', 'danger') }
   }
-  function resetFilters() { setQuery(''); setStatusFilter('all'); setMethodFilter(''); setFrom(''); setTo(''); setSort('pending') }
   const isBillView = Boolean(dealerId && selectedBillId && detailBill)
   const totalPaise = details?.summary.totalPaise || 0
   const receivedPaise = details?.summary.receivedPaise || 0
-  const summary = overview?.summary
 
   return <section className="boarder-box dealer-payment-page">
     {toastVisible && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     {error && <div className="payment-error" role="alert"><i className="bi bi-exclamation-circle" />{error}<button type="button" className="back-button" onClick={refresh}>Retry</button></div>}
     {!dealerId ? <>
-      <header className="payment-page-heading"><div><span className="payment-eyebrow"><i className="bi bi-wallet2" /> KANI METALS · ACCOUNTS</span><h1>Dealer Payment Tracking</h1><p>Track dealer bills, payments received and outstanding balances.</p></div><button type="button" className="continue-btn" onClick={() => setModal(true)}><i className="bi bi-plus-lg" /> Record Payment</button></header>
-      {!overview && !error ? <div className="payment-loading-grid">{Array.from({ length: 5 }, (_, index) => <div className="payment-skeleton" key={index} />)}</div> : overview && <>
-        <div className="payment-summary-grid"><SummaryCard icon="bi-receipt" label="Total bill amount" value={money(summary.totalBillPaise)} /><SummaryCard icon="bi-cash-stack" label="Amount received" value={money(summary.totalReceivedPaise)} tone="received" /><SummaryCard icon="bi-hourglass-split" label="Balance pending" value={money(summary.pendingPaise)} tone="pending" /><SummaryCard icon="bi-calendar-check" label="Received today" value={money(summary.todayReceivedPaise)} tone="received" /><SummaryCard icon="bi-people" label="Dealers with pending bills" value={summary.pendingDealerCount} tone="pending" /></div>
-        <PaymentProgress total={summary.totalBillPaise} paid={summary.totalReceivedPaise} />
-        <div className="payment-charts-grid"><MonthlyChart months={overview.months} /><MethodChart methods={overview.methods} total={summary.totalReceivedPaise} /></div>
-        <section className="payment-table-card"><div className="payment-section-heading"><div><span className="payment-eyebrow">DEALER ACCOUNTS</span><h2>Payment overview</h2></div><span className="payment-result-count">{filteredRows.length} dealers</span></div>
-          <div className="payment-filters"><label><span>Search dealer</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name or phone number" /></label><label><span>Status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="unpaid">Unpaid</option><option value="no-bills">No bills</option></select></label><label><span>Payment method</span><select value={methodFilter} onChange={(event) => setMethodFilter(event.target.value)}><option value="">All methods</option>{Object.entries(methodLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label><span>Payment from</span><input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label><label><span>Payment to</span><input type="date" value={to} onChange={(event) => setTo(event.target.value)} /></label><label><span>Sort by</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="pending">Highest pending</option><option value="received">Highest received</option><option value="name">Dealer name</option></select></label><button type="button" className="back-button" onClick={resetFilters}>Reset</button></div>
-          <div className="payment-table-wrap"><table className="payment-table"><thead><tr><th>Dealer</th><th>Total bills</th><th>Total amount</th><th>Received</th><th>Pending</th><th>Status</th><th>Action</th></tr></thead><tbody>{filteredRows.map((row) => <tr key={row.dealer._id}><td><Link to={`/dealer-payments/${row.dealer._id}`} className="payment-dealer-link"><span className="payment-avatar">{row.dealer.profileImage ? <img src={row.dealer.profileImage} alt="" /> : row.dealer.name.slice(0, 2).toUpperCase()}</span><span><strong>{row.dealer.name}</strong><small>{row.dealer.phone}</small></span></Link></td><td>{row.billCount}</td><td>{money(row.totalPaise)}</td><td><strong className="payment-text-received">{money(row.receivedPaise)}</strong>{(from || to || methodFilter) && <small className="payment-filtered-value">Filtered: {money(row.filteredReceivedPaise)}</small>}</td><td><strong className={row.pendingPaise ? 'payment-text-pending' : 'payment-text-received'}>{money(row.pendingPaise)}</strong></td><td><PaymentStatusBadge status={row.status} /></td><td><Link className="payment-view-action" to={`/dealer-payments/${row.dealer._id}`}>View details <i className="bi bi-arrow-right" /></Link></td></tr>)}{!filteredRows.length && <tr><td colSpan="7"><div className="payment-empty-state"><i className="bi bi-person-lines-fill" /><strong>No dealer payment records match</strong><span>Change the filters or add a dealer bill.</span></div></td></tr>}</tbody></table></div>
-        </section>
-      </>}
+      <header className="payment-page-heading"><div><span className="payment-eyebrow"><i className="bi bi-wallet2" /> KANI METALS · ACCOUNTS</span><h1>Dealer Payments</h1><p>Choose a dealer to see and record their payments.</p></div><button type="button" className="continue-btn" onClick={() => setModal(true)}><i className="bi bi-plus-lg" /> Record Payment</button></header>
+      {!overview && !error ? <div className="dealer-pick-grid">{Array.from({ length: 6 }, (_, index) => <div className="payment-skeleton dealer-pick-skeleton" key={index} />)}</div> : overview && <section className="dealer-pick-panel">
+        <div className="dealer-pick-toolbar">
+          <label className="dealer-pick-search"><i className="bi bi-search" aria-hidden="true" /><span className="visually-hidden">Search dealer</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name, phone or place" /></label>
+          <div className="dealer-pick-chips" role="radiogroup" aria-label="Show dealers">
+            {[['all', `All (${dealerRows.length})`], ['pending', `Balance due (${pendingCount})`], ['clear', `No balance (${dealerRows.length - pendingCount})`]].map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={statusFilter === id} className={`dealer-pick-chip${statusFilter === id ? ' is-active' : ''}`} onClick={() => setStatusFilter(id)}>{label}</button>)}
+          </div>
+        </div>
+        <p className="dealer-pick-hint"><i className="bi bi-hand-index" aria-hidden="true" /> Tap a dealer to see their bills, payments and balance.</p>
+        {filteredRows.length ? <ul className="dealer-pick-grid">{filteredRows.map(({ dealer, pendingPaise, billCount, advancePaise }) => <li key={dealer._id}>
+          <Link className="dealer-pick-card" to={`/dealer-payments/${dealer._id}`}>
+            <span className="payment-avatar dealer-pick-avatar">{dealer.profileImage ? <img src={dealer.profileImage} alt="" loading="lazy" /> : dealer.name.slice(0, 2).toUpperCase()}</span>
+            <span className="dealer-pick-text">
+              <strong>{dealer.name}</strong>
+              <small><i className="bi bi-telephone" aria-hidden="true" /> {dealer.phone}{dealer.location ? <> · <i className="bi bi-geo-alt" aria-hidden="true" /> {dealer.location}</> : null}</small>
+            </span>
+            <span className={`dealer-pick-status${pendingPaise > 0 ? ' is-due' : billCount ? ' is-clear' : ''}`}>{pendingPaise > 0 ? 'Balance due' : billCount ? 'Settled' : 'No bills'}</span>
+            {advancePaise > 0 && <span className="dealer-pick-status is-advance" title="Extra paid, used on the next bill">Advance</span>}
+            <i className="bi bi-chevron-right dealer-pick-chevron" aria-hidden="true" />
+          </Link>
+        </li>)}</ul> : <div className="payment-empty-state"><i className="bi bi-person-lines-fill" /><strong>No dealers match</strong><span>Try another name or phone number.</span></div>}
+      </section>}
     </> : <>
       {!details && !error ? <div className="payment-loading-grid"><div className="payment-skeleton" /><div className="payment-skeleton" /></div> : details && <>
         <nav className="payment-breadcrumbs"><Link to="/dashboard">Dashboard</Link><i className="bi bi-chevron-right" /><Link to="/dealer-payments">Dealer Payments</Link><i className="bi bi-chevron-right" /><span>{details.dealer.name}</span>{isBillView && <><i className="bi bi-chevron-right" /><strong>{billRef(detailBill.bill)}</strong></>}</nav>
         <header className="payment-page-heading"><div><span className="payment-eyebrow">DEALER PAYMENT ACCOUNT</span><h1>{isBillView ? `Bill ${billRef(detailBill.bill)}` : details.dealer.name}</h1><p>{details.dealer.phone}{details.dealer.location ? ` · ${details.dealer.location}` : ''}</p></div><button type="button" className="continue-btn" onClick={() => setModal(true)}><i className="bi bi-plus-lg" /> Record Payment</button></header>
+        {details.summary.advancePaise > 0 && <p className="payment-advance-banner"><i className="bi bi-piggy-bank" aria-hidden="true" /> <span><strong>{money(details.summary.advancePaise)} advance</strong> — extra paid earlier. It will be used automatically on this dealer's next bill, or choose <strong>From advance</strong> when recording a payment.</span></p>}
         <div className="payment-summary-grid payment-detail-summary"><SummaryCard icon="bi-receipt" label={isBillView ? 'Bill amount' : 'Total bill amount'} value={money(isBillView ? detailBill.totalPaise : totalPaise)} /><SummaryCard icon="bi-cash-stack" label="Amount received" value={money(isBillView ? detailBill.receivedPaise : receivedPaise)} tone="received" /><SummaryCard icon="bi-hourglass-split" label="Balance pending" value={money(isBillView ? detailBill.pendingPaise : details.summary.pendingPaise)} tone="pending" /><SummaryCard icon="bi-calendar-check" label="Last payment" value={dateLabel(details.summary.lastPaymentDate)} /><SummaryCard icon="bi-receipt-cutoff" label="Pending bills" value={details.summary.pendingBills} tone="pending" /></div>
         {!isBillView && <PaymentProgress total={totalPaise} paid={receivedPaise} />}
         {isBillView ? <>
@@ -222,5 +236,5 @@ function PaymentHistoryRow({ payment, onCheque, onReverse, showBill = true }) {
   const methodDetail = [payment.methodDetails?.bankName, payment.methodDetails?.chequeDate ? `Cheque date: ${dateLabel(payment.methodDetails.chequeDate)}` : ''].filter(Boolean).join(' · ')
   const billId = payment.bill?._id || payment.bill
   const dealerId = payment.dealer?._id || payment.dealer
-  return <tr><td data-label="Date">{dateLabel(payment.paymentDate)}</td>{showBill && <td data-label="Bill"><Link className="payment-bill-link" to={`/dealer-payments/${dealerId}?bill=${billId}`}>{payment.bill?.issuedDate ? billRef(payment.bill) : String(billId).slice(-6).toUpperCase()}</Link></td>}<td data-label="Amount"><strong>{money(payment.amountPaise)}</strong></td><td data-label="Method">{methodLabels[payment.paymentMethod] || payment.paymentMethod}</td><td data-label="Reference"><span>{payment.transactionReference || '—'}</span>{payment.notes && <small>{payment.notes}</small>}{methodDetail && <small>{methodDetail}</small>}</td><td data-label="Status"><PaymentStatusBadge status={payment.paymentStatus} /></td><td className="payment-row-actions" data-label="Actions">{payment.paymentMethod === 'cheque' && payment.paymentStatus === 'pending' && <><button type="button" onClick={() => onCheque(payment, 'cleared')}>Clear</button><button type="button" className="payment-bounce-btn" onClick={() => onCheque(payment, 'bounced')}>Bounced</button></>}{payment.paymentStatus !== 'reversed' && <button type="button" className="payment-reverse-btn" onClick={onReverse}>Reverse</button>}</td></tr>
+  return <tr><td data-label="Date">{dateLabel(payment.paymentDate)}</td>{showBill && <td data-label="Bill"><Link className="payment-bill-link" to={`/dealer-payments/${dealerId}?bill=${billId}`}>{payment.bill?.issuedDate ? billRef(payment.bill) : String(billId).slice(-6).toUpperCase()}</Link></td>}<td data-label="Amount"><strong>{money(payment.amountPaise)}</strong>{payment.excessPaise > 0 && <small className="payment-excess-note">{money(payment.amountPaise - payment.excessPaise)} to bill · {money(payment.excessPaise)} {payment.excessType === 'roundoff' ? 'rounded off' : 'kept as advance'}</small>}</td><td data-label="Method">{methodLabels[payment.paymentMethod] || payment.paymentMethod}</td><td data-label="Reference"><span>{payment.transactionReference || '—'}</span>{payment.notes && <small>{payment.notes}</small>}{methodDetail && <small>{methodDetail}</small>}</td><td data-label="Status"><PaymentStatusBadge status={payment.paymentStatus} /></td><td className="payment-row-actions" data-label="Actions">{payment.paymentMethod === 'cheque' && payment.paymentStatus === 'pending' && <><button type="button" onClick={() => onCheque(payment, 'cleared')}>Clear</button><button type="button" className="payment-bounce-btn" onClick={() => onCheque(payment, 'bounced')}>Bounced</button></>}{payment.paymentStatus !== 'reversed' && <button type="button" className="payment-reverse-btn" onClick={onReverse}>Reverse</button>}</td></tr>
 }
