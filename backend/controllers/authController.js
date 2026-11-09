@@ -10,7 +10,7 @@ import { decryptTotpSecret, encryptTotpSecret, hashChallenge, makeTotpQr, newCha
 import { recordActivity } from '../utils/activity.js'
 import { profilePictureDataUrl } from '../utils/profilePicture.js'
 import { THEME_IDS } from '../models/AppSetting.js'
-import { BOTTOM_NAV_KEYS, BOTTOM_NAV_MAX, DEFAULT_BOTTOM_NAV, NAV_STYLES } from '../config/features.js'
+import { BOTTOM_NAV_KEYS, BOTTOM_NAV_MAX, DASHBOARD_WIDGETS, DEFAULT_BOTTOM_NAV, FEATURE_KEYS, NAV_STYLES } from '../config/features.js'
 import { forgetSession, forgetUserSessions } from '../middleware/auth.js'
 
 const allowedAdminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase()
@@ -28,8 +28,11 @@ const publicPreferences = (preferences = {}) => ({
   theme: preferences.theme || '',
   bottomNav: Array.isArray(preferences.bottomNav) && preferences.bottomNav.length ? [...preferences.bottomNav] : [...DEFAULT_BOTTOM_NAV],
   navStyle: preferences.navStyle || 'light',
+  dashboardHidden: Array.isArray(preferences.dashboardHidden) ? preferences.dashboardHidden.filter((id) => DASHBOARD_WIDGETS.includes(id)) : [],
 })
-const publicUser = (user) => ({ _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, profilePicture: user.profilePicture || '', preferences: publicPreferences(user.preferences) })
+/** Only the screens an admin set for this person; anything missing follows the workspace setting. */
+const publicFeatureAccess = (access = {}) => Object.fromEntries(FEATURE_KEYS.filter((key) => typeof access?.[key] === 'boolean').map((key) => [key, access[key]]))
+const publicUser = (user) => ({ _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, profilePicture: user.profilePicture || '', preferences: publicPreferences(user.preferences), featureAccess: publicFeatureAccess(user.featureAccess) })
 const MANAGEABLE_ROLES = ['user', 'subadmin']
 // Compared against when an email is unknown so failed logins take the same time either way.
 const timingSafetyHash = bcrypt.hashSync(randomBytes(24).toString('hex'), 12)
@@ -265,7 +268,7 @@ export async function logout(req, res, next) {
 
 export async function currentUser(req, res, next) {
   try {
-    const user = await User.findById(req.user._id).select('name email role createdAt preferences').select('+profilePicture')
+    const user = await User.findById(req.user._id).select('name email role createdAt preferences featureAccess').select('+profilePicture')
     if (!user) return res.status(401).json({ message: 'This account is no longer available.' })
     res.json({ user: publicUser(user) })
   } catch (error) { next(error) }
@@ -273,7 +276,7 @@ export async function currentUser(req, res, next) {
 
 export async function listUsers(_req, res, next) {
   try {
-    const users = await User.find().select('name email role createdAt').select('+profilePicture').sort({ createdAt: -1 })
+    const users = await User.find().select('name email role createdAt featureAccess').select('+profilePicture').sort({ createdAt: -1 })
     res.json(users.map(publicUser))
   }
   catch (error) { next(error) }
@@ -349,6 +352,33 @@ export async function updateUser(req, res, next) {
   } catch (error) { next(error) }
 }
 
+/**
+ * Admins and sub-admins choose which screens one team member can use.
+ * Body: { featureAccess: { [featureKey]: true | false | null } } — null goes back to the workspace setting.
+ */
+export async function updateUserFeatureAccess(req, res, next) {
+  try {
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ message: 'User not found.' })
+    if (user.role !== 'user') return res.status(400).json({ message: 'Administrators and sub-admins always have every screen.' })
+    const input = req.body?.featureAccess
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return res.status(400).json({ message: 'Menu access settings are invalid.' })
+    const before = user.toObject()
+    const access = publicFeatureAccess(user.featureAccess)
+    for (const [key, value] of Object.entries(input)) {
+      if (!FEATURE_KEYS.includes(key) || (value !== null && typeof value !== 'boolean')) return res.status(400).json({ message: 'Menu access settings are invalid.' })
+      if (value === null) delete access[key]
+      else access[key] = value
+    }
+    user.featureAccess = access
+    await user.save()
+    // Their next request must see the new access straight away.
+    forgetUserSessions(user._id)
+    await recordActivity(req, { action: 'update', entity: 'user', entityId: user._id, entityLabel: `Menu access for ${user.name}`, before, after: user })
+    res.json(publicUser(user))
+  } catch (error) { next(error) }
+}
+
 export async function updateOwnProfilePicture(req, res, next) {
   try {
     if (!req.file) return res.status(400).json({ message: 'Choose a profile picture to upload.' })
@@ -396,6 +426,10 @@ function preferencesFromBody(input, current) {
   if (input.navStyle !== undefined) {
     if (!NAV_STYLES.includes(input.navStyle)) return { error: 'Choose a bottom bar style.' }
     next.navStyle = input.navStyle
+  }
+  if (input.dashboardHidden !== undefined) {
+    if (!Array.isArray(input.dashboardHidden) || input.dashboardHidden.some((id) => !DASHBOARD_WIDGETS.includes(id))) return { error: 'Dashboard settings are invalid.' }
+    next.dashboardHidden = [...new Set(input.dashboardHidden)]
   }
   return { preferences: next }
 }

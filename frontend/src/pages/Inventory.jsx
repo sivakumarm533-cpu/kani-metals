@@ -191,20 +191,6 @@ function HistoryModal({ item, onClose }) {
   )
 }
 
-/** Stock as a bar, scaled to the largest stock of the same unit. Low stock is amber and labelled. */
-function StockBar({ item, max }) {
-  const low = isLow(item)
-  const percent = max > 0 ? Math.max(item.quantity > 0 ? 3 : 0, Math.round((item.quantity / max) * 100)) : 0
-  return (
-    <span className="stock-bar-cell">
-      <span className="stock-bar-value"><b>{qty(item.quantity)}</b> {item.unit}</span>
-      <span className={`stock-bar${low ? ' is-low' : ''}`} role="meter" aria-valuemin={0} aria-valuemax={max || 0} aria-valuenow={item.quantity} aria-label={`${item.name} stock`} title={`${qty(item.quantity)} ${item.unit} · ${percent}% of the largest ${item.unit} stock`}>
-        <span style={{ width: `${percent}%` }} />
-      </span>
-    </span>
-  )
-}
-
 function Inventory() {
   const { products, loading, error, retry } = useProducts()
   const [search, setSearch] = useState('')
@@ -215,12 +201,6 @@ function Inventory() {
 
   const categories = useMemo(() => [...new Set([...CATEGORIES, ...products.map((item) => item.category).filter(Boolean)])], [products])
   const lowCount = products.filter(isLow).length
-  // Bars compare items that use the same unit (kg with kg, pcs with pcs).
-  const maxByUnit = useMemo(() => {
-    const map = new Map()
-    for (const item of products) map.set(item.unit, Math.max(map.get(item.unit) || 0, item.quantity || 0))
-    return map
-  }, [products])
   const shown = useMemo(() => {
     const term = search.trim().toLowerCase()
     return products.filter((item) => (filter === 'all' || isLow(item)) && (!term || `${item.name} ${item.category}`.toLowerCase().includes(term)))
@@ -298,7 +278,7 @@ function Inventory() {
                       <span><strong>{item.name}</strong><small>{item.category}</small></span>
                     </span>
                   </td>
-                  <td data-label="Stock" className="inventory-qty"><StockBar item={item} max={maxByUnit.get(item.unit)} /></td>
+                  <td data-label="Stock" className="inventory-qty"><span className="stock-value"><b>{qty(item.quantity)}</b> {item.unit}</span></td>
                   <td data-label="Price">{item.price ? `${formatRupees(item.price)} / ${item.unit}` : '—'}</td>
                   <td data-label="Status"><span className={`stock-pill${low ? ' is-low' : ''}`}>{low ? 'Low stock' : 'In stock'}</span></td>
                   <td data-label="Last stock update"><span className="inventory-updated">{shortDate(item.stockUpdatedAt || item.updatedAt)}{item.stockUpdatedByName && <small>{item.stockUpdatedByName}</small>}</span></td>

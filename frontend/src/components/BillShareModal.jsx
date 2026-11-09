@@ -17,10 +17,10 @@ function downloadBlob(blob, name) {
 
 /**
  * Preview and send a dealer bill on WhatsApp: the bill image (template layout) with
- * total, paid (advance/partial) and balance due, plus a text summary.
+ * total, paid (advance/partial) and balance due. The text summary is sent only with "Send as text".
  */
 export default function BillShareModal({ dealerId, billId, onClose }) {
-  const { business } = useAppSettings()
+  const { business, billTemplate } = useAppSettings()
   const [details, setDetails] = useState(null)
   const [error, setError] = useState('')
   const [image, setImage] = useState(null)
@@ -52,7 +52,7 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
     let active = true
     let url = ''
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#F36F12'
-    renderBillImage({ ...data, accent })
+    renderBillImage({ ...data, accent, template: billTemplate })
       .then((blob) => {
         if (!active) return
         url = URL.createObjectURL(blob)
@@ -60,16 +60,18 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
       })
       .catch((issue) => { if (active) setError(issue.message) })
     return () => { active = false; if (url) URL.revokeObjectURL(url) }
-  }, [data])
+  }, [data, billTemplate])
 
   const missingBill = details && !data
   const fileName = data ? `${billNumber(data.bill)}.png` : 'bill.png'
   const message = data ? billMessage(data) : ''
   const number = whatsappNumber(phone)
-  const chatUrl = `https://wa.me/${number}?text=${encodeURIComponent(message)}`
+  const chatUrl = `https://wa.me/${number}`
 
-  function openChat() {
-    window.open(chatUrl, '_blank', 'noopener,noreferrer')
+  /** Opens the dealer's chat; with `withText` the bill summary is typed in for you. */
+  function openChat(withText = false) {
+    const url = withText ? `${chatUrl}?text=${encodeURIComponent(message)}` : chatUrl
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   async function shareOnWhatsApp() {
@@ -78,15 +80,16 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
     try {
       const file = new File([image.blob], fileName, { type: 'image/png' })
       // Phones (and some desktops) can send the image itself straight to WhatsApp.
+      // Only the file is shared: adding text makes WhatsApp send the text instead of (or apart from) the image.
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `Bill ${billNumber(data.bill)}`, text: message })
-        setNotice('Bill shared.')
+        await navigator.share({ files: [file] })
+        setNotice('Bill image shared.')
         return
       }
-      // Otherwise save the image and open the dealer's WhatsApp chat with the bill text.
+      // Otherwise save the image and open the dealer's WhatsApp chat, with no text typed in.
       downloadBlob(image.blob, fileName)
       openChat()
-      setNotice('The bill image was downloaded. Attach it in the WhatsApp chat that just opened (the bill details are already typed in).')
+      setNotice('The bill image was downloaded. Attach it in the WhatsApp chat that just opened.')
     } catch (issue) {
       if (issue?.name !== 'AbortError') setError(issue.message || 'Could not share the bill.')
     } finally { setBusy(false) }
@@ -117,7 +120,7 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
         {notice && <p className="bill-share-notice" role="status"><i className="bi bi-info-circle" aria-hidden="true" /> {notice}</p>}
         <div className="bill-share-actions">
           <button type="button" className="continue-btn whatsapp-btn" onClick={shareOnWhatsApp} disabled={!image || busy}><i className="bi bi-whatsapp" aria-hidden="true" /> Share bill on WhatsApp</button>
-          <button type="button" className="back-button" onClick={openChat} disabled={!data}><i className="bi bi-chat-text" aria-hidden="true" /> Send as text</button>
+          <button type="button" className="back-button" onClick={() => openChat(true)} disabled={!data}><i className="bi bi-chat-text" aria-hidden="true" /> Send as text</button>
           <button type="button" className="back-button" onClick={() => image && downloadBlob(image.blob, fileName)} disabled={!image}><i className="bi bi-download" aria-hidden="true" /> Download image</button>
         </div>
       </>}

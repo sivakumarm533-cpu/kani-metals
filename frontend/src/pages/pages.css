@@ -486,7 +486,7 @@
 .managed-user-role-admin { background: #fff0df; color: #b45309; }
 .managed-user-role-user { background: #eef2f7; color: #475569; }
 .managed-user-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
-.user-action-edit, .user-action-delete { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 5px 8px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); font-size: 10px; font-weight: 700; }
+.user-action-edit, .user-action-access, .user-action-delete { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 5px 8px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); font-size: 10px; font-weight: 700; }
 .user-action-edit { color: var(--color-primary); }
 .user-action-edit:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
 .user-action-delete { width: 30px; color: #dc2626; }
@@ -1344,4 +1344,30 @@
   .auth-page { padding: 12px; }
   .auth-card { padding: 18px; }
   .totp-recovery-codes { grid-template-columns: 1fr; }
+}
+
+/* Per-user menu access */
+.user-action-access { color: var(--color-text); }
+.user-action-access:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-soft); }
+/* Wider than the default 420px dialog so each row fits its Workspace / On / Off choice. */
+.dealer-delete-dialog.user-access-dialog { display: flex; flex-direction: column; width: min(820px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: hidden; text-align: left; }
+.user-access-dialog .user-access-body { flex: 1 1 auto; min-height: 0; margin: 0 -6px; padding: 0 6px; overflow-y: auto; }
+.user-access-intro { margin: 0 0 12px; color: var(--color-text-muted); font-size: 13px; }
+.user-access-dialog .feature-list { margin-bottom: 4px; }
+.user-access-dialog .feature-row { flex-wrap: wrap; row-gap: 10px; }
+.user-access-dialog .feature-row-text { min-width: 180px; }
+.user-access-choice { display: inline-flex; flex: 0 0 auto; margin-left: auto; padding: 3px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-surface-muted); }
+.user-access-option { min-height: 32px; min-width: 64px; padding: 4px 12px; border: 0; border-radius: var(--radius-pill); color: var(--color-text-muted); background: transparent; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.user-access-option.is-active { color: #ffffff; background: var(--color-primary); }
+.user-access-option.is-active.is-off-choice { background: var(--color-text-muted); }
+.user-access-option:disabled { cursor: not-allowed; }
+/* Footer stays visible below the scrolling list and wraps instead of hiding buttons. */
+.user-access-dialog .user-access-actions { position: static; flex: 0 0 auto; flex-wrap: wrap; margin: 16px 0 0; padding: 12px 0 0; border-top: 1px solid var(--color-border); }
+.user-access-dialog .user-access-actions button { white-space: nowrap; }
+.user-access-actions .user-access-reset { margin-right: auto; }
+@media (max-width: 575px) {
+  .dealer-delete-dialog.user-access-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+  .user-access-choice { width: 100%; margin-left: 0; }
+  .user-access-option { flex: 1; min-width: 0; }
+  .user-access-actions .user-access-reset { margin-right: 0; }
 }

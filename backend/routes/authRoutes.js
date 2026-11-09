@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { authenticate, requireAdmin } from '../middleware/auth.js'
-import { authStatus, beginAdminEnrollment, changeOwnPassword, createUser, currentUser, deleteUser, listUsers, login, logout, updateOwnProfile, updateOwnProfilePicture, updateUser, userSummary, verifyAdminEnrollment, verifyLoginRecovery, verifyLoginTotp } from '../controllers/authController.js'
+import { authStatus, beginAdminEnrollment, changeOwnPassword, createUser, currentUser, deleteUser, listUsers, login, logout, updateOwnProfile, updateOwnProfilePicture, updateUser, updateUserFeatureAccess, userSummary, verifyAdminEnrollment, verifyLoginRecovery, verifyLoginTotp } from '../controllers/authController.js'
 import { authRateLimit } from '../middleware/rateLimit.js'
 import { profilePictureUpload } from '../middleware/profilePictureUpload.js'
 import { listActivity } from '../controllers/activityController.js'
@@ -22,6 +22,7 @@ router.get('/users/summary', authenticate, requireAdmin, userSummary)
 router.get('/users', authenticate, requireAdmin, listUsers)
 router.post('/users', authenticate, requireAdmin, profilePictureUpload, createUser)
 router.patch('/users/:id', authenticate, requireAdmin, profilePictureUpload, updateUser)
+router.put('/users/:id/feature-access', authenticate, requireAdmin, updateUserFeatureAccess)
 router.delete('/users/:id', authenticate, requireAdmin, deleteUser)
 
 export default router

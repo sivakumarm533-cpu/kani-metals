@@ -22,8 +22,6 @@ import './styles/navigation.css'
 const pageImports = {
   Dashboard: () => import('./pages/Dashboard.jsx'),
   Inventory: () => import('./pages/Inventory.jsx'),
-  Products: () => import('./pages/Products.jsx'),
-  Cards: () => import('./pages/Cards.jsx'),
   ItemPrices: () => import('./pages/ItemPrices.jsx'),
   Itemsentry: () => import('./pages/Itemsentry.jsx'),
   DealerBills: () => import('./pages/DealerBills.jsx'),
@@ -34,12 +32,11 @@ const pageImports = {
   ThemeSettings: () => import('./pages/ThemeSettings.jsx'),
   BillSettings: () => import('./pages/BillSettings.jsx'),
   FeatureSettings: () => import('./pages/FeatureSettings.jsx'),
+  MenuSettings: () => import('./pages/MenuSettings.jsx'),
   Profile: () => import('./pages/Profile.jsx'),
 }
 const Dashboard = lazy(pageImports.Dashboard)
 const Inventory = lazy(pageImports.Inventory)
-const Products = lazy(pageImports.Products)
-const Cards = lazy(pageImports.Cards)
 const ItemPrices = lazy(pageImports.ItemPrices)
 const Itemsentry = lazy(pageImports.Itemsentry)
 const DealerBills = lazy(pageImports.DealerBills)
@@ -50,6 +47,7 @@ const DealerPayments = lazy(pageImports.DealerPayments)
 const ThemeSettings = lazy(pageImports.ThemeSettings)
 const BillSettings = lazy(pageImports.BillSettings)
 const FeatureSettings = lazy(pageImports.FeatureSettings)
+const MenuSettings = lazy(pageImports.MenuSettings)
 const Profile = lazy(pageImports.Profile)
 const Login = lazy(() => import('./pages/Login.jsx'))
 const AdminSignup = lazy(() => import('./pages/AdminSignup.jsx'))
@@ -126,8 +124,6 @@ function AppLayout() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/inventory" element={<FeatureRoute feature="inventory"><Inventory /></FeatureRoute>} />
-                <Route path="/products" element={<FeatureRoute feature="products"><Products /></FeatureRoute>} />
-                <Route path="/scrap-items" element={<FeatureRoute feature="scrapItems"><Cards /></FeatureRoute>} />
                 <Route path="/item-prices" element={<FeatureRoute feature="itemPrices"><ItemPrices /></FeatureRoute>} />
                 <Route path="/itemsentry" element={<FeatureRoute feature="itemEntry"><Itemsentry /></FeatureRoute>} />
                 <Route path="/bill-comparison" element={<FeatureRoute feature="billComparison"><BillComparison /></FeatureRoute>} />
@@ -138,6 +134,7 @@ function AppLayout() {
                 <Route path="/settings/theme" element={<RequireAuth adminOnly><ThemeSettings /></RequireAuth>} />
                 <Route path="/settings/bill" element={<RequireAuth adminOnly><BillSettings /></RequireAuth>} />
                 <Route path="/settings/features" element={<RequireAuth adminOnly><FeatureSettings /></RequireAuth>} />
+                <Route path="/settings/menu" element={<RequireAuth adminOnly><MenuSettings /></RequireAuth>} />
                 <Route path="/settings/backup" element={<RequireAuth primaryOnly><Settings /></RequireAuth>} />
                 <Route path="/settings/*" element={<RequireAuth adminOnly><Settings /></RequireAuth>} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

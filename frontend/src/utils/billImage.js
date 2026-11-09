@@ -70,13 +70,44 @@ function wrap(ctx, text, maxWidth) {
   })
 }
 
-const font = (weight, size) => `${weight} ${size}px ${FONT}`
+const font = (weight, size, style = '') => `${style ? `${style} ` : ''}${weight} ${size}px ${FONT}`
+
+/** Bill designs an admin can choose in Bill settings. Keep ids in sync with backend BILL_TEMPLATE_IDS. */
+export const BILL_TEMPLATES = [
+  { id: 'classic', name: 'Classic', description: 'Coloured header, boxed table' },
+  { id: 'modern', name: 'Modern', description: 'White header, coloured table heading' },
+  { id: 'minimal', name: 'Minimal', description: 'Black and white, good for printing' },
+  { id: 'bold', name: 'Bold', description: 'Dark header with a colour stripe' },
+  { id: 'soft', name: 'Soft', description: 'Light tinted header, clean rows' },
+]
+
+/** Colours and lines for each template. `a` is the theme accent as #rrggbb. */
+function templateStyle(id, a) {
+  const styles = {
+    classic: { accent: a, headerBg: a, headerName: '#ffffff', headerText: '#ffffff', logoBg: '#ffffff', stripe: null, titleColor: a, headBg: null, headText: TEXT, columnLines: true, zebra: null, footer: a, phoneBg: 'rgba(255,255,255,0.92)', phoneIcon: a },
+    modern: { accent: a, headerBg: '#ffffff', headerName: a, headerText: MUTED, logoBg: `${a}14`, stripe: { color: a, top: true, size: 14 }, titleColor: TEXT, headBg: a, headText: '#ffffff', columnLines: false, zebra: `${a}0d`, footer: a, phoneBg: a, phoneIcon: '#ffffff' },
+    minimal: { accent: '#111827', headerBg: '#ffffff', headerName: '#111827', headerText: MUTED, logoBg: '#f3f4f6', stripe: { color: '#111827', top: false, size: 3 }, titleColor: '#111827', headBg: '#f3f4f6', headText: TEXT, columnLines: true, zebra: null, footer: '#111827', phoneBg: '#111827', phoneIcon: '#ffffff' },
+    bold: { accent: a, headerBg: '#111827', headerName: '#ffffff', headerText: 'rgba(255,255,255,0.82)', logoBg: '#ffffff', stripe: { color: a, top: false, size: 12 }, titleColor: a, headBg: '#111827', headText: '#ffffff', columnLines: true, zebra: null, footer: '#111827', phoneBg: a, phoneIcon: '#ffffff' },
+    soft: { accent: a, headerBg: `${a}1f`, headerName: a, headerText: TEXT, logoBg: '#ffffff', stripe: null, titleColor: a, headBg: `${a}1f`, headText: TEXT, columnLines: false, zebra: '#f9fafb', footer: a, phoneBg: a, phoneIcon: '#ffffff' },
+  }
+  return styles[id] || styles.classic
+}
+
+/** Canvas alpha suffixes need a 6-digit hex colour; anything else falls back to the brand orange. */
+function hexColor(value) {
+  const text = String(value || '').trim()
+  if (/^#[0-9a-f]{6}$/i.test(text)) return text
+  const short = text.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i)
+  return short ? `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}` : '#F36F12'
+}
 
 /**
- * Draws the dealer bill in the Kani Metals template and returns a PNG Blob.
- * @param {{ business, dealer, bill, state: {totalPaise, receivedPaise, pendingPaise}, payments, accent }} data
+ * Draws the dealer bill in the chosen template and returns a PNG Blob.
+ * @param {{ business, dealer, bill, state: {totalPaise, receivedPaise, pendingPaise}, payments, accent, template }} data
  */
-export async function renderBillImage({ business, dealer, bill, state, payments, accent = '#F36F12' }) {
+export async function renderBillImage({ business, dealer, bill, state, payments, accent: themeAccent = '#F36F12', template = 'classic' }) {
+  const look = templateStyle(template, hexColor(themeAccent))
+  const accent = look.accent
   if (document.fonts?.load) await Promise.all([document.fonts.load(font(700, 40)), document.fonts.load(font(400, 24))]).catch(() => {})
   const logo = await loadImage(logoMark)
   const measure = document.createElement('canvas').getContext('2d')
@@ -90,16 +121,21 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
     { key: 'amount', label: 'Amount', width: 230, align: 'right' },
   ]
   columns[1].width = WIDTH - columns.reduce((sum, column) => sum + column.width, 0)
-  measure.font = font(400, 26)
   const rows = bill.items.map((item, index) => {
+    measure.font = font(500, 26)
     const lines = wrap(measure, item.name, columns[1].width - 36)
-    const sub = item.category ? [item.category] : []
+    // Only the item's own note is shown under the name (the category is not printed).
+    measure.font = font(400, 21, 'italic')
+    const sub = item.note ? wrap(measure, item.note, columns[1].width - 36).slice(0, 4) : []
     return { item, index, lines, sub, height: Math.max(66, 24 + lines.length * 34 + sub.length * 28) }
   })
   const bodyHeight = Math.max(560, rows.reduce((sum, row) => sum + row.height, 0) + 20)
   const received = billPayments(bill, payments)
   measure.font = font(400, 24)
-  const termsLines = wrap(measure, business.terms || '', WIDTH - 80).slice(0, 6)
+  const termsLines = business.showTerms === false ? [] : wrap(measure, business.terms || '', WIDTH - 80).slice(0, 6)
+  const showTerms = termsLines.length > 0
+  const greeting = String(business.greeting ?? 'Thank you for your business').trim()
+  const showGreeting = business.showGreeting !== false && greeting.length > 0
 
   const headerH = 250
   const titleH = 80
@@ -108,7 +144,7 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
   const summaryRowH = 58
   const summaryH = summaryRowH * 3
   const paymentsH = received.length ? 70 + Math.min(received.length, 6) * 40 : 0
-  const termsH = 70 + termsLines.length * 34 + 70
+  const termsH = (showTerms ? 70 + termsLines.length * 34 : 0) + (showGreeting ? 70 : 24)
   const footerH = 60
   const height = headerH + titleH + infoH + tableHeadH + bodyHeight + summaryH + paymentsH + termsH + footerH
 
@@ -121,22 +157,23 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
   ctx.textBaseline = 'middle'
 
   // ---- Header ----
-  ctx.fillStyle = accent
+  ctx.fillStyle = look.headerBg
   ctx.fillRect(0, 0, WIDTH, headerH)
-  ctx.save()
-  ctx.strokeStyle = 'rgba(255,255,255,0.95)'
-  ctx.lineWidth = 6
-  ctx.fillStyle = '#ffffff'
+  if (look.stripe) {
+    ctx.fillStyle = look.stripe.color
+    ctx.fillRect(0, look.stripe.top ? 0 : headerH - look.stripe.size, WIDTH, look.stripe.size)
+  }
+  ctx.fillStyle = look.logoBg
   roundRect(ctx, 46, 45, 170, 160, 34)
   ctx.fill()
-  ctx.restore()
   if (logo) ctx.drawImage(logo, 66, 60, 130, 130)
   else { ctx.fillStyle = accent; ctx.font = font(700, 40); ctx.textAlign = 'center'; ctx.fillText('LOGO', 131, 125) }
 
   ctx.textAlign = 'left'
-  ctx.fillStyle = '#ffffff'
+  ctx.fillStyle = look.headerName
   ctx.font = font(700, 58)
   ctx.fillText(business.name || 'Kani Metals', 260, 88, WIDTH - 300)
+  ctx.fillStyle = look.headerText
   ctx.font = font(500, 26)
   const subtitle = [business.tagline, business.address].filter(Boolean).join(' · ')
   if (subtitle) ctx.fillText(subtitle, 262, 140, WIDTH - 300)
@@ -146,15 +183,15 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
     ctx.font = font(700, 30)
     const phoneWidth = ctx.measureText(business.phone).width
     const px = WIDTH - 50 - phoneWidth
-    ctx.fillStyle = 'rgba(255,255,255,0.92)'
+    ctx.fillStyle = look.phoneBg
     roundRect(ctx, px - 60, 191, 42, 42, 10)
     ctx.fill()
-    ctx.fillStyle = accent
+    ctx.fillStyle = look.phoneIcon
     ctx.font = font(700, 26)
     ctx.textAlign = 'center'
     ctx.fillText('☎', px - 39, 213)
     ctx.textAlign = 'left'
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = look.headerName
     ctx.font = font(700, 30)
     ctx.fillText(business.phone, px, 213)
   }
@@ -162,7 +199,7 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
   // ---- Title ----
   let y = headerH
   ctx.textAlign = 'center'
-  ctx.fillStyle = accent
+  ctx.fillStyle = look.titleColor
   ctx.font = font(700, 38)
   ctx.fillText('Bill Details', WIDTH / 2, y + 44)
   y += titleH
@@ -197,11 +234,12 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
   const tableTop = y
   const xs = []
   columns.reduce((x, column) => { xs.push(x); return x + column.width }, 0)
+  if (look.headBg) { ctx.fillStyle = look.headBg; ctx.fillRect(0, tableTop, WIDTH, tableHeadH) }
   ctx.strokeStyle = LINE
   ctx.lineWidth = 2.5
   ctx.strokeRect(1, tableTop, WIDTH - 2, tableHeadH)
-  ctx.fillStyle = TEXT
-  ctx.font = font(500, 26)
+  ctx.fillStyle = look.headText
+  ctx.font = font(600, 26)
   columns.forEach((column, index) => {
     ctx.textAlign = 'center'
     ctx.fillText(column.label, xs[index] + column.width / 2, tableTop + tableHeadH / 2)
@@ -211,6 +249,7 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
   for (const row of rows) {
     const cy = y + 22
     const { item } = row
+    if (look.zebra && row.index % 2 === 1) { ctx.fillStyle = look.zebra; ctx.fillRect(2, y, WIDTH - 4, row.height) }
     const cell = (index, text, weight = 400) => {
       const column = columns[index]
       ctx.font = font(weight, 26)
@@ -222,7 +261,11 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
     cell(0, String(row.index + 1))
     ctx.font = font(500, 26); ctx.textAlign = 'left'
     row.lines.forEach((line, lineIndex) => ctx.fillText(line, xs[1] + 18, cy + 12 + lineIndex * 34))
-    if (row.sub.length) { ctx.fillStyle = MUTED; ctx.font = font(400, 21); ctx.fillText(row.sub[0], xs[1] + 18, cy + 12 + row.lines.length * 34 + 2); ctx.fillStyle = TEXT }
+    if (row.sub.length) {
+      ctx.fillStyle = MUTED; ctx.font = font(400, 21, 'italic')
+      row.sub.forEach((line, lineIndex) => ctx.fillText(line, xs[1] + 18, cy + 12 + row.lines.length * 34 + 2 + lineIndex * 28))
+      ctx.fillStyle = TEXT
+    }
     cell(2, quantityText(item))
     cell(3, formatPaise(Math.round((Number(item.price) || 0) * 100)))
     cell(4, formatPaise(lineAmountPaise(item)), 600)
@@ -234,7 +277,7 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
   ctx.beginPath()
   ctx.moveTo(1, bodyTop); ctx.lineTo(1, bodyBottom)
   ctx.moveTo(WIDTH - 1, bodyTop); ctx.lineTo(WIDTH - 1, bodyBottom)
-  for (let index = 1; index < columns.length; index += 1) { ctx.moveTo(xs[index], tableTop); ctx.lineTo(xs[index], bodyBottom) }
+  if (look.columnLines) for (let index = 1; index < columns.length; index += 1) { ctx.moveTo(xs[index], tableTop); ctx.lineTo(xs[index], bodyBottom) }
   ctx.moveTo(0, bodyBottom); ctx.lineTo(WIDTH, bodyBottom)
   ctx.stroke()
 
@@ -273,18 +316,22 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
     y += paymentsH
   }
 
-  // ---- Terms & conditions ----
-  ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 2
-  ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WIDTH, y); ctx.stroke()
-  ctx.textAlign = 'left'; ctx.fillStyle = TEXT; ctx.font = font(700, 24)
-  ctx.fillText('Terms & Conditions :', 40, y + 40)
-  ctx.fillStyle = MUTED; ctx.font = font(400, 24)
-  termsLines.forEach((line, index) => ctx.fillText(line, 40, y + 80 + index * 34))
-  ctx.textAlign = 'center'; ctx.fillStyle = MUTED; ctx.font = font(500, 21)
-  ctx.fillText(`Thank you for your business · ${business.name || 'Kani Metals'}`, WIDTH / 2, height - footerH - 30)
+  // ---- Terms & conditions and greeting (each can be switched off in Bill settings) ----
+  if (showTerms) {
+    ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 2
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WIDTH, y); ctx.stroke()
+    ctx.textAlign = 'left'; ctx.fillStyle = TEXT; ctx.font = font(700, 24)
+    ctx.fillText('Terms & Conditions :', 40, y + 40)
+    ctx.fillStyle = MUTED; ctx.font = font(400, 24)
+    termsLines.forEach((line, index) => ctx.fillText(line, 40, y + 80 + index * 34))
+  }
+  if (showGreeting) {
+    ctx.textAlign = 'center'; ctx.fillStyle = MUTED; ctx.font = font(500, 21)
+    ctx.fillText(greeting, WIDTH / 2, height - footerH - 30, WIDTH - 80)
+  }
 
   // ---- Footer bar with centre notch ----
-  ctx.fillStyle = accent
+  ctx.fillStyle = look.footer
   ctx.fillRect(0, height - 24, WIDTH, 24)
   ctx.beginPath()
   ctx.moveTo(WIDTH / 2 - 52, height - 24)
@@ -307,7 +354,7 @@ export function billMessage({ business, dealer, bill, state, payments }) {
     `Date: ${formatBillDate(bill.issuedDate)}`,
     `Dealer: ${dealer.name}`,
     '',
-    ...bill.items.map((item, index) => `${index + 1}. ${item.name} — ${quantityText(item)} × ${formatPaise(Math.round((Number(item.price) || 0) * 100))} = ${formatPaise(lineAmountPaise(item))}`),
+    ...bill.items.map((item, index) => `${index + 1}. ${item.name} — ${quantityText(item)} × ${formatPaise(Math.round((Number(item.price) || 0) * 100))} = ${formatPaise(lineAmountPaise(item))}${item.note ? `\n   _Note: ${item.note}_` : ''}`),
     '',
     `*Total:* ${formatPaise(state.totalPaise)}`,
     `*Paid (Advance / Partial):* ${formatPaise(state.receivedPaise)}`,
@@ -319,8 +366,9 @@ export function billMessage({ business, dealer, bill, state, payments }) {
     lines.push('', '*Payments received*')
     received.forEach((payment) => lines.push(`• ${formatBillDate(payment.date)} — ${payment.kind} (${payment.method}): ${formatPaise(payment.amountPaise)}`))
   }
-  if (business.terms) lines.push('', `_${business.terms}_`)
-  lines.push('', 'Thank you.')
+  if (business.terms && business.showTerms !== false) lines.push('', `_${business.terms}_`)
+  const greeting = String(business.greeting ?? 'Thank you for your business').trim()
+  if (business.showGreeting !== false && greeting) lines.push('', greeting)
   return lines.filter((line) => line !== null).join('\n')
 }
 

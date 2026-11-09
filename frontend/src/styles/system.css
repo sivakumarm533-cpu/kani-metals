@@ -172,7 +172,7 @@ button:disabled { cursor: not-allowed; }
 .link-button:hover { background: transparent; color: var(--color-primary-hover); }
 
 /* Small table / card actions share one look */
-.edit-bill-item, .remove-bill-item, .user-action-edit, .user-action-delete, .payment-row-actions button {
+.edit-bill-item, .remove-bill-item, .user-action-edit, .user-action-access, .user-action-delete, .payment-row-actions button {
   min-height: 32px;
   border-radius: 7px;
   font-weight: 600;
@@ -618,7 +618,7 @@ ol.billing-steps { margin: 0; list-style: none; }
 
 /* Comfortable touch targets on touch screens */
 @media (pointer: coarse) {
-  .edit-bill-item, .remove-bill-item, .user-action-edit, .user-action-delete, .payment-row-actions button,
+  .edit-bill-item, .remove-bill-item, .user-action-edit, .user-action-access, .user-action-delete, .payment-row-actions button,
   .activity-view-button, .user-clear-filter { min-height: 40px; padding-inline: 12px; }
   .dealer-card-actions > a, .dealer-card-actions > button { flex-basis: 38px; width: 38px; height: 38px; }
   .sidebar-link { min-height: 46px; }

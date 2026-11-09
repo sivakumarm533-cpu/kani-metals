@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/authContextValue.js'
 import { useAppSettings } from '../settings/appSettingsContext.js'
-import { canUseItem, isManager, NAV_ITEMS, PROFILE_ITEM, SETTINGS_ITEMS } from '../config/navigation.js'
+import { canUseItem, isManager, orderNavItems, PROFILE_ITEM, SETTINGS_ITEMS } from '../config/navigation.js'
 
 const linkClass = ({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`
 
@@ -17,11 +17,11 @@ function SidebarLink({ item, onNavigate }) {
 
 function Sidebar({ isOpen, isDesktop, onNavigate }) {
   const { user } = useAuth()
-  const { features } = useAppSettings()
+  const { features, menuOrder } = useAppSettings()
   const location = useLocation()
   const inSettings = location.pathname.startsWith('/settings')
   const [settingsOpen, setSettingsOpen] = useState(inSettings)
-  const items = NAV_ITEMS.filter((item) => canUseItem(item, user, features))
+  const items = orderNavItems(menuOrder).filter((item) => canUseItem(item, user, features))
   const settingsItems = SETTINGS_ITEMS.filter((item) => !item.primaryOnly || user?.role === 'admin')
 
   return (

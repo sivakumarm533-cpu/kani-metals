@@ -12,7 +12,7 @@ import { formatRupees, localDateInputValue as getTodayDate } from "../utils/form
 
 const itemCategories = ["Metal", "Plastic", "Paper", "Electronics"];
 const emptyDealerForm = (type = "Regular Dealer") => ({ name: "", phone: "", location: "", type, image: "", cardColor: "#fff3e8", cardBackground: "" });
-const emptyItemForm = () => ({ name: "", category: "", quantity: "", price: "", unit: "kg", image: "" });
+const emptyItemForm = () => ({ name: "", category: "", quantity: "", price: "", unit: "kg", image: "", note: "" });
 const mapDealer = (dealer) => ({ ...dealer, id: dealer._id, type: dealer.category, image: dealer.profileImage });
 
 function Itemsentry() {
@@ -93,6 +93,7 @@ function Itemsentry() {
       id: editingItemId ?? crypto.randomUUID(),
       quantity: Number(itemForm.quantity),
       price: Number(itemForm.price),
+      note: itemForm.note.trim(),
     };
 
     setBillItems((items) => editingItemId === null
@@ -115,6 +116,7 @@ function Itemsentry() {
       price: String(item.price),
       unit: item.unit,
       image: item.image || "",
+      note: item.note || "",
     });
    
     document.getElementById("itemName")?.focus();
@@ -137,7 +139,7 @@ function Itemsentry() {
         body: JSON.stringify({
           dealer: selectedDealer.id,
           issuedDate: billDate,
-          items: billItems.map(({ name, category, quantity, unit, price, image }) => ({ name, category, quantity, unit, price, image })),
+          items: billItems.map(({ name, category, quantity, unit, price, image, note }) => ({ name, category, quantity, unit, price, image, note })),
         }),
       });
       setLastSavedBill({ id: savedBill._id, dealerId: selectedDealer.id, dealerName: selectedDealer.name, total: savedBill.total });
@@ -555,6 +557,13 @@ function Itemsentry() {
                     </div>
                   </div>
 
+                  <div className="col-12">
+                    <div className="form-group">
+                      <label className="label-title" htmlFor="itemNote">Note <small className="text-muted">Optional · printed under the item on the bill</small></label>
+                      <input id="itemNote" className="form-control" maxLength="200" placeholder="e.g. 1210 - 10 = 1200 (10 kg was waste material)" value={itemForm.note} onChange={(event) => setItemForm({ ...itemForm, note: event.target.value })} />
+                    </div>
+                  </div>
+
                   {itemForm.quantity && itemForm.price && <div className="col-12"><p className="item-line-total">Line amount: <strong>{formatRupees(Number(itemForm.quantity) * Number(itemForm.price))}</strong></p></div>}
                 </div>
               </div>
@@ -602,7 +611,7 @@ function Itemsentry() {
                   ) : billItems.map((item, index) => (
                     <tr key={item.id} className={editingItemId === item.id ? "is-editing" : ""}>
                       <td data-label="S.No.">{index + 1}</td>
-                      <td data-label="Item" className="bill-item-name">{item.image && <img className="bill-item-thumb" src={item.image} alt="" />}{item.name}</td>
+                      <td data-label="Item" className="bill-item-name">{item.image && <img className="bill-item-thumb" src={item.image} alt="" />}<span>{item.name}{item.note && <small className="bill-item-note">{item.note}</small>}</span></td>
                       <td data-label="Category">{item.category}</td>
                       <td data-label="Quantity">{item.quantity} {item.unit}</td>
                       <td data-label="Price / unit">{formatRupees(item.price)}</td>

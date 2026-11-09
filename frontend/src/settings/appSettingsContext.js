@@ -8,6 +8,9 @@ export const DEFAULT_BUSINESS = {
   email: '',
   gstin: '',
   terms: 'Goods once sold will not be taken back. Please pay the balance amount on or before the due date.',
+  showTerms: true,
+  showGreeting: true,
+  greeting: 'Thank you for your business',
 }
 
 export const AppSettingsContext = createContext(null)

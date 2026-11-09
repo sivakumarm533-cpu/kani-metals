@@ -26,7 +26,7 @@ async function loadSession(jti, userId) {
   const [session, user] = await Promise.all([
     AuthSession.findOne({ jti, user: userId, expiresAt: { $gt: new Date() } }).select('_id').lean(),
     // The profile picture is intentionally not loaded here; it can be large and only /auth/me needs it.
-    User.findById(userId).select('name email role totpEnabled createdAt').lean(),
+    User.findById(userId).select('name email role totpEnabled createdAt featureAccess').lean(),
   ])
   const entry = { session: Boolean(session), user, until: Date.now() + SESSION_CACHE_MS }
   if (session && user) {
@@ -88,6 +88,10 @@ export function requireFeature(feature) {
   return async (req, res, next) => {
     try {
       if (req.method === 'GET' || isManagerRole(req.user?.role)) return next()
+      // A per-person setting wins over the workspace setting.
+      const own = req.user?.featureAccess?.[feature]
+      if (own === true) return next()
+      if (own === false) return res.status(403).json({ message: 'This feature has been turned off for your account by your administrator.' })
       const features = await enabledFeatures()
       if (features[feature] === false) return res.status(403).json({ message: 'This feature has been turned off by your administrator.' })
       next()

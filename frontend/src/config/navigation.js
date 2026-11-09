@@ -10,12 +10,17 @@ export const NAV_ITEMS = [
   { key: 'itemPrices', to: '/item-prices', icon: 'bi-currency-rupee', activeIcon: 'bi-currency-rupee', label: 'Prices', fullLabel: 'Item prices', description: 'Latest price of every item from dealer bills', feature: 'itemPrices' },
   { key: 'billComparison', to: '/bill-comparison', icon: 'bi-arrow-left-right', activeIcon: 'bi-arrow-left-right', label: 'Compare', fullLabel: 'Bill comparison', description: 'Compare two bills from the same dealer', feature: 'billComparison' },
   { key: 'inventory', to: '/inventory', icon: 'bi-boxes', activeIcon: 'bi-boxes', label: 'Stock', fullLabel: 'Inventory', description: 'Current stock of every item', feature: 'inventory' },
-  { key: 'products', to: '/products', icon: 'bi-tags', activeIcon: 'bi-tags-fill', label: 'Products', fullLabel: 'Products', description: 'Product list and prices', feature: 'products' },
-  { key: 'scrapItems', to: '/scrap-items', icon: 'bi-recycle', activeIcon: 'bi-recycle', label: 'Scrap', fullLabel: 'Scrap items', description: 'Scrap material catalogue', feature: 'scrapItems' },
 ]
 
 export const PROFILE_ITEM = { key: 'profile', to: '/profile', icon: 'bi-person', activeIcon: 'bi-person-fill', label: 'Profile', fullLabel: 'My profile', description: 'Your account, appearance and sign out' }
 export const SETTINGS_ITEM = { key: 'settings', to: '/settings/users', icon: 'bi-gear', activeIcon: 'bi-gear-fill', label: 'Settings', fullLabel: 'Settings', description: 'Team, features and workspace settings', managerOnly: true, match: ['/settings'] }
+
+/** Main menu items in the workspace's saved order; unknown keys are ignored and missing items keep their default place at the end. */
+export function orderNavItems(order) {
+  const keys = Array.isArray(order) ? order : []
+  const ordered = keys.map((key) => NAV_ITEMS.find((item) => item.key === key)).filter(Boolean)
+  return [...new Set([...ordered, ...NAV_ITEMS])]
+}
 
 /** Everything a user may pin to the bottom bar. */
 export const BOTTOM_NAV_CHOICES = [...NAV_ITEMS, PROFILE_ITEM, SETTINGS_ITEM]
@@ -34,6 +39,7 @@ export const SETTINGS_ITEMS = [
   { to: '/settings/users', icon: 'bi-people', label: 'Users & roles', description: 'Add people, make sub-admins' },
   { to: '/settings/features', icon: 'bi-toggles', label: 'Feature access', description: 'Choose what users can open' },
   { to: '/settings/activity', icon: 'bi-clock-history', label: 'User activity', description: 'Who changed what, and when' },
+  { to: '/settings/menu', icon: 'bi-list-ol', label: 'Menu order', description: 'Arrange the main menu' },
   { to: '/settings/theme', icon: 'bi-palette', label: 'Workspace theme', description: 'Default colours for everyone' },
   { to: '/settings/bill', icon: 'bi-receipt', label: 'Bill settings', description: 'Business details on bills' },
   { to: '/settings/backup', icon: 'bi-database-down', label: 'Database backup', description: 'Export or restore records', primaryOnly: true },
@@ -47,7 +53,14 @@ export function canUseItem(item, user, features) {
   if (!item) return false
   if (item.managerOnly) return isManager(user)
   if (!item.feature || isManager(user)) return true
-  return features?.[item.feature] !== false
+  return featureAllowed(item.feature, user?.featureAccess, features)
+}
+
+/** A per-person setting (set by an admin) wins; otherwise the workspace Feature access applies. */
+export function featureAllowed(feature, featureAccess, features) {
+  const own = featureAccess?.[feature]
+  if (typeof own === 'boolean') return own
+  return features?.[feature] !== false
 }
 
 export function itemIsActive(item, pathname) {

@@ -56,7 +56,7 @@ app.get('/api/health', (_req, res) => res.json({
 app.use('/api/auth', authRoutes)
 app.use('/api', authenticate)
 app.use('/api/dealers', requireFeature('itemEntry'), dealerRoutes)
-app.use('/api/products', requireFeature('products'), productRoutes)
+app.use('/api/products', requireFeature('inventory'), productRoutes)
 app.use('/api/bills', requireFeature('itemEntry'), billRoutes)
 app.use('/api/payments', requireFeature('dealerPayments'), paymentRoutes)
 app.use('/api/item-prices', requireFeature('itemPrices'), itemPriceRoutes)

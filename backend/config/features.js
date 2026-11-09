@@ -3,7 +3,13 @@
  * Administrators and sub-admins always have every feature.
  * Keep the keys in sync with frontend/src/config/navigation.js.
  */
-export const FEATURE_KEYS = ['inventory', 'products', 'scrapItems', 'itemEntry', 'dealerPayments', 'billComparison', 'itemPrices']
+export const FEATURE_KEYS = ['inventory', 'itemEntry', 'dealerPayments', 'billComparison', 'itemPrices']
+
+/** Screens in the main menu, in their default order. Admins can reorder them. */
+export const MENU_KEYS = ['dashboard', 'itemEntry', 'dealerPayments', 'itemPrices', 'billComparison', 'inventory']
+
+/** Dashboard sections a user can hide. Keep in sync with DASHBOARD_WIDGETS in frontend/src/pages/Dashboard.jsx. */
+export const DASHBOARD_WIDGETS = ['pendingCard', 'paidCard', 'billedCard', 'lowStockCard', 'pendingDealers', 'rateUpdates', 'quickActions']
 
 /** Screens a user can pin to the mobile bottom bar. */
 export const BOTTOM_NAV_KEYS = ['dashboard', ...FEATURE_KEYS, 'profile', 'settings']

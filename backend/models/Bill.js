@@ -7,6 +7,8 @@ const billItemSchema = new mongoose.Schema({
   unit: { type: String, required: true, trim: true },
   price: { type: Number, required: true, min: 0 },
   image: { type: String, default: '' },
+  /** Optional line note printed on the bill, e.g. "1210 - 10 = 1200 (10 kg waste)". */
+  note: { type: String, trim: true, maxlength: 200, default: '' },
 }, { _id: false })
 
 const billSchema = new mongoose.Schema({

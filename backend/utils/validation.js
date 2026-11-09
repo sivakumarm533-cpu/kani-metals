@@ -103,6 +103,7 @@ export function billItemsPayload(items) {
       unit: requiredText(item.unit, `unit of item ${index + 1}`, 20),
       price: finiteNumber(item.price, `price of item ${index + 1}`),
       image: optionalImage(item.image, `image of item ${index + 1}`),
+      note: optionalText(item.note, `note of item ${index + 1}`, 200),
     }
   })
 }

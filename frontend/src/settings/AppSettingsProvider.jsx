@@ -18,6 +18,8 @@ function normalize(result) {
     theme: result?.theme || 'copper',
     allowUserThemes: result?.allowUserThemes !== false,
     features: result?.features || {},
+    menuOrder: Array.isArray(result?.menuOrder) ? result.menuOrder : [],
+    billTemplate: result?.billTemplate || 'classic',
     business: { ...DEFAULT_BUSINESS, ...result?.business },
   }
 }
