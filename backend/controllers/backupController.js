@@ -4,9 +4,23 @@ import Bill from '../models/Bill.js'
 import Payment from '../models/Payment.js'
 import { appliedPaise, paymentCountsAsReceived } from '../utils/money.js'
 import { recordActivity } from '../utils/activity.js'
+import { toWebpDataUrl } from '../utils/webp.js'
 
 const models = { dealers: Dealer, products: Product, bills: Bill, payments: Payment }
 const backupFormat = 'kani-metals-backup'
+
+/**
+ * Image fields in a backup. This route skips the normal JSON parser (and so the WebP
+ * middleware), so older backups with JPG/PNG photos are converted here before saving.
+ */
+async function convertBackupImages(data) {
+  for (const dealer of data.dealers) for (const field of ['profileImage', 'cardBackground']) if (dealer[field]) dealer[field] = await toWebpDataUrl(dealer[field])
+  for (const product of data.products) if (product.image) product.image = await toWebpDataUrl(product.image)
+  for (const bill of data.bills) {
+    if (bill.image) bill.image = await toWebpDataUrl(bill.image)
+    for (const line of Array.isArray(bill.items) ? bill.items : []) if (line?.image) line.image = await toWebpDataUrl(line.image)
+  }
+}
 
 export async function exportBackup(_req, res, next) {
   try {
@@ -26,6 +40,10 @@ export async function importBackup(req, res, next) {
     }
     const backupData = { ...backup.data, payments: backup.data.payments || [] }
     if (!Array.isArray(backup.data.payments) && await Payment.exists({})) return res.status(409).json({ message: 'This older backup has no payment history. Export a current backup before restoring it so payment records are not lost.' })
+    for (const collection of Object.keys(models)) {
+      if (backupData[collection].length > 50000) return res.status(413).json({ message: 'Backup contains too many records.' })
+    }
+    await convertBackupImages(backupData)
     for (const [collection, Model] of Object.entries(models)) {
       if (backupData[collection].length > 50000) return res.status(413).json({ message: 'Backup contains too many records.' })
       await Promise.all(backupData[collection].map((record) => new Model(record).validate()))

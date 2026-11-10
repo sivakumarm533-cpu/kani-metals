@@ -93,7 +93,9 @@ app.use((error, req, res, _next) => {
 if (!process.env.VERCEL) {
   connectDB()
     .then(() => {
-      app.listen(port, '0.0.0.0', () => console.log(`Backend server listening on port ${port}`))
+      // No host: listen on IPv6 and IPv4 together. With '0.0.0.0' (IPv4 only), browsers on Windows try
+      // "localhost" as ::1 first and every new connection waited ~200 ms before falling back to IPv4.
+      app.listen(port, () => console.log(`Backend server listening on port ${port}`))
     })
     .catch((error) => {
       console.error('MongoDB connection failed:', error.message)

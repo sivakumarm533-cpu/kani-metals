@@ -8,6 +8,8 @@ import sharp from 'sharp'
 
 const MAX_SIDE = 1600
 const QUALITY = 82
+/** WebP images above this size are re-encoded too (the app itself sends much smaller ones). */
+const MAX_WEBP_BYTES = 400 * 1024
 const DATA_URL = /^data:image\/(png|jpe?g|webp|gif|avif|bmp);base64,([A-Za-z0-9+/]+={0,2})$/
 
 function badImage() {
@@ -31,7 +33,9 @@ export async function toWebpBuffer(buffer) {
 export async function toWebpDataUrl(value) {
   if (typeof value !== 'string' || !value.startsWith('data:image/')) return value
   const match = value.match(DATA_URL)
-  if (!match || match[1] === 'webp') return value
+  if (!match) return value
+  // A WebP is kept as sent unless it is oversized (e.g. a client that skipped the browser resize).
+  if (match[1] === 'webp' && match[2].length * 0.75 <= MAX_WEBP_BYTES) return value
   const webp = await toWebpBuffer(Buffer.from(match[2], 'base64'))
   return `data:image/webp;base64,${webp.toString('base64')}`
 }
