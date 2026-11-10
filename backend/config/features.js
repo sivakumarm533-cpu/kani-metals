@@ -16,6 +16,8 @@ export const BOTTOM_NAV_KEYS = ['dashboard', ...FEATURE_KEYS, 'profile', 'settin
 export const DEFAULT_BOTTOM_NAV = ['dashboard', 'itemEntry', 'dealerPayments', 'inventory']
 export const BOTTOM_NAV_MAX = 4
 export const NAV_STYLES = ['light', 'color', 'dark']
+/** Languages the app can be shown in (Google Translate codes). Keep in sync with frontend/src/utils/translate.js. */
+export const LANGUAGE_CODES = ['en', 'ta', 'hi', 'te', 'kn', 'ml', 'mr', 'bn', 'gu', 'pa', 'ur']
 
 export const ROLES = ['admin', 'subadmin', 'user']
 /** Roles that can open Settings and manage the team. */

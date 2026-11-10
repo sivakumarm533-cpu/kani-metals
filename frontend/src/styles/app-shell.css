@@ -505,3 +505,61 @@ a.ui-stat:hover { border-color: var(--color-primary); color: var(--color-text); 
   /* Room at the end of the page so the floating button never covers the last card. */
   body:has(.ui-fab) .admin-layout.has-bottom-nav .admin-content { padding-bottom: calc(var(--bottom-nav-height) + 110px + var(--safe-bottom)); }
 }
+
+/* =========================================================
+   Language (Google Translate)
+   ========================================================= */
+.language-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.language-option { position: relative; display: grid; justify-items: start; gap: 2px; min-height: 58px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); background: var(--color-surface); text-align: left; }
+.language-option:hover { border-color: var(--color-primary); }
+.language-option strong { font-size: 15px; }
+.language-option small { color: var(--color-text-muted); font-size: 12px; }
+.language-option.is-selected { border-color: var(--color-primary); background: var(--color-primary-faint); box-shadow: inset 0 0 0 1px var(--color-primary); }
+.language-option > i { position: absolute; top: 8px; right: 8px; color: var(--color-primary); }
+.language-option:disabled { opacity: .7; cursor: progress; }
+.language-note { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; color: var(--color-text-muted); font-size: 13px; }
+.language-note > span { flex: 1; min-width: 0; }
+@media (max-width: 720px) { .language-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Hide Google Translate's own toolbar, tooltip and highlight; the app keeps its layout. */
+html.is-translated body { top: 0 !important; position: static !important; }
+.skiptranslate > iframe, iframe.skiptranslate, .goog-te-banner-frame, #goog-gt-tt, .goog-te-balloon-frame, .VIpgJd-ZVi9od-ORHb-OEVmcd, .VIpgJd-ZVi9od-aZ2wEe-wOHMyf { display: none !important; visibility: hidden !important; }
+.goog-text-highlight, font[style*="background-color"] { background: none !important; box-shadow: none !important; }
+#google_translate_element { display: none !important; }
+.kani-tr { display: contents; }
+
+/* Item prices: the four summary boxes are for desktop only. */
+@media (max-width: 720px) { .price-summary { display: none !important; } }
+
+/* Item prices sort box: our own chevron, inset like the icon on the left. */
+.price-sort select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 40px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%235D646C' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px 16px;
+  text-overflow: ellipsis;
+}
+.price-sort select::-ms-expand { display: none; }
+.price-chips { margin-bottom: -4px; }
+
+/* =========================================================
+   Pills: filter chips and the Cards/List switch keep a true pill
+   shape (fixed height, wide side padding, fully round ends).
+   ========================================================= */
+.dealer-pick-chip, .ui-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 38px; min-height: 38px; min-width: 56px;
+  padding: 0 16px;
+  border-radius: 999px;
+  line-height: 1; white-space: nowrap;
+}
+.price-view-toggle { align-items: center; padding: 3px; border-radius: 999px; }
+.price-view-toggle button { height: 36px; min-height: 36px; padding: 0 14px; border-radius: 999px; line-height: 1; }
+@media (max-width: 720px) {
+  :root .admin-content .dealer-pick-chip, :root .admin-content .ui-chip { height: 40px; min-height: 40px; padding: 0 18px; flex: 0 0 auto; }
+  :root .admin-content .price-view-toggle button { width: 52px; min-width: 52px; height: 38px; min-height: 38px; padding: 0; }
+  .price-view-toggle { flex: 0 0 auto; }
+}

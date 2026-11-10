@@ -631,6 +631,12 @@ export default function ItemPrices() {
         </ul>
       )}
 
+      {/* Category tabs first, then search, sort and layout. */}
+      {state.categories.length > 1 && (
+        <div className="dealer-pick-chips price-chips" role="radiogroup" aria-label="Category">
+          {[['all', 'All'], ...state.categories.map((name) => [name, name])].map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={category === id} className={`dealer-pick-chip${category === id ? ' is-active' : ''}`} onClick={() => setCategory(id)}>{label}</button>)}
+        </div>
+      )}
       <div className="price-toolbar">
         <label className="dealer-pick-search">
           <i className="bi bi-search" aria-hidden="true" />
@@ -646,11 +652,6 @@ export default function ItemPrices() {
           <button type="button" aria-pressed={view === 'list'} className={view === 'list' ? 'is-active' : ''} onClick={() => chooseView('list')}><i className="bi bi-list-ul" aria-hidden="true" /><span>List</span></button>
         </div>
       </div>
-      {state.categories.length > 1 && (
-        <div className="dealer-pick-chips price-chips" role="radiogroup" aria-label="Category">
-          {[['all', 'All'], ...state.categories.map((name) => [name, name])].map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={category === id} className={`dealer-pick-chip${category === id ? ' is-active' : ''}`} onClick={() => setCategory(id)}>{label}</button>)}
-        </div>
-      )}
 
       <LoadError message={state.error} onRetry={load} />
       {state.loading && !state.items.length && <ul className={view === 'list' ? 'price-list' : 'price-grid'} aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <li key={index}><span className={`payment-skeleton ${view === 'list' ? 'price-skeleton-row' : 'price-skeleton-card'}`} /></li>)}</ul>}

@@ -11,6 +11,7 @@ import PageLoader from './components/PageLoader.jsx'
 import { useMediaQuery } from './hooks/useMediaQuery.js'
 import { AppSettingsProvider } from './settings/AppSettingsProvider.jsx'
 import { useAppSettings } from './settings/appSettingsContext.js'
+import { syncLanguage } from './utils/translate.js'
 import { bottomNavItems, canUseItem, NAV_ITEMS } from './config/navigation.js'
 import './App.css'
 import './components/component.css'
@@ -91,6 +92,9 @@ function AppLayout() {
   const quickItems = bottomNavItems(user?.preferences?.bottomNav, user, features)
   const navStyle = user?.preferences?.navStyle || 'light'
   usePrefetchPages()
+  // A language chosen on another device follows the person here.
+  const profileLanguage = user?.preferences?.language
+  useEffect(() => { if (profileLanguage) syncLanguage(profileLanguage) }, [profileLanguage])
 
   function toggleSidebar() {
     if (isDesktop) setDesktopOpen((open) => !open)

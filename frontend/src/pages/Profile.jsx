@@ -6,6 +6,7 @@ import { apiRequest } from '../services/api.js'
 import { compressImageFile } from '../utils/image.js'
 import { applyTheme, cachedThemeId, findTheme, THEMES } from '../theme/themes.js'
 import { useToast } from '../hooks/useToast.js'
+import { LANGUAGES, savedLanguage, switchLanguage } from '../utils/translate.js'
 import Toast from '../components/Toast.jsx'
 import Modal from '../components/Modal.jsx'
 import BottomNav from '../components/BottomNav.jsx'
@@ -45,6 +46,43 @@ function DetailsCard({ user, updateUser, notify }) {
         <label>Email (used to sign in)<input className="form-control" value={user.email} readOnly disabled /></label>
         <div className="profile-form-actions"><button className="continue-btn" disabled={busy || !name.trim() || name.trim() === user.name}>{busy ? 'Saving…' : 'Save name'}</button></div>
       </form>
+    </Card>
+  )
+}
+
+/** App language through Google Translate. Saved on the profile, so it follows you to other devices. */
+function LanguageCard({ user, updateUser }) {
+  const current = user.preferences?.language || savedLanguage()
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+
+  async function choose(code) {
+    if (code === current || busy) return
+    setBusy(code); setError('')
+    try {
+      const result = await apiRequest('/auth/profile', { method: 'PATCH', body: JSON.stringify({ preferences: { language: code } }) })
+      updateUser(result.user)
+      switchLanguage(code) // reloads the app in the new language
+    } catch (issue) { setError(issue.message); setBusy('') }
+  }
+
+  return (
+    <Card id="profile-language" icon="bi-translate" title="Language" intro="Show the app in your language. Translation is done by Google Translate, so some words may not be perfect.">
+      {error && <p className="api-error" role="alert">{error}</p>}
+      {/* translate="no": language names always stay in their own script. */}
+      <div className="language-grid" role="radiogroup" aria-label="App language" translate="no">
+        {LANGUAGES.map((language) => {
+          const selected = language.code === current
+          return (
+            <button key={language.code} type="button" role="radio" aria-checked={selected} className={`language-option notranslate${selected ? ' is-selected' : ''}`} disabled={Boolean(busy)} onClick={() => choose(language.code)}>
+              <strong>{language.native}</strong>
+              <small>{busy === language.code ? 'Switching…' : language.name}</small>
+              {selected && <i className="bi bi-check-circle-fill" aria-hidden="true" />}
+            </button>
+          )
+        })}
+      </div>
+      <p className="language-note"><i className="bi bi-info-circle" aria-hidden="true" /><span>The app reloads to switch language. Choose <strong>English</strong> to turn translation off.</span></p>
     </Card>
   )
 }
@@ -276,6 +314,7 @@ export default function Profile() {
           <PasswordCard user={user} notify={notify} />
         </div>
         <div className="profile-column">
+          <LanguageCard user={user} updateUser={updateUser} />
           <AppearanceCard user={user} updateUser={updateUser} notify={notify} />
         </div>
       </div>

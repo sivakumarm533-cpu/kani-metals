@@ -10,7 +10,7 @@ import { decryptTotpSecret, encryptTotpSecret, hashChallenge, makeTotpQr, newCha
 import { recordActivity } from '../utils/activity.js'
 import { profilePictureDataUrl } from '../utils/profilePicture.js'
 import { THEME_IDS } from '../models/AppSetting.js'
-import { BOTTOM_NAV_KEYS, BOTTOM_NAV_MAX, DASHBOARD_WIDGETS, DEFAULT_BOTTOM_NAV, FEATURE_KEYS, NAV_STYLES } from '../config/features.js'
+import { BOTTOM_NAV_KEYS, BOTTOM_NAV_MAX, DASHBOARD_WIDGETS, DEFAULT_BOTTOM_NAV, FEATURE_KEYS, NAV_STYLES, LANGUAGE_CODES } from '../config/features.js'
 import { forgetSession, forgetUserSessions } from '../middleware/auth.js'
 
 const allowedAdminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase()
@@ -29,6 +29,7 @@ const publicPreferences = (preferences = {}) => ({
   bottomNav: Array.isArray(preferences.bottomNav) && preferences.bottomNav.length ? [...preferences.bottomNav] : [...DEFAULT_BOTTOM_NAV],
   navStyle: preferences.navStyle || 'light',
   dashboardHidden: Array.isArray(preferences.dashboardHidden) ? preferences.dashboardHidden.filter((id) => DASHBOARD_WIDGETS.includes(id)) : [],
+  language: LANGUAGE_CODES.includes(preferences.language) ? preferences.language : 'en',
 })
 /** Only the screens an admin set for this person; anything missing follows the workspace setting. */
 const publicFeatureAccess = (access = {}) => Object.fromEntries(FEATURE_KEYS.filter((key) => typeof access?.[key] === 'boolean').map((key) => [key, access[key]]))
@@ -430,6 +431,10 @@ function preferencesFromBody(input, current) {
   if (input.dashboardHidden !== undefined) {
     if (!Array.isArray(input.dashboardHidden) || input.dashboardHidden.some((id) => !DASHBOARD_WIDGETS.includes(id))) return { error: 'Dashboard settings are invalid.' }
     next.dashboardHidden = [...new Set(input.dashboardHidden)]
+  }
+  if (input.language !== undefined) {
+    if (!LANGUAGE_CODES.includes(input.language)) return { error: 'Choose one of the available languages.' }
+    next.language = input.language
   }
   return { preferences: next }
 }

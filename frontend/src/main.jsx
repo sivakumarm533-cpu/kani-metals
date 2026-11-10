@@ -5,10 +5,13 @@ import './styles/scrollbars.css'
 import App from './App.jsx'
 import { applyTheme, cachedThemeId } from './theme/themes.js'
 import { autoHideScrollbars } from './utils/scrollbars.js'
+import { startTranslation } from './utils/translate.js'
 
 // Apply the last used theme before the first paint so colours do not flash.
 applyTheme(cachedThemeId())
 autoHideScrollbars()
+// Shows the app in the language chosen on the profile (English loads nothing).
+startTranslation()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
