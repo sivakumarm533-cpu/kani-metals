@@ -151,9 +151,10 @@ function protectReactFromTranslation() {
 export function startTranslation(code = savedLanguage()) {
   setTranslateCookie(code)
   if (code === 'en') return
-  // Allow the widget to translate (index.html blocks translation for English).
+  // Let our widget translate the page (translate="no" would stop it). The
+  // <meta name="google" content="notranslate"> stays, so Chrome (especially on phones)
+  // never shows its own "Translate this page?" popup on top of the app.
   document.documentElement.removeAttribute('translate')
-  document.querySelector('meta[name="google"]')?.remove()
   document.documentElement.classList.add('is-translated')
   protectReactFromTranslation()
 
@@ -164,6 +165,19 @@ export function startTranslation(code = savedLanguage()) {
   window.kaniTranslateInit = () => {
     // eslint-disable-next-line no-undef
     new google.translate.TranslateElement({ pageLanguage: 'en', includedLanguages: LANGUAGES.map((language) => language.code).join(','), autoDisplay: false }, 'google_translate_element')
+    // Backup for phones where the "googtrans" cookie is not picked up: choose the
+    // language in Google's hidden switcher ourselves.
+    let tries = 0
+    const timer = window.setInterval(() => {
+      tries += 1
+      const combo = document.querySelector('select.goog-te-combo')
+      if (document.documentElement.classList.contains('translated-ltr') || document.documentElement.classList.contains('translated-rtl')) { window.clearInterval(timer); return }
+      if (combo && combo.options.length > 1) {
+        combo.value = code
+        combo.dispatchEvent(new Event('change'))
+        window.clearInterval(timer)
+      } else if (tries > 40) window.clearInterval(timer)
+    }, 250)
   }
   const script = document.createElement('script')
   script.src = 'https://translate.google.com/translate_a/element.js?cb=kaniTranslateInit'
