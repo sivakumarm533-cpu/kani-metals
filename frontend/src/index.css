@@ -1,50 +1,73 @@
 /* =========================================================
    Kani Metals design tokens — single source of truth.
-   Brand: copper orange on neutral metal greys.
+   Brand: copper on neutral metal greys.
    ========================================================= */
 :root {
-  /* Brand */
-  --color-primary: #F36F12;
-  --color-primary-hover: #D95B08;
-  --color-primary-strong: #B9520A; /* orange text on light backgrounds (AA contrast) */
-  --color-primary-soft: #FFF3E8;
-  --color-primary-faint: #FFFAF5;
-  --color-link: #B9520A;
+  /* Brand (Copper; other themes replace the --color-primary* values from theme/themes.js) */
+  --color-primary: #B96C35;
+  --color-primary-hover: #A35C2B;
+  --color-primary-strong: #8A4E25; /* copper text on light backgrounds (AA contrast) */
+  --color-primary-soft: #F5E8DC;
+  --color-primary-faint: #FBF5EF;
+  --color-primary-rgb: 185 108 53;
+  --color-link: #8A4E25;
 
-  --color-secondary: #191B1D;
-  --color-secondary-hover: #303438;
+  --color-secondary: #20252B;
+  --color-secondary-hover: #343A42;
   --color-metal: #92979B;
 
   /* Neutrals */
-  --color-text: #191B1D;
-  --color-text-muted: #5F656C;
-  --color-text-subtle: #8A9097;
-  --color-border: #E5E7EB;
-  --color-border-strong: #D3D7DD;
+  --color-text: #20252B;
+  --color-text-muted: #5D646C;
+  --color-text-subtle: #868D95;
+  --color-border: #E4E6E9;
+  --color-border-strong: #D1D5DA;
   --color-surface: #FFFFFF;
-  --color-surface-muted: #F9FAFB;
-  --color-background: #F5F6F8;
+  --color-surface-muted: #F8F9FA;
+  --color-background: #F5F6F7;
 
-  /* Status */
-  --color-success: #16A34A;
-  --color-success-soft: #ECFDF3;
-  --color-danger: #DC2626;
-  --color-danger-soft: #FEF2F2;
-  --color-warning: #D97706;
-  --color-warning-soft: #FFFBEB;
+  /* Status (the -strong shades are for text on white) */
+  --color-success: #168A55;
+  --color-success-strong: #0F6B41;
+  --color-success-soft: #E8F6EF;
+  --color-danger: #D94848;
+  --color-danger-strong: #B42E2E;
+  --color-danger-soft: #FCECEC;
+  --color-warning: #D99A24;
+  --color-warning-strong: #8F5F0A;
+  --color-warning-soft: #FDF4E3;
   --color-info: #2563EB;
   --color-info-soft: #EFF6FF;
+
+  /* Spacing scale (4px steps) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Type scale */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
 
   /* Shape & depth */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  --radius-xl: 22px;
   --radius-pill: 999px;
   --shadow-xs: 0 1px 2px rgb(16 24 40 / 5%);
   --shadow-sm: 0 2px 8px rgb(16 24 40 / 6%);
   --shadow-md: 0 8px 24px rgb(16 24 40 / 9%);
   --shadow-lg: 0 24px 64px rgb(16 24 40 / 20%);
-  --focus-ring: 0 0 0 3px rgb(243 111 18 / 32%);
+  --focus-ring: 0 0 0 3px rgb(185 108 53 / 32%);
 
   /* Motion */
   --ease-out: cubic-bezier(.2, .8, .2, 1);
@@ -53,7 +76,12 @@
 
   /* Layout */
   --navbar-height: 64px;
-  --sidebar-width: 252px;
+  --sidebar-width: 240px;
+  --mobile-header-height: 56px;
+  --bottom-nav-height: 64px;
+  --touch-target: 44px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   color-scheme: light;
@@ -84,4 +112,4 @@ body {
 
 input, select, textarea, button { font: inherit; }
 
-::selection { background: rgb(243 111 18 / 22%); }
+::selection { background: rgb(var(--color-primary-rgb) / 22%); }

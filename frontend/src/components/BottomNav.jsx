@@ -10,8 +10,8 @@ function ItemContent({ item, active }) {
 }
 
 /**
- * Floating mobile navigation bar. Shows up to four chosen screens plus a "More"
- * button that opens the full menu. With `preview`, it renders a non-interactive
+ * Phone navigation bar, fixed to the bottom. Shows up to four chosen screens plus a
+ * "More" button that opens the More sheet. With `preview`, it renders a non-interactive
  * copy used on the profile page.
  */
 export default function BottomNav({ items, navStyle = 'light', onMore, moreOpen = false, preview = false, previewActiveKey }) {
@@ -38,7 +38,7 @@ export default function BottomNav({ items, navStyle = 'light', onMore, moreOpen 
           </Link>
         )
       })}
-      <button type="button" className={`bottom-nav-item bottom-nav-more${moreOpen || !activeKey ? ' is-active' : ''}`} onClick={onMore} aria-expanded={moreOpen} aria-controls="main-navigation">
+      <button type="button" className={`bottom-nav-item bottom-nav-more${moreOpen || !activeKey ? ' is-active' : ''}`} onClick={onMore} aria-expanded={moreOpen} aria-haspopup="dialog">
         <ItemContent item={{ key: 'more', icon: moreOpen ? 'bi-x-lg' : 'bi-grid', activeIcon: moreOpen ? 'bi-x-lg' : 'bi-grid-fill', label: moreOpen ? 'Close' : 'More' }} active={moreOpen || !activeKey} />
       </button>
     </nav>

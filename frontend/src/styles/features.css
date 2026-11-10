@@ -358,3 +358,87 @@ body {
 .activity-results-heading .activity-clear-button:disabled { opacity: .5; cursor: not-allowed; }
 .activity-cleared-note { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-radius: var(--radius-sm); color: #166534; background: #dcfce7; font-size: 13px; }
 .activity-results-heading:has(.activity-clear-button) { flex-wrap: wrap; gap: 8px 12px; }
+
+/* ---------- Christmas theme extras (only when data-theme="christmas") ---------- */
+/* Christmas-lights stripe along the top bar. */
+:root[data-theme="christmas"] .admin-navbar {
+  border-top: 0;
+  background-image: repeating-linear-gradient(90deg, #c0262d 0 22px, #1f7a3a 22px 44px, #f4c542 44px 52px);
+  background-size: 100% 4px;
+  background-repeat: no-repeat;
+  background-position: top left;
+}
+/* Gentle snowfall behind the page content (cards and panels stay clear). */
+:root[data-theme="christmas"] body::before {
+  content: "";
+  position: fixed;
+  inset: -120px 0 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgb(148 163 184 / 70%) 0 2.5px, transparent 3px),
+    radial-gradient(circle, rgb(148 163 184 / 55%) 0 1.8px, transparent 2.3px),
+    radial-gradient(circle, rgb(192 38 45 / 18%) 0 2px, transparent 2.5px);
+  background-size: 140px 140px, 90px 90px, 170px 170px;
+  background-position: 10px 0, 50px 40px, 100px 70px;
+  animation: christmas-snow 22s linear infinite;
+}
+@keyframes christmas-snow {
+  from { background-position: 10px 0, 50px 40px, 100px 70px; }
+  to { background-position: 40px 840px, 20px 760px, 130px 920px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="christmas"] body::before { animation: none; }
+}
+
+/* ---------- Christmas: serial lights under the active menu item ---------- */
+/* A thin wire with red / green / gold / blue bulbs; the colours "chase" along the string and glow. */
+:root[data-theme="christmas"] {
+  --serial-bulb: 2.6px;
+  --serial-gap: 24px;
+}
+:root[data-theme="christmas"] .sidebar-link.is-active::after,
+:root[data-theme="christmas"] .bottom-nav-item.is-active::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 1px;
+  height: 10px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 3px 6px, #ff3b3b 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
+    radial-gradient(circle at 3px 6px, #22c55e 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
+    radial-gradient(circle at 3px 6px, #facc15 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
+    radial-gradient(circle at 3px 6px, #38bdf8 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
+    linear-gradient(#64748b, #64748b);
+  background-size: var(--serial-gap) 10px, var(--serial-gap) 10px, var(--serial-gap) 10px, var(--serial-gap) 10px, 100% 1px;
+  background-position: 0 0, 6px 0, 12px 0, 18px 0, 0 3px;
+  background-repeat: repeat-x, repeat-x, repeat-x, repeat-x, no-repeat;
+  filter: drop-shadow(0 0 2px rgb(255 214 102 / 85%));
+  animation: serial-chase 1.6s steps(1, end) infinite, serial-glow 1.2s ease-in-out infinite alternate;
+}
+/* Bottom bar: smaller string that fits under the label; it replaces the active dot. */
+:root[data-theme="christmas"] .bottom-nav-item.is-active::after {
+  --serial-bulb: 2.2px;
+  --serial-gap: 20px;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+}
+:root[data-theme="christmas"] .bottom-nav-item.is-active .bottom-nav-dot { opacity: 0; }
+
+@keyframes serial-chase {
+  0%   { background-position: 0 0, 6px 0, 12px 0, 18px 0, 0 3px; }
+  25%  { background-position: 6px 0, 12px 0, 18px 0, 0 0, 0 3px; }
+  50%  { background-position: 12px 0, 18px 0, 0 0, 6px 0, 0 3px; }
+  75%  { background-position: 18px 0, 0 0, 6px 0, 12px 0, 0 3px; }
+}
+@keyframes serial-glow {
+  from { filter: drop-shadow(0 0 1px rgb(255 214 102 / 55%)); opacity: .85; }
+  to   { filter: drop-shadow(0 0 4px rgb(255 214 102 / 100%)); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="christmas"] .sidebar-link.is-active::after,
+  :root[data-theme="christmas"] .bottom-nav-item.is-active::after { animation: none; }
+}

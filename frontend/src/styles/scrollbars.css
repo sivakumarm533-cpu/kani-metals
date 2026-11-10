@@ -4,8 +4,8 @@
  * layout never jumps when the thumb appears.
  */
 :root {
-  --scrollbar-thumb: rgb(var(--color-primary-rgb, 243 111 18) / 45%);
-  --scrollbar-thumb-hover: rgb(var(--color-primary-rgb, 243 111 18) / 70%);
+  --scrollbar-thumb: rgb(var(--color-primary-rgb, 185 108 53) / 45%);
+  --scrollbar-thumb-hover: rgb(var(--color-primary-rgb, 185 108 53) / 70%);
 }
 
 /* Firefox and Chromium 121+ */

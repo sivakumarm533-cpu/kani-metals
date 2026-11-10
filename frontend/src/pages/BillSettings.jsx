@@ -46,7 +46,7 @@ export default function BillSettings() {
     let active = true
     let url = ''
     const timer = window.setTimeout(() => {
-      const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#F36F12'
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#B96C35'
       renderBillImage({ ...sample, business: form, accent, template }).then((blob) => {
         if (!active) return
         url = URL.createObjectURL(blob)

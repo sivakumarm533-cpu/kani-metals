@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { apiRequest } from '../services/api.js'
 import { LOW_STOCK_LIMIT, useProducts } from '../hooks/useProducts.js'
 import LoadError from '../components/LoadError.jsx'
@@ -7,6 +8,8 @@ import Toast from '../components/Toast.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { compressImage } from '../utils/image.js'
 import { formatRupees } from '../utils/format.js'
+import { useMediaQuery } from '../hooks/useMediaQuery.js'
+import { FloatingActionButton, StatusBadge } from '../components/ui.jsx'
 import './Inventory.css'
 
 /*
@@ -85,8 +88,8 @@ function AddItemModal({ categories, onClose, onAdded, notify }) {
 }
 
 /** Changes only the stock quantity of the selected items. */
-function StockModal({ items, onClose, onSaved, notify }) {
-  const [rows, setRows] = useState(() => items.map((item) => ({ id: item._id, mode: 'add', amount: '' })))
+function StockModal({ items, onClose, onSaved, notify, initialMode = 'add' }) {
+  const [rows, setRows] = useState(() => items.map((item) => ({ id: item._id, mode: initialMode, amount: '' })))
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -191,16 +194,55 @@ function HistoryModal({ item, onClose }) {
   )
 }
 
+/** Phone card for one inventory item. */
+function InventoryCard({ item, max, checked, onToggle, onStock, onHistory }) {
+  const low = isLow(item)
+  const percent = max > 0 ? Math.max(item.quantity > 0 ? 3 : 0, Math.round((item.quantity / max) * 100)) : 0
+  return (
+    <li className={`inv-card${checked ? ' is-selected' : ''}${low ? ' is-low' : ''}`}>
+      <div className="inv-card-top">
+        <label className="inv-card-check">
+          <input type="checkbox" checked={checked} onChange={onToggle} />
+          <span className="visually-hidden">Select {item.name}</span>
+        </label>
+        <span className="inventory-thumb" aria-hidden="true">{item.image ? <img src={item.image} alt="" loading="lazy" /> : <i className="bi bi-box-seam" />}</span>
+        <span className="inv-card-name"><strong>{item.name}</strong><small>{item.category}{item.price ? ` · ${formatRupees(item.price)} / ${item.unit}` : ''}</small></span>
+        <button type="button" className="inv-card-history" onClick={onHistory} aria-label={`Stock history of ${item.name}`}><i className="bi bi-clock-history" aria-hidden="true" /></button>
+      </div>
+      <div className="inv-card-stock">
+        <span className="inv-card-qty"><b>{qty(item.quantity)}</b> {item.unit}</span>
+        {low ? <StatusBadge tone="warning" icon="bi-exclamation-triangle">Low stock</StatusBadge> : <StatusBadge tone="success" icon="bi-check2">In stock</StatusBadge>}
+      </div>
+      <span className={`stock-bar${low ? ' is-low' : ''}`} role="meter" aria-valuemin={0} aria-valuemax={max || 0} aria-valuenow={item.quantity} aria-label={`${item.name} stock compared with the largest ${item.unit} stock`}><span style={{ width: `${percent}%` }} /></span>
+      <div className="inv-card-actions">
+        <button type="button" onClick={() => onStock('add')}><i className="bi bi-plus-lg" aria-hidden="true" />Add</button>
+        <button type="button" onClick={() => onStock('remove')}><i className="bi bi-dash-lg" aria-hidden="true" />Remove</button>
+        <button type="button" onClick={() => onStock('set')}><i className="bi bi-pencil" aria-hidden="true" />Set</button>
+      </div>
+      <small className="inv-card-updated">Stock updated {shortDate(item.stockUpdatedAt || item.updatedAt)}{item.stockUpdatedByName ? ` · ${item.stockUpdatedByName}` : ''}</small>
+    </li>
+  )
+}
+
 function Inventory() {
+  const isPhone = useMediaQuery('(max-width: 720px)')
   const { products, loading, error, retry } = useProducts()
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('all')
+  const [searchParams] = useSearchParams()
+  // ?filter=low opens the list on low-stock items (used by the dashboard alerts).
+  const [filter, setFilter] = useState(() => (searchParams.get('filter') === 'low' ? 'low' : 'all'))
   const [selected, setSelected] = useState(() => new Set())
   const [modal, setModal] = useState(null)
   const [toast, notify] = useToast()
 
   const categories = useMemo(() => [...new Set([...CATEGORIES, ...products.map((item) => item.category).filter(Boolean)])], [products])
   const lowCount = products.filter(isLow).length
+  // Phone stock bars compare items that use the same unit.
+  const maxByUnit = useMemo(() => {
+    const map = new Map()
+    for (const item of products) map.set(item.unit, Math.max(map.get(item.unit) || 0, item.quantity || 0))
+    return map
+  }, [products])
   const shown = useMemo(() => {
     const term = search.trim().toLowerCase()
     return products.filter((item) => (filter === 'all' || isLow(item)) && (!term || `${item.name} ${item.category}`.toLowerCase().includes(term)))
@@ -254,7 +296,15 @@ function Inventory() {
       </div>
 
       <LoadError message={error} onRetry={retry} />
-      <div className="table-responsive inventory-table-wrap">
+      {isPhone ? <>
+        {shown.length > 0 && <label className="inv-select-all"><input type="checkbox" checked={allShownSelected} onChange={toggleAll} /> Select all shown ({shown.length})</label>}
+        {loading && <ul className="inv-cards" aria-hidden="true">{Array.from({ length: 3 }, (_, index) => <li key={index}><span className="skeleton inv-card-skeleton" /></li>)}</ul>}
+        {!loading && shown.length > 0 && <ul className="inv-cards">
+          {shown.map((item) => <InventoryCard key={item._id} item={item} max={maxByUnit.get(item.unit)} checked={selected.has(item._id)} onToggle={() => toggle(item._id)} onStock={(mode) => setModal({ type: 'stock', items: [item], mode })} onHistory={() => setModal({ type: 'history', item })} />)}
+        </ul>}
+        {!loading && !error && products.length === 0 && <div className="empty-state empty-state-panel"><i className="bi bi-box-seam" aria-hidden="true" /><strong>No inventory items yet</strong><span>Add an item to track its stock and pick it on bills.</span></div>}
+        {!loading && products.length > 0 && !shown.length && <p className="stock-help">No items match.</p>}
+      </> : <div className="table-responsive inventory-table-wrap">
         <table className="table align-middle inventory-table responsive-card-table">
           <thead>
             <tr>
@@ -297,8 +347,9 @@ function Inventory() {
             )}
           </tbody>
         </table>
-      </div>
+      </div>}
 
+      {isPhone && !selectedItems.length && !modal && <FloatingActionButton icon="bi-plus-lg" label="Add item" onClick={() => setModal({ type: 'add' })} />}
       {selectedItems.length > 0 && (
         <div className="inventory-selection" role="region" aria-label="Selected items">
           <span><b>{selectedItems.length}</b> selected</span>
@@ -308,7 +359,7 @@ function Inventory() {
       )}
 
       {modal?.type === 'add' && <AddItemModal categories={categories} notify={notify} onClose={() => setModal(null)} onAdded={afterSave} />}
-      {modal?.type === 'stock' && <StockModal items={modal.items} notify={notify} onClose={() => setModal(null)} onSaved={afterSave} />}
+      {modal?.type === 'stock' && <StockModal items={modal.items} initialMode={modal.mode} notify={notify} onClose={() => setModal(null)} onSaved={afterSave} />}
       {modal?.type === 'history' && <HistoryModal item={modal.item} onClose={() => setModal(null)} />}
     </section>
   )

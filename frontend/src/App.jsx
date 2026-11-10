@@ -3,7 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { AuthProvider } from './auth/AuthContext.jsx'
 import { useAuth } from './auth/authContextValue.js'
 import RequireAuth from './components/RequireAuth.jsx'
-import Navbar from './components/Navbar.jsx'
+import AppHeader from './components/AppHeader.jsx'
+import MobileMoreMenu from './components/MobileMoreMenu.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import BottomNav from './components/BottomNav.jsx'
 import PageLoader from './components/PageLoader.jsx'
@@ -17,6 +18,7 @@ import './pages/pages.css'
 import './styles/system.css'
 import './styles/features.css'
 import './styles/navigation.css'
+import './styles/app-shell.css'
 import './styles/mobile-typography.css'
 
 // Pages are split into separate chunks so the first load only downloads what is shown.
@@ -84,6 +86,7 @@ function AppLayout() {
   // Desktop starts with the sidebar open; small screens start with the drawer closed.
   const [desktopOpen, setDesktopOpen] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const sidebarOpen = isDesktop ? desktopOpen : drawerOpen
   const quickItems = bottomNavItems(user?.preferences?.bottomNav, user, features)
   const navStyle = user?.preferences?.navStyle || 'light'
@@ -110,14 +113,15 @@ function AppLayout() {
 
   // Moving to another screen closes the mobile menu.
   const [lastPath, setLastPath] = useState(location.pathname)
-  if (lastPath !== location.pathname) { setLastPath(location.pathname); if (drawerOpen) setDrawerOpen(false) }
+  if (lastPath !== location.pathname) { setLastPath(location.pathname); if (drawerOpen) setDrawerOpen(false); if (moreOpen) setMoreOpen(false) }
 
   return (
-    <div className={`admin-layout${isPhone ? ' has-bottom-nav' : ''}`}>
+    <div className={`admin-layout${isPhone ? ' has-bottom-nav is-phone' : ''}${isDesktop && !desktopOpen ? ' is-sidebar-collapsed' : ''}`}>
       <a className="skip-link" href="#main-content">Skip to content</a>
-      <Navbar sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} onNavigate={closeDrawer} />
+      <AppHeader isPhone={isPhone} isDesktop={isDesktop} sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} onNavigate={closeDrawer} />
       <div className="admin-body">
-        <Sidebar isOpen={sidebarOpen} isDesktop={isDesktop} onNavigate={closeDrawer} />
+        {/* Phones use the bottom bar and the More sheet instead of the side menu. */}
+        {!isPhone && <Sidebar isOpen={sidebarOpen} isDesktop={isDesktop} onNavigate={closeDrawer} />}
         <main className="admin-content" id="main-content" tabIndex={-1}>
           <div className="page-transition" key={location.pathname}>
             <Suspense fallback={<PageLoader />}>
@@ -144,7 +148,8 @@ function AppLayout() {
           </div>
         </main>
       </div>
-      {isPhone && <BottomNav items={quickItems} navStyle={navStyle} moreOpen={drawerOpen} onMore={() => setDrawerOpen((open) => !open)} />}
+      {isPhone && <BottomNav items={quickItems} navStyle={navStyle} moreOpen={moreOpen} onMore={() => setMoreOpen((open) => !open)} />}
+      {isPhone && moreOpen && <MobileMoreMenu barKeys={quickItems.map((item) => item.key)} onClose={() => setMoreOpen(false)} />}
     </div>
   )
 }

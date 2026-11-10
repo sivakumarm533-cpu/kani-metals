@@ -9,11 +9,11 @@ export const FEATURE_KEYS = ['inventory', 'itemEntry', 'dealerPayments', 'billCo
 export const MENU_KEYS = ['dashboard', 'itemEntry', 'dealerPayments', 'itemPrices', 'billComparison', 'inventory']
 
 /** Dashboard sections a user can hide. Keep in sync with DASHBOARD_WIDGETS in frontend/src/pages/Dashboard.jsx. */
-export const DASHBOARD_WIDGETS = ['pendingCard', 'paidCard', 'billedCard', 'lowStockCard', 'pendingDealers', 'rateUpdates', 'quickActions']
+export const DASHBOARD_WIDGETS = ['pendingCard', 'paidCard', 'billedCard', 'lowStockCard', 'pendingDealers', 'rateUpdates', 'quickActions', 'recentPayments', 'lowStockList']
 
 /** Screens a user can pin to the mobile bottom bar. */
 export const BOTTOM_NAV_KEYS = ['dashboard', ...FEATURE_KEYS, 'profile', 'settings']
-export const DEFAULT_BOTTOM_NAV = ['dashboard', 'itemEntry', 'dealerPayments', 'profile']
+export const DEFAULT_BOTTOM_NAV = ['dashboard', 'itemEntry', 'dealerPayments', 'inventory']
 export const BOTTOM_NAV_MAX = 4
 export const NAV_STYLES = ['light', 'color', 'dark']
 

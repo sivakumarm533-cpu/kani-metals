@@ -7,6 +7,7 @@ import { LOW_STOCK_LIMIT, useProducts } from '../hooks/useProducts.js'
 import { apiRequest } from '../services/api.js'
 import LoadError from '../components/LoadError.jsx'
 import Modal from '../components/Modal.jsx'
+import { EmptyState, PageHeader, StatCard, StatusBadge } from '../components/ui.jsx'
 
 /**
  * Sections each person can show or hide on their dashboard (saved in their preferences).
@@ -20,6 +21,8 @@ const DASHBOARD_WIDGETS = [
   { id: 'lowStockCard', group: 'Summary cards', icon: 'bi-exclamation-triangle', label: 'Low stock', text: 'Items with low stock', features: ['inventory'] },
   { id: 'pendingDealers', group: 'Lists', icon: 'bi-people', label: 'Dealer pending amounts', text: 'Dealers with an outstanding balance', features: ['dealerPayments'] },
   { id: 'rateUpdates', group: 'Lists', icon: 'bi-graph-up', label: 'Item rate updates', text: 'Latest purchase rate of each item', features: ['itemPrices', 'billComparison'] },
+  { id: 'recentPayments', group: 'Lists', icon: 'bi-clock-history', label: 'Recent transactions', text: 'Latest payments to dealers', features: ['dealerPayments'] },
+  { id: 'lowStockList', group: 'Lists', icon: 'bi-box-seam', label: 'Low-stock alerts', text: 'Items that are running out', features: ['inventory'] },
   { id: 'quickActions', group: 'Shortcuts', icon: 'bi-lightning', label: 'Quick actions', text: 'Shortcuts to the screens you use', features: [] },
 ]
 
@@ -86,12 +89,18 @@ const initials = (name = '') => name.trim().split(/\s+/).slice(0, 2).map((part) 
 
 // Each quick action belongs to a menu screen and only shows when the user can open it.
 const quickLinks = [
-  { feature: 'itemEntry', to: '/itemsentry', icon: 'bi-receipt-cutoff', title: 'Create a bill', text: 'Choose a dealer and enter purchased items.' },
-  { feature: 'dealerPayments', to: '/dealer-payments', icon: 'bi-wallet2', title: 'Dealer payments', text: 'Record payments and follow up on balances.' },
-  { feature: 'itemPrices', to: '/item-prices', icon: 'bi-currency-rupee', title: 'Item prices', text: 'Latest price of every item from dealer bills.' },
-  { feature: 'billComparison', to: '/bill-comparison', icon: 'bi-arrow-left-right', title: 'Compare bills', text: 'See price and quantity changes between bills.' },
-  { feature: 'inventory', to: '/inventory', icon: 'bi-boxes', title: 'Check inventory', text: 'Review stock levels and low-stock items.' },
+  { feature: 'itemEntry', to: '/itemsentry', icon: 'bi-receipt-cutoff', title: 'New bill', text: 'Choose a dealer and enter purchased items.' },
+  { feature: 'dealerPayments', to: '/dealer-payments', icon: 'bi-wallet2', title: 'Pay dealer', text: 'Record payments and follow up on balances.' },
+  { feature: 'inventory', to: '/inventory', icon: 'bi-boxes', title: 'Stock', text: 'Review stock levels and low-stock items.' },
+  { feature: 'itemPrices', to: '/item-prices', icon: 'bi-currency-rupee', title: 'Prices', text: 'Latest price of every item from dealer bills.' },
+  { feature: 'billComparison', to: '/bill-comparison', icon: 'bi-arrow-left-right', title: 'Compare', text: 'See price and quantity changes between bills.' },
 ]
+
+const methodLabels = { cash: 'Cash', gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', upi_other: 'UPI', net_banking: 'Net banking', cheque: 'Cheque', bank_deposit: 'Bank deposit', advance: 'From advance', other: 'Other' }
+const methodIcons = { cash: 'bi-cash', cheque: 'bi-bank', bank_deposit: 'bi-bank', net_banking: 'bi-bank', advance: 'bi-piggy-bank' }
+const statusTone = { received: ['success', 'Paid'], cleared: ['success', 'Cleared'], pending: ['warning', 'Cheque pending'], bounced: ['danger', 'Bounced'], reversed: ['neutral', 'Reversed'] }
+/** Whole rupees for headline figures; the exact amount is in the tooltip. */
+const rupees = (paise = 0) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Math.round((Number(paise) || 0) / 100))
 
 function useDashboardSummary() {
   const [state, setState] = useState({ data: null, loading: true, error: '' })
@@ -124,7 +133,7 @@ function PendingDealers({ loading, rows }) {
               <DealerAvatar dealer={row.dealer} />
               <span className="dash-dealer-main">
                 <strong>{row.dealer.name}</strong>
-                <small>{row.dealer.phone}{row.pendingBills ? ` · ${row.pendingBills} pending ${row.pendingBills === 1 ? 'bill' : 'bills'}` : ''}{row.oldestPendingDate ? ` · since ${shortDate(row.oldestPendingDate)}` : ''}</small>
+                <small><span className="dash-hide-phone">{row.dealer.phone} · </span>{row.pendingBills ? `${row.pendingBills} pending ${row.pendingBills === 1 ? 'bill' : 'bills'}` : ''}{row.oldestPendingDate ? ` · since ${shortDate(row.oldestPendingDate)}` : ''}</small>
                 <span className="dash-progress" role="img" aria-label={`${paidPercent.toFixed(0)} percent paid`}><span style={{ width: `${paidPercent}%` }} /></span>
               </span>
               <span className="dash-dealer-amount">
@@ -159,11 +168,62 @@ function RateUpdates({ loading, rows }) {
               ? <small className="dash-rate-change">First recorded rate</small>
               : row.changePaise === 0
               ? <small className="dash-rate-change">No change since {shortDate(row.previousDate)}</small>
-              : <small className={`dash-rate-change dash-trend-text-${row.trend}`}>{row.changePaise > 0 ? '+' : row.changePaise < 0 ? '−' : ''}{money(Math.abs(row.changePaise))}{row.changePercent !== null && row.changePaise !== 0 ? ` (${row.changePercent > 0 ? '+' : ''}${row.changePercent}%)` : ''} · was {money(row.previousPaise)}</small>}
+              : <small className={`dash-rate-change dash-trend-text-${row.trend}`}>{row.changePaise > 0 ? '+' : row.changePaise < 0 ? '−' : ''}{money(Math.abs(row.changePaise))}{row.changePercent !== null && row.changePaise !== 0 ? ` (${row.changePercent > 0 ? '+' : ''}${row.changePercent}%)` : ''}<span className="dash-hide-phone"> · was {money(row.previousPaise)}</span></small>}
           </span>
         </li>
       ))}
     </ul>
+  )
+}
+
+function RecentPayments({ loading, rows }) {
+  if (loading) return <div className="dash-list">{Array.from({ length: 3 }, (_, index) => <div className="skeleton dash-skeleton-row" key={index} />)}</div>
+  if (!rows.length) return <EmptyState icon="bi-wallet2" title="No payments yet" text="Payments you record appear here." />
+  return (
+    <ul className="dash-list">
+      {rows.map((row) => {
+        const [tone, label] = statusTone[row.paymentStatus] || ['neutral', row.paymentStatus]
+        return (
+          <li key={row._id}>
+            <Link className="dash-tx-row" to={row.dealer ? `/dealer-payments/${row.dealer._id}` : '/dealer-payments'}>
+              <span className={`dash-tx-icon is-${tone}`} aria-hidden="true"><i className={`bi ${methodIcons[row.paymentMethod] || 'bi-phone'}`} /></span>
+              <span className="dash-tx-main"><strong>{row.dealer?.name || 'Dealer'}</strong><small>{methodLabels[row.paymentMethod] || row.paymentMethod} · {shortDate(row.paymentDate)}</small></span>
+              <span className="dash-tx-amount"><strong>{money(row.amountPaise)}</strong><StatusBadge tone={tone}>{label}</StatusBadge></span>
+            </Link>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function LowStockAlerts({ loading, items }) {
+  if (loading) return <div className="dash-list">{Array.from({ length: 3 }, (_, index) => <div className="skeleton dash-skeleton-row" key={index} />)}</div>
+  if (!items.length) return <EmptyState icon="bi-check2-circle" title="Stock looks fine" text={`No item is at ${LOW_STOCK_LIMIT} units or fewer.`} />
+  return (
+    <ul className="dash-list">
+      {items.map((item) => (
+        <li key={item._id}>
+          <Link className="dash-tx-row" to="/inventory?filter=low">
+            <span className="dash-stock-thumb" aria-hidden="true">{item.image ? <img src={item.image} alt="" loading="lazy" /> : <i className="bi bi-box-seam" />}</span>
+            <span className="dash-tx-main"><strong>{item.name}</strong><small>{item.category}</small></span>
+            <span className="dash-tx-amount"><strong>{Number(item.quantity).toLocaleString('en-IN', { maximumFractionDigits: 3 })} {item.unit}</strong><StatusBadge tone="warning" icon="bi-exclamation-triangle">Low</StatusBadge></span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function Panel({ title, text, link, children }) {
+  return (
+    <section className="dashboard-card dash-panel">
+      <div className="dash-panel-head">
+        <div><h2>{title}</h2>{text && <p>{text}</p>}</div>
+        {link && <Link className="dash-panel-link" to={link.to}>{link.label} <i className="bi bi-arrow-right" aria-hidden="true" /></Link>}
+      </div>
+      {children}
+    </section>
   )
 }
 
@@ -176,85 +236,62 @@ function Dashboard() {
   // Sections this person may see, then the ones they chose to show.
   const available = DASHBOARD_WIDGETS.filter((widget) => !widget.features.length || widget.features.some(can))
   const shows = (id) => available.some((widget) => widget.id === id) && !hidden.includes(id)
-  const showRates = shows('rateUpdates')
-  const showStock = shows('lowStockCard')
+  const showStock = shows('lowStockCard') || shows('lowStockList')
   const { products, loading, error, retry } = useProducts()
   const summary = useDashboardSummary()
-  const lowStockCount = products.filter((product) => product.quantity <= LOW_STOCK_LIMIT).length
-  const value = (count, busy = summary.loading, failed = summary.error) => (busy ? <span className="skeleton skeleton-number" aria-label="Loading" /> : failed ? '—' : count)
+  const lowStock = products.filter((product) => product.quantity <= LOW_STOCK_LIMIT).sort((a, b) => a.quantity - b.quantity)
   const totals = summary.data?.summary
+  const busy = summary.loading
 
   // Only figures for screens this person can open.
   const cards = [
-    shows('pendingCard') && { icon: 'bi-hourglass-split', label: 'Pending from dealers', count: value(money(totals?.totalPendingPaise)), note: totals ? `${totals.dealersWithPending} dealers · ${totals.pendingBills} bills` : 'Outstanding balance', tone: 'warning', to: '/dealer-payments' },
-    shows('paidCard') && { icon: 'bi-cash-coin', label: 'Paid to dealers', count: value(money(totals?.totalReceivedPaise)), note: totals ? `of ${money(totals.totalBilledPaise)} billed` : 'All payments recorded', tone: 'success', to: '/dealer-payments' },
-    shows('billedCard') && { icon: 'bi-receipt', label: 'Total billed', count: value(money(totals?.totalBilledPaise)), note: 'All dealer bills', to: '/itemsentry' },
-    showStock && { icon: 'bi-exclamation-triangle', label: 'Low stock', count: value(lowStockCount, loading, error), note: `${LOW_STOCK_LIMIT} units or fewer`, tone: 'danger', to: '/inventory' },
+    shows('pendingCard') && { icon: 'bi-hourglass-split', label: 'Pending to dealers', paise: totals?.totalPendingPaise, note: totals?.dealersWithPending != null ? `${totals.dealersWithPending} dealers · ${totals.pendingBills} bills` : 'Outstanding balance', tone: 'warning', to: '/dealer-payments' },
+    shows('paidCard') && { icon: 'bi-cash-coin', label: 'Paid to dealers', paise: totals?.totalReceivedPaise, note: totals?.totalBilledPaise != null ? `of ${rupees(totals.totalBilledPaise)} billed` : 'All payments recorded', tone: 'success', to: '/dealer-payments' },
+    shows('billedCard') && { icon: 'bi-receipt', label: 'Total billed', paise: totals?.totalBilledPaise, note: 'All dealer bills', tone: 'primary', to: '/itemsentry' },
+    shows('lowStockCard') && { icon: 'bi-exclamation-triangle', label: 'Low stock', count: lowStock.length, note: `${LOW_STOCK_LIMIT} units or fewer`, tone: 'danger', to: '/inventory?filter=low', stock: true },
   ].filter(Boolean)
   const links = shows('quickActions') ? quickLinks.filter((link) => can(link.feature)) : []
-  const showPendingList = shows('pendingDealers')
-  const panelCount = Number(showPendingList) + Number(showRates)
-  const needsSummary = cards.some((card) => card.to !== '/inventory') || panelCount > 0
-  const rateLink = can('itemPrices') ? { to: '/item-prices', label: 'All prices' } : { to: '/bill-comparison', label: 'Compare' }
+  const panels = [
+    shows('pendingDealers') && <Panel key="pending" title="Dealer pending amounts" text="Highest balance first." link={{ to: '/dealer-payments', label: 'View all' }}><PendingDealers loading={busy} rows={summary.data?.pendingDealers || []} /></Panel>,
+    shows('rateUpdates') && <Panel key="rates" title="Latest item prices" text="Latest bill price compared with the previous bill." link={can('itemPrices') ? { to: '/item-prices', label: 'All prices' } : { to: '/bill-comparison', label: 'Compare' }}><RateUpdates loading={busy} rows={(summary.data?.rateUpdates || []).slice(0, 6)} /></Panel>,
+    shows('recentPayments') && <Panel key="recent" title="Recent transactions" text="Latest payments to dealers." link={{ to: '/dealer-payments', label: 'Payments' }}><RecentPayments loading={busy} rows={summary.data?.recentPayments || []} /></Panel>,
+    shows('lowStockList') && <Panel key="stock" title="Low-stock alerts" text={`Items at ${LOW_STOCK_LIMIT} units or fewer.`} link={{ to: '/inventory?filter=low', label: 'Inventory' }}><LowStockAlerts loading={loading} items={lowStock.slice(0, 5)} /></Panel>,
+  ].filter(Boolean)
+  const needsSummary = cards.some((card) => !card.stock) || panels.length > 0
 
   return (
-    <section className="page-container">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">OVERVIEW</p>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-description">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}. Here is a quick look at your store.</p>
-        </div>
-        {available.length > 0 && <button type="button" className="back-button dash-customize-button" onClick={() => setCustomizing(true)}><i className="bi bi-sliders" aria-hidden="true" /> Customise</button>}
-      </header>
+    <section className="page-container dash-page">
+      <PageHeader
+        eyebrow="OVERVIEW"
+        title={`Welcome${user?.name ? `, ${user.name.split(' ')[0]}` : ''}`}
+        description="Here is a quick look at your business today."
+        actions={available.length > 0 && <button type="button" className="back-button dash-customize-button" onClick={() => setCustomizing(true)}><i className="bi bi-sliders" aria-hidden="true" /> Customise</button>}
+      />
       {showStock && <LoadError message={error} onRetry={retry} />}
       {needsSummary && <LoadError message={summary.error} onRetry={summary.retry} />}
 
-      {cards.length > 0 && <div className="summary-grid summary-grid-4" style={{ '--summary-cards': cards.length }}>
+      {cards.length > 0 && <div className="ui-stat-grid dash-stats">
         {cards.map((card) => (
-          <Link className={`summary-card summary-card-link${card.tone ? ` summary-card-${card.tone}` : ''}`} key={card.label} to={card.to}>
-            <span className="summary-icon" aria-hidden="true"><i className={`bi ${card.icon}`} /></span>
-            <p>{card.label}</p>
-            <strong>{card.count}</strong>
-            <small>{card.note}</small>
-          </Link>
+          <StatCard key={card.label} icon={card.icon} label={card.label} tone={card.tone} to={card.to} note={card.note}
+            loading={card.stock ? loading : busy}
+            value={card.stock ? (error ? '—' : card.count) : summary.error || card.paise == null ? '—' : <span title={money(card.paise)}>{rupees(card.paise)}</span>} />
         ))}
       </div>}
 
-      {panelCount > 0 && <div className={`dash-panels${panelCount === 1 ? ' is-single' : ''}`}>
-        {showPendingList && <section className="dashboard-card dash-panel">
-          <div className="dash-panel-head">
-            <div><h2>Dealer pending amounts</h2><p>Dealers with an outstanding balance, highest first.</p></div>
-            <Link className="dash-panel-link" to="/dealer-payments">View all <i className="bi bi-arrow-right" aria-hidden="true" /></Link>
-          </div>
-          <PendingDealers loading={summary.loading} rows={summary.data?.pendingDealers || []} />
-        </section>}
-        {showRates && <section className="dashboard-card dash-panel">
-          <div className="dash-panel-head">
-            <div><h2>Item rate updates</h2><p>Latest purchase rate per item compared with its previous bill.</p></div>
-            <Link className="dash-panel-link" to={rateLink.to}>{rateLink.label} <i className="bi bi-arrow-right" aria-hidden="true" /></Link>
-          </div>
-          <RateUpdates loading={summary.loading} rows={summary.data?.rateUpdates || []} />
-        </section>}
-      </div>}
+      {links.length > 0 && <nav className="dash-actions" aria-label="Quick actions">
+        {links.map((link) => (
+          <Link className="dash-action" to={link.to} key={link.to} title={link.text}>
+            <span className="dash-action-icon" aria-hidden="true"><i className={`bi ${link.icon}`} /></span>
+            <span>{link.title}</span>
+          </Link>
+        ))}
+      </nav>}
 
-      {links.length > 0 && <section className="dashboard-card">
-        <h2>Quick actions</h2>
-        <p>Jump straight to the tasks you use most.</p>
-        <div className="quick-link-grid">
-          {links.map((link) => (
-            <Link className="quick-link" to={link.to} key={link.to}>
-              <span className="quick-link-icon" aria-hidden="true"><i className={`bi ${link.icon}`} /></span>
-              <span><strong>{link.title}</strong><small>{link.text}</small></span>
-              <i className="bi bi-arrow-right quick-link-arrow" aria-hidden="true" />
-            </Link>
-          ))}
-        </div>
-      </section>}
+      {panels.length > 0 && <div className={`dash-panels${panels.length === 1 ? ' is-single' : ''}`}>{panels}</div>}
 
-      {!cards.length && !panelCount && !links.length && (available.length
-        ? <div className="empty-state empty-state-panel"><i className="bi bi-eye-slash" aria-hidden="true" /><strong>Everything is hidden</strong><span>Choose what to show on your dashboard.</span><button type="button" className="continue-btn" onClick={() => setCustomizing(true)}><i className="bi bi-sliders" aria-hidden="true" /> Customise</button></div>
-        : <div className="empty-state empty-state-panel"><i className="bi bi-person-lock" aria-hidden="true" /><strong>No screens switched on yet</strong><span>Ask your administrator to give you access to the screens you need.</span></div>)}
+      {!cards.length && !panels.length && !links.length && (available.length
+        ? <EmptyState icon="bi-eye-slash" title="Everything is hidden" text="Choose what to show on your dashboard." action={<button type="button" className="continue-btn" onClick={() => setCustomizing(true)}><i className="bi bi-sliders" aria-hidden="true" /> Customise</button>} />
+        : <EmptyState icon="bi-person-lock" title="No screens switched on yet" text="Ask your administrator to give you access to the screens you need." />)}
       {customizing && <CustomizeDashboard widgets={available} hidden={hidden.filter((id) => available.some((widget) => widget.id === id))} onClose={() => setCustomizing(false)} onSaved={() => setCustomizing(false)} />}
     </section>
   )

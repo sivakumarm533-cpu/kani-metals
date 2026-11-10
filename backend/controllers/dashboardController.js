@@ -12,7 +12,7 @@ const toPaise = (rupees) => rupeesToPaise(String(rupees ?? 0)) ?? 0
  */
 export async function getDashboardSummary(req, res, next) {
   try {
-    const [bills, payments, rateGroups] = await Promise.all([
+    const [bills, payments, rateGroups, recent] = await Promise.all([
       Bill.find().select('dealer total issuedDate').lean(),
       Payment.find({ paymentStatus: { $in: ['received', 'cleared'] } }).select('bill amountPaise excessPaise paymentDate dealer').lean(),
       Bill.aggregate([
@@ -31,6 +31,10 @@ export async function getDashboardSummary(req, res, next) {
           },
         },
       ]),
+      // Latest money movements for the "Recent transactions" list.
+      Payment.find().sort({ paymentDate: -1, createdAt: -1 }).limit(6)
+        .select('dealer bill amountPaise excessPaise excessType paymentMethod paymentStatus paymentDate')
+        .populate('dealer', 'name').lean(),
     ])
 
     // ---- Pending amounts per dealer ----
@@ -108,6 +112,17 @@ export async function getDashboardSummary(req, res, next) {
       },
       pendingDealers: seesPayments ? pendingDealers.slice(0, 8) : [],
       rateUpdates: seesRates ? rateUpdates.slice(0, 12) : [],
+      recentPayments: seesPayments ? recent.map((payment) => ({
+        _id: payment._id,
+        dealer: payment.dealer ? { _id: payment.dealer._id, name: payment.dealer.name } : null,
+        bill: payment.bill,
+        amountPaise: payment.amountPaise,
+        excessPaise: payment.excessPaise || 0,
+        excessType: payment.excessType,
+        paymentMethod: payment.paymentMethod,
+        paymentStatus: payment.paymentStatus,
+        paymentDate: payment.paymentDate,
+      })) : [],
     })
   } catch (error) { next(error) }
 }

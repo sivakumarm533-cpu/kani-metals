@@ -4,7 +4,7 @@ import { FEATURE_KEYS } from '../config/features.js'
 /** Bill image designs; keep in sync with BILL_TEMPLATES in frontend/src/utils/billImage.js. */
 export const BILL_TEMPLATE_IDS = ['classic', 'modern', 'minimal', 'bold', 'soft']
 
-export const THEME_IDS = ['copper', 'ocean', 'emerald', 'royal', 'crimson', 'teal', 'steel', 'gold', 'rose', 'midnight']
+export const THEME_IDS = ['copper', 'ocean', 'emerald', 'royal', 'crimson', 'teal', 'steel', 'gold', 'rose', 'midnight', 'christmas']
 
 const featureFields = Object.fromEntries(FEATURE_KEYS.map((key) => [key, { type: Boolean, default: true }]))
 

@@ -51,7 +51,7 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
     if (!data) return undefined
     let active = true
     let url = ''
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#F36F12'
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#B96C35'
     renderBillImage({ ...data, accent, template: billTemplate })
       .then((blob) => {
         if (!active) return

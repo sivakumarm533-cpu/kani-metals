@@ -98,14 +98,14 @@ function hexColor(value) {
   const text = String(value || '').trim()
   if (/^#[0-9a-f]{6}$/i.test(text)) return text
   const short = text.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i)
-  return short ? `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}` : '#F36F12'
+  return short ? `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}` : '#B96C35'
 }
 
 /**
  * Draws the dealer bill in the chosen template and returns a PNG Blob.
  * @param {{ business, dealer, bill, state: {totalPaise, receivedPaise, pendingPaise}, payments, accent, template }} data
  */
-export async function renderBillImage({ business, dealer, bill, state, payments, accent: themeAccent = '#F36F12', template = 'classic' }) {
+export async function renderBillImage({ business, dealer, bill, state, payments, accent: themeAccent = '#B96C35', template = 'classic' }) {
   const look = templateStyle(template, hexColor(themeAccent))
   const accent = look.accent
   if (document.fonts?.load) await Promise.all([document.fonts.load(font(700, 40)), document.fonts.load(font(400, 24))]).catch(() => {})

@@ -29,12 +29,17 @@ export function patternLayers(pattern, color, alpha = 0.07) {
     case 'checker': return { image: `conic-gradient(${c} 25%, transparent 0 50%, ${c} 0 75%, transparent 0)`, size: '28px 28px' }
     case 'rings': return { image: `radial-gradient(circle, transparent 7px, ${c} 8px, ${c} 9px, transparent 10px)`, size: '30px 30px' }
     case 'lines': return { image: `repeating-linear-gradient(0deg, ${c} 0 1px, transparent 1px 12px)`, size: 'auto' }
+    // Scattered snowflakes of two sizes.
+    case 'snow': {
+      const big = rgba(color, Math.min(1, alpha * 1.6))
+      return { image: `radial-gradient(${big} 2px, transparent 2.6px), radial-gradient(${c} 1.2px, transparent 1.7px), radial-gradient(${c} 1.5px, transparent 2px)`, size: '64px 64px, 40px 40px, 52px 52px', position: '0 0, 20px 26px, 34px 8px' }
+    }
     default: return { image: 'none', size: 'auto' }
   }
 }
 
 export const THEMES = [
-  { id: 'copper', name: 'Copper', description: 'Kani Metals orange (default)', primary: '#F36F12', pattern: 'dots', patternName: 'Dots' },
+  { id: 'copper', name: 'Copper', description: 'Kani Metals copper (default)', primary: '#B96C35', pattern: 'dots', patternName: 'Dots' },
   { id: 'ocean', name: 'Ocean Blue', description: 'Calm and professional', primary: '#2563EB', pattern: 'grid', patternName: 'Grid' },
   { id: 'emerald', name: 'Emerald', description: 'Fresh green, easy on the eyes', primary: '#059669', pattern: 'diagonal', patternName: 'Diagonal lines' },
   { id: 'royal', name: 'Royal Purple', description: 'Bold and modern', primary: '#7C3AED', pattern: 'waves', patternName: 'Waves' },
@@ -44,6 +49,8 @@ export const THEMES = [
   { id: 'gold', name: 'Gold', description: 'Warm brass and gold', primary: '#B7791F', pattern: 'checker', patternName: 'Checker' },
   { id: 'rose', name: 'Rose', description: 'Soft pink accent', primary: '#DB2777', pattern: 'rings', patternName: 'Rings' },
   { id: 'midnight', name: 'Midnight', description: 'Dark navigation with indigo', primary: '#4F46E5', pattern: 'lines', patternName: 'Fine lines', darkChrome: true },
+  // Festive: red accent, snowflake background, Christmas-lights stripe and gentle snowfall (see styles/features.css).
+  { id: 'christmas', name: 'Christmas', description: 'Festive red with snow and lights', primary: '#C0262D', pattern: 'snow', patternName: 'Snowflakes' },
 ]
 
 export const DEFAULT_THEME = 'copper'

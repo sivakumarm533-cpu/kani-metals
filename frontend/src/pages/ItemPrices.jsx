@@ -6,6 +6,7 @@ import Toast from '../components/Toast.jsx'
 import LoadError from '../components/LoadError.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { compressImage } from '../utils/image.js'
+import { FloatingActionButton } from '../components/ui.jsx'
 import scrapImages from '../assets/scrap/scrap-materials-sheet.webp'
 import './ItemPrices.css'
 
@@ -624,8 +625,8 @@ export default function ItemPrices() {
       {!state.loading && state.items.length > 0 && (
         <ul className="price-summary" aria-label="Summary">
           <li><span className="price-summary-icon"><i className="bi bi-tags" aria-hidden="true" /></span><span><b>{state.items.length}</b><small>Items</small></span></li>
-          <li><span className="price-summary-icon is-up"><i className="bi bi-arrow-up-right" aria-hidden="true" /></span><span><b>{counts.up}</b><small>Price went up</small></span></li>
-          <li><span className="price-summary-icon is-down"><i className="bi bi-arrow-down-right" aria-hidden="true" /></span><span><b>{counts.down}</b><small>Price went down</small></span></li>
+          <li><span className="price-summary-icon is-up"><i className="bi bi-arrow-up-right" aria-hidden="true" /></span><span><b>{counts.up}</b><small>Went up</small></span></li>
+          <li><span className="price-summary-icon is-down"><i className="bi bi-arrow-down-right" aria-hidden="true" /></span><span><b>{counts.down}</b><small>Went down</small></span></li>
           <li><span className="price-summary-icon is-manual"><i className="bi bi-pencil" aria-hidden="true" /></span><span><b>{counts.manual}</b><small>Manual prices</small></span></li>
         </ul>
       )}
@@ -662,6 +663,7 @@ export default function ItemPrices() {
         : <ul className="price-list">{shown.map((item) => <PriceRow key={item.key} item={item} image={images[item.key]} onOpen={setOpenKey} />)}</ul>)}
 
       {openKey && <DetailModal itemKey={openKey} onClose={() => setOpenKey(null)} onChanged={load} onPhotoChanged={setImage} notify={notify} />}
+      {!adding && !openKey && <FloatingActionButton icon="bi-plus-lg" label="Add item" onClick={() => setAdding(true)} />}
       {adding && <AddItemModal categories={state.categories} notify={notify} onClose={() => setAdding(false)} onAdded={(key, image) => { setAdding(false); if (image) setImage(key, image); load(); setOpenKey(key) }} />}
     </section>
   )
