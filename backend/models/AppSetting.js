@@ -1,10 +1,11 @@
 import mongoose from 'mongoose'
-import { FEATURE_KEYS } from '../config/features.js'
+import { DEFAULT_LISTS, FEATURE_KEYS } from '../config/features.js'
 
 /** Bill image designs; keep in sync with BILL_TEMPLATES in frontend/src/utils/billImage.js. */
 export const BILL_TEMPLATE_IDS = ['classic', 'modern', 'minimal', 'bold', 'soft']
 
-export const THEME_IDS = ['copper', 'ocean', 'emerald', 'royal', 'crimson', 'teal', 'steel', 'gold', 'rose', 'midnight', 'christmas']
+/** Keep in sync with THEMES in frontend/src/theme/themes.js (tier: 'premium' there). */
+export const THEME_IDS = ['copper', 'ocean', 'emerald', 'royal', 'crimson', 'teal', 'steel', 'gold', 'rose', 'midnight', 'pongal', 'diwali', 'holi', 'aurora', 'deepsea', 'luxe', 'christmas']
 
 const featureFields = Object.fromEntries(FEATURE_KEYS.map((key) => [key, { type: Boolean, default: true }]))
 
@@ -14,11 +15,19 @@ const appSettingSchema = new mongoose.Schema({
   theme: { type: String, enum: THEME_IDS, default: 'copper' },
   /** When true, every user may pick a personal theme on their profile page. */
   allowUserThemes: { type: Boolean, default: true },
+  /** Themes team members may pick on their profile. Missing means every theme. Admins and sub-admins may use any theme. */
+  userThemes: { type: [String], default: undefined },
   /** Features available to regular users (admins and sub-admins always have all of them). */
   features: { type: new mongoose.Schema(featureFields, { _id: false }), default: () => ({}) },
   /** Order of the main menu for everyone. Empty means the default order. */
   menuOrder: { type: [String], default: () => [] },
   billTemplate: { type: String, enum: BILL_TEMPLATE_IDS, default: 'classic' },
+  /** Dropdown choices (item categories, dealer categories, units). Missing lists use DEFAULT_LISTS. */
+  lists: {
+    itemCategories: { type: [String], default: undefined },
+    dealerCategories: { type: [String], default: undefined },
+    units: { type: [String], default: undefined },
+  },
   business: {
     name: { type: String, trim: true, maxlength: 120, default: 'Kani Metals' },
     tagline: { type: String, trim: true, maxlength: 120, default: 'Scrap metal traders' },

@@ -37,6 +37,7 @@ const pageImports = {
   BillSettings: () => import('./pages/BillSettings.jsx'),
   FeatureSettings: () => import('./pages/FeatureSettings.jsx'),
   MenuSettings: () => import('./pages/MenuSettings.jsx'),
+  ListSettings: () => import('./pages/ListSettings.jsx'),
   Profile: () => import('./pages/Profile.jsx'),
 }
 const Dashboard = lazy(pageImports.Dashboard)
@@ -52,6 +53,7 @@ const ThemeSettings = lazy(pageImports.ThemeSettings)
 const BillSettings = lazy(pageImports.BillSettings)
 const FeatureSettings = lazy(pageImports.FeatureSettings)
 const MenuSettings = lazy(pageImports.MenuSettings)
+const ListSettings = lazy(pageImports.ListSettings)
 const Profile = lazy(pageImports.Profile)
 const Login = lazy(() => import('./pages/Login.jsx'))
 const AdminSignup = lazy(() => import('./pages/AdminSignup.jsx'))
@@ -144,6 +146,7 @@ function AppLayout() {
                 <Route path="/settings/bill" element={<RequireAuth adminOnly><BillSettings /></RequireAuth>} />
                 <Route path="/settings/features" element={<RequireAuth adminOnly><FeatureSettings /></RequireAuth>} />
                 <Route path="/settings/menu" element={<RequireAuth adminOnly><MenuSettings /></RequireAuth>} />
+                <Route path="/settings/lists" element={<RequireAuth adminOnly><ListSettings /></RequireAuth>} />
                 <Route path="/settings/backup" element={<RequireAuth primaryOnly><Settings /></RequireAuth>} />
                 <Route path="/settings/*" element={<RequireAuth adminOnly><Settings /></RequireAuth>} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

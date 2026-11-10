@@ -149,6 +149,12 @@ body {
 .theme-preview-card b { width: 46%; height: 12px; border-radius: 4px; background: var(--preview-accent); }
 .theme-preview.is-dark .theme-preview-bar, .theme-preview.is-dark .theme-preview-side { border-color: #2a2e52; background: #171a35; }
 .theme-preview.is-dark .theme-preview-side i:not(.is-active) { background: #343a66; }
+/* Premium (decorated) themes preview with their own bar and menu colours. */
+.theme-preview.is-festive .theme-preview-bar { border-top-color: var(--preview-side); background: var(--preview-bar); }
+.theme-preview.is-festive .theme-preview-bar i { background: #fff; }
+.theme-preview.is-festive .theme-preview-bar b { background: rgb(255 255 255 / 40%); }
+.theme-preview.is-festive .theme-preview-side { border-color: transparent; background: var(--preview-side); }
+.theme-preview.is-festive .theme-preview-side i:not(.is-active) { background: rgb(255 255 255 / 22%); }
 
 /* ---------- Bill settings ---------- */
 .bill-settings-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 18px; align-items: start; }
@@ -246,12 +252,13 @@ body {
 .dash-rate-values strong { color: var(--color-text); font-size: 15px; white-space: nowrap; }
 .dash-rate-values strong small { font-weight: 500; }
 .dash-trend { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border-radius: 10px; font-size: 16px; }
-.dash-trend-up { background: var(--color-danger-soft); color: var(--color-danger); }
-.dash-trend-down { background: var(--color-success-soft); color: var(--color-success); }
+/* Rate went up = green, went down = red (same as the Item prices page). */
+.dash-trend-up { background: var(--color-success-soft); color: var(--color-success); }
+.dash-trend-down { background: var(--color-danger-soft); color: var(--color-danger); }
 .dash-trend-same { background: var(--color-surface-muted); color: var(--color-text-muted); }
 .dash-trend-new { background: var(--color-primary-soft); color: var(--color-primary); }
-.dash-trend-text-up { color: var(--color-danger) !important; }
-.dash-trend-text-down { color: var(--color-success) !important; }
+.dash-trend-text-up { color: var(--color-success) !important; }
+.dash-trend-text-down { color: var(--color-danger) !important; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1199px) {
@@ -359,14 +366,284 @@ body {
 .activity-cleared-note { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-radius: var(--radius-sm); color: #166534; background: #dcfce7; font-size: 13px; }
 .activity-results-heading:has(.activity-clear-button) { flex-wrap: wrap; gap: 8px 12px; }
 
-/* ---------- Christmas theme extras (only when data-theme="christmas") ---------- */
-/* Christmas-lights stripe along the top bar. */
-:root[data-theme="christmas"] .admin-navbar {
+/* =========================================================
+   Festive (premium) themes: Christmas, Pongal, Diwali, Holi, Aurora, Deep Sea, Black Gold
+   applyTheme() sets data-festive on <html> for these. They share one layout — coloured top bar, white logo pill, coloured side
+   menu and bottom bar — driven by the --fx-* variables below. Each theme then
+   adds its own decorations further down.
+   ========================================================= */
+/* Defaults each theme may override. */
+:root[data-festive] {
+  --fx-side-dust: var(--fx-dust);
+  --fx-side-dust-size: var(--fx-dust-size);
+  --fx-side-dust-position: var(--fx-dust-position);
+  --fx-active-fg: #fff;
+  --fx-active-muted: var(--fx-on-bar-muted);
+  --fx-active-icon-bg: var(--fx-accent);
+}
+:root[data-theme="christmas"] {
+  --fx-bar-1: #c62a33;
+  --fx-bar-2: #b3202a;
+  --fx-bar-3: #7f141b;
+  --fx-bar-shadow: rgb(127 20 27 / 28%);
+  --fx-on-bar-muted: #fecdd3;
+  --fx-crumb: #fde2e4;
+  --fx-accent: #f4c542;
+  --fx-accent-rgb: 244 197 66;
+  --fx-side-1: #14532d;
+  --fx-side-2: #0f3d2a;
+  --fx-side-text: #e3f4ea;
+  --fx-side-muted: #9fc7b0;
+  --fx-side-heading: #9fd3b4;
+  --fx-active-bg: rgb(179 32 42 / 88%);
+  --fx-active-solid: #b3202a;
+  --fx-active-icon: #7f141b;
+  --fx-dust:
+    radial-gradient(circle, rgb(255 255 255 / 55%) 0 1.4px, transparent 1.9px),
+    radial-gradient(circle, rgb(255 255 255 / 35%) 0 1px, transparent 1.5px);
+  --fx-dust-size: 46px 46px, 29px 29px;
+  --fx-dust-position: 6px 4px, 20px 18px;
+  /* Pattern behind the side menu and bottom bar (kept quiet so menu text stays readable). */
+  --fx-side-dust: var(--fx-dust);
+  --fx-side-dust-size: var(--fx-dust-size);
+  --fx-side-dust-position: var(--fx-dust-position);
+  /* Bulbs on the string under the active menu item. */
+  --fx-bulb-1: #ff3b3b;
+  --fx-bulb-2: #22c55e;
+  --fx-bulb-3: #facc15;
+  --fx-bulb-4: #38bdf8;
+  --fx-wire: #64748b;
+  --fx-glow: rgb(255 214 102 / 85%);
+}
+:root[data-theme="pongal"] {
+  /* Saffron / turmeric bar, banana-leaf green menu, marigold accents. */
+  --fx-bar-1: #f97316;
+  --fx-bar-2: #ea580c;
+  --fx-bar-3: #9a3412;
+  --fx-bar-shadow: rgb(154 52 18 / 30%);
+  --fx-on-bar-muted: #ffedd5;
+  --fx-crumb: #fff1e0;
+  --fx-accent: #fde047;
+  --fx-accent-rgb: 253 224 71;
+  --fx-side-1: #166534;
+  --fx-side-2: #14532d;
+  --fx-side-text: #ffffff;
+  --fx-side-muted: #c6ebd3;
+  --fx-side-heading: #bbf7d0;
+  --fx-active-bg: rgb(234 88 12 / 92%);
+  --fx-active-solid: #ea580c;
+  --fx-active-icon: #9a3412;
+  /* Kolam: a dot grid with loops drawn around alternate dots. */
+  --fx-dust:
+    radial-gradient(circle, rgb(255 255 255 / 60%) 0 1.4px, transparent 1.9px),
+    radial-gradient(circle, transparent 0 6.5px, rgb(255 255 255 / 22%) 7px 8px, transparent 8.5px);
+  --fx-dust-size: 22px 22px, 44px 44px;
+  --fx-dust-position: 0 0, 11px 11px;
+  /* Menu: just faint kolam dots — the loops made the menu text hard to read. */
+  --fx-side-dust:
+    radial-gradient(circle, rgb(255 255 255 / 16%) 0 1.2px, transparent 1.7px),
+    radial-gradient(circle, rgb(255 255 255 / 9%) 0 1px, transparent 1.5px);
+  --fx-side-dust-size: 26px 26px, 26px 26px;
+  --fx-side-dust-position: 0 0, 13px 13px;
+  /* Marigold string under the active menu item. */
+  --fx-bulb-1: #f97316;
+  --fx-bulb-2: #fde047;
+  --fx-bulb-3: #22c55e;
+  --fx-bulb-4: #fb923c;
+  --fx-wire: #7c2d12;
+  --fx-glow: rgb(253 224 71 / 70%);
+}
+
+/* ---------- Shared: top bar (desktop/tablet header and phone app bar) ---------- */
+:root[data-festive] :is(.admin-navbar, .app-header.is-phone) {
   border-top: 0;
-  background-image: repeating-linear-gradient(90deg, #c0262d 0 22px, #1f7a3a 22px 44px, #f4c542 44px 52px);
-  background-size: 100% 4px;
-  background-repeat: no-repeat;
-  background-position: top left;
+  border-bottom: 0;
+  color: #fff;
+  background-color: var(--fx-bar-2);
+  background-image: var(--fx-dust), linear-gradient(180deg, var(--fx-bar-1) 0%, var(--fx-bar-2) 55%, var(--fx-bar-3) 100%);
+  background-size: var(--fx-dust-size), 100% 100%;
+  background-position: var(--fx-dust-position), 0 0;
+  background-repeat: repeat, repeat, no-repeat;
+  box-shadow: 0 4px 14px var(--fx-bar-shadow);
+}
+/* Logo on a white pill (each theme decorates it below). */
+:root[data-festive] .navbar-brand { position: relative; padding: 3px 8px; border-radius: 9px; background: #fff; box-shadow: 0 2px 6px rgb(0 0 0 / 18%); }
+:root[data-festive] .menu-toggle span { background: #fff; }
+:root[data-festive] .menu-toggle:hover { background: rgb(255 255 255 / 14%); }
+:root[data-festive] .app-breadcrumbs { border-left-color: rgb(255 255 255 / 28%); }
+:root[data-festive] :is(.app-breadcrumbs a, .app-breadcrumbs li + li::before) { color: var(--fx-crumb); }
+:root[data-festive] .app-breadcrumbs a:hover { color: var(--fx-accent); }
+:root[data-festive] :is(.app-breadcrumbs [aria-current="page"], .app-header-tablet-title) { color: #fff; }
+:root[data-festive] .navbar-profile-link { border-color: rgb(255 255 255 / 30%); background: rgb(255 255 255 / 10%); }
+:root[data-festive] :is(.navbar-profile-link:hover, .navbar-profile-link.is-active) { border-color: var(--fx-accent); background: rgb(255 255 255 / 16%); box-shadow: 0 0 0 3px rgb(var(--fx-accent-rgb) / 30%); }
+:root[data-festive] .navbar-user strong { color: #fff; }
+:root[data-festive] .navbar-user small { color: var(--fx-on-bar-muted); }
+:root[data-festive] .admin-navbar .sign-out-button { border-color: rgb(255 255 255 / 35%); background: transparent; color: #fff; }
+:root[data-festive] .admin-navbar .sign-out-button:hover { border-color: var(--fx-accent); background: rgb(255 255 255 / 12%); color: var(--fx-accent); }
+/* Phone app bar contents. */
+:root[data-festive] .app-header.is-phone :is(.app-header-title > span, .app-header-icon) { color: #fff; }
+:root[data-festive] .app-header.is-phone :is(.app-header-icon:hover, .app-header-icon:active) { background: rgb(255 255 255 / 14%); }
+:root[data-festive] .app-header.is-phone .app-header-logo { padding: 2px 6px; border-radius: 6px; background: #fff; }
+:root[data-festive] .app-header.is-phone .app-header-avatar .navbar-profile-avatar { box-shadow: 0 0 0 2px var(--fx-accent); }
+
+/* ---------- Shared: side menu ---------- */
+:root[data-festive] .admin-sidebar {
+  border-color: rgb(255 255 255 / 8%);
+  background-color: var(--fx-side-2);
+  background-image: var(--fx-side-dust), linear-gradient(180deg, var(--fx-side-1), var(--fx-side-2));
+  background-size: var(--fx-side-dust-size), 100% 100%;
+  background-position: var(--fx-side-dust-position), 0 0;
+}
+:root[data-festive] .admin-sidebar .sidebar-heading { color: var(--fx-side-heading); }
+:root[data-festive] .admin-sidebar .sidebar-link { color: var(--fx-side-text); }
+:root[data-festive] .admin-sidebar .sidebar-link .sidebar-text small { color: var(--fx-side-muted); }
+:root[data-festive] .admin-sidebar .sidebar-link:hover { color: #fff; background: rgb(255 255 255 / 9%); }
+:root[data-festive] .admin-sidebar .sidebar-link.is-active { color: var(--fx-active-fg); background: var(--fx-active-bg); box-shadow: inset 0 0 0 1px rgb(var(--fx-accent-rgb) / 35%); }
+:root[data-festive] .admin-sidebar .sidebar-link.is-active .sidebar-text small { color: var(--fx-active-muted); }
+:root[data-festive] .admin-sidebar .sidebar-link.is-active .sidebar-icon { color: var(--fx-active-icon); background: var(--fx-active-icon-bg); }
+:root[data-festive] .admin-sidebar .sidebar-link.is-active::before { background: var(--fx-accent); }
+
+/* ---------- Shared: phone bottom bar ---------- */
+:root[data-festive] .bottom-nav:not(.is-preview) {
+  --bn-fg: var(--fx-side-text);
+  --bn-active-fg: #fff;
+  --bn-active-bg: var(--fx-active-solid);
+  --bn-border: rgb(var(--fx-accent-rgb) / 45%);
+  color: var(--bn-fg);
+  background-color: var(--fx-side-2);
+  background-image: var(--fx-side-dust), linear-gradient(180deg, var(--fx-side-1), var(--fx-side-2));
+  background-size: var(--fx-side-dust-size), 100% 100%;
+  background-position: var(--fx-side-dust-position), 0 0;
+}
+:root[data-festive] .bottom-nav:not(.is-preview) .bottom-nav-item { color: var(--bn-fg); }
+:root[data-festive] .bottom-nav:not(.is-preview) .bottom-nav-item.is-active { color: #fff; }
+:root[data-festive] .bottom-nav:not(.is-preview) .bottom-nav-item.is-active .bottom-nav-icon { color: #fff; background: var(--fx-active-solid); box-shadow: 0 0 0 1px rgb(var(--fx-accent-rgb) / 55%); }
+
+/* ---------- Shared: string under the active menu item ----------
+   Christmas: coloured bulbs that chase and glow. Pongal: a marigold garland. */
+:root[data-festive] {
+  --serial-bulb: 2.6px;
+  --serial-gap: 24px;
+}
+:root[data-festive] :is(.sidebar-link.is-active, .bottom-nav-item.is-active)::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 1px;
+  height: 10px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 3px 6px, var(--fx-bulb-1) 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
+    radial-gradient(circle at 3px 6px, var(--fx-bulb-2) 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
+    radial-gradient(circle at 3px 6px, var(--fx-bulb-3) 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
+    radial-gradient(circle at 3px 6px, var(--fx-bulb-4) 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
+    linear-gradient(var(--fx-wire), var(--fx-wire));
+  background-size: var(--serial-gap) 10px, var(--serial-gap) 10px, var(--serial-gap) 10px, var(--serial-gap) 10px, 100% 1px;
+  background-position: 0 0, 6px 0, 12px 0, 18px 0, 0 3px;
+  background-repeat: repeat-x, repeat-x, repeat-x, repeat-x, no-repeat;
+  filter: drop-shadow(0 0 2px var(--fx-glow));
+  animation: serial-chase 1.2s steps(1, end) infinite, serial-glow .6s ease-in-out infinite alternate;
+}
+/* Bottom bar: smaller string that fits under the label; it replaces the active dot. */
+:root[data-festive] .bottom-nav-item.is-active::after {
+  --serial-bulb: 2.2px;
+  --serial-gap: 20px;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+}
+:root[data-festive] .bottom-nav-item.is-active .bottom-nav-dot { opacity: 0; }
+/* Pongal, Aurora, Deep Sea, Black Gold, Gold: slightly bigger beads (they still blink and chase like the others). */
+:root:is([data-theme="pongal"], [data-theme="aurora"], [data-theme="deepsea"], [data-theme="luxe"], [data-theme="gold"]) :is(.sidebar-link.is-active, .bottom-nav-item.is-active)::after { --serial-bulb: 3px; }
+
+@keyframes serial-chase {
+  0%   { background-position: 0 0, 6px 0, 12px 0, 18px 0, 0 3px; }
+  25%  { background-position: 6px 0, 12px 0, 18px 0, 0 0, 0 3px; }
+  50%  { background-position: 12px 0, 18px 0, 0 0, 6px 0, 0 3px; }
+  75%  { background-position: 18px 0, 0 0, 6px 0, 12px 0, 0 3px; }
+}
+/* Blink: the whole string dims and flashes bright, on top of the colour chase. */
+@keyframes serial-glow {
+  from { filter: brightness(.7) drop-shadow(0 0 1px var(--fx-glow)); opacity: .75; }
+  to   { filter: brightness(1.25) drop-shadow(0 0 5px var(--fx-glow)); opacity: 1; }
+}
+
+/* =========================================================
+   Christmas decorations
+   ========================================================= */
+/* Snow resting on top of the bar. */
+:root[data-theme="christmas"] :is(.admin-navbar, .app-header.is-phone)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 9px;
+  pointer-events: none;
+  background:
+    linear-gradient(#fff, #fff) top / 100% 3px no-repeat,
+    radial-gradient(circle at 9px 2px, #fff 0 6px, transparent 6.5px) 0 0 / 18px 9px repeat-x,
+    radial-gradient(circle at 4px 3px, #fff 0 3.5px, transparent 4px) 13px 0 / 31px 9px repeat-x;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 18%));
+}
+:root[data-theme="christmas"] .app-header.is-phone::before { top: var(--safe-top, 0px); }
+/* String of lights hanging below the bar; the colours chase along it and glow. */
+:root[data-theme="christmas"] :is(.admin-navbar, .app-header.is-phone)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -13px;
+  height: 16px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(3.2px 4.6px at 28px 10px, #ff4040 0 88%, transparent 100%),
+    radial-gradient(3.2px 4.6px at 28px 10px, #2ee66b 0 88%, transparent 100%),
+    radial-gradient(3.2px 4.6px at 28px 10px, #ffd23f 0 88%, transparent 100%),
+    radial-gradient(3.2px 4.6px at 28px 10px, #4cc3ff 0 88%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 28px 5px, #3b463d 0 99%, transparent 100%),
+    radial-gradient(28px 6px at 28px 0, transparent 0 84%, #3b463d 86% 100%, transparent 104%);
+  background-size: 224px 16px, 224px 16px, 224px 16px, 224px 16px, 56px 16px, 56px 16px;
+  background-position: 0 0, 56px 0, 112px 0, 168px 0, 0 0, 0 0;
+  background-repeat: repeat-x;
+  filter: drop-shadow(0 0 3px rgb(255 214 102 / 70%));
+  animation: xmas-lights-chase 2.4s steps(1, end) infinite, xmas-lights-glow 1.2s ease-in-out infinite alternate;
+}
+@keyframes xmas-lights-chase {
+  0%   { background-position: 0 0, 56px 0, 112px 0, 168px 0, 0 0, 0 0; }
+  25%  { background-position: 56px 0, 112px 0, 168px 0, 0 0, 0 0, 0 0; }
+  50%  { background-position: 112px 0, 168px 0, 0 0, 56px 0, 0 0, 0 0; }
+  75%  { background-position: 168px 0, 0 0, 56px 0, 112px 0, 0 0, 0 0; }
+}
+@keyframes xmas-lights-glow {
+  from { filter: drop-shadow(0 0 1px rgb(255 214 102 / 45%)); }
+  to   { filter: drop-shadow(0 0 5px rgb(255 214 102 / 95%)); }
+}
+/* Santa hat on the logo. */
+:root[data-theme="christmas"] .navbar-brand::before {
+  content: "";
+  position: absolute;
+  top: -11px;
+  left: -9px;
+  width: 22px;
+  height: 15px;
+  border-bottom: 5px solid #fff;
+  border-radius: 90% 20% 3px 3px;
+  background: var(--fx-bar-2);
+  transform: rotate(-22deg);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 25%);
+}
+:root[data-theme="christmas"] .navbar-brand::after {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 25%);
 }
 /* Gentle snowfall behind the page content (cards and panels stay clear). */
 :root[data-theme="christmas"] body::before {
@@ -387,58 +664,925 @@ body {
   from { background-position: 10px 0, 50px 40px, 100px 70px; }
   to { background-position: 40px 840px, 20px 760px, 130px 920px; }
 }
-@media (prefers-reduced-motion: reduce) {
-  :root[data-theme="christmas"] body::before { animation: none; }
-}
 
-/* ---------- Christmas: serial lights under the active menu item ---------- */
-/* A thin wire with red / green / gold / blue bulbs; the colours "chase" along the string and glow. */
-:root[data-theme="christmas"] {
-  --serial-bulb: 2.6px;
-  --serial-gap: 24px;
+/* =========================================================
+   Pongal decorations
+   Rising sun on the bar, a kolam border along the top, a mango-leaf
+   thoranam with marigolds hanging below, a pongal pot boiling over on the
+   logo, sugarcane in the side menu and a kolam floor behind the pages.
+   ========================================================= */
+/* Bar: add the rising sun glowing up from the bottom edge. */
+:root[data-theme="pongal"] :is(.admin-navbar, .app-header.is-phone) {
+  background-image:
+    radial-gradient(circle at 72% 135%, rgb(254 240 138 / 85%) 0 22px, rgb(253 224 71 / 35%) 23px 38px, rgb(253 224 71 / 12%) 39px 58px, transparent 60px),
+    var(--fx-dust),
+    linear-gradient(180deg, var(--fx-bar-1) 0%, var(--fx-bar-2) 55%, var(--fx-bar-3) 100%);
+  background-size: 100% 100%, var(--fx-dust-size), 100% 100%;
+  background-position: 0 0, var(--fx-dust-position), 0 0;
+  background-repeat: no-repeat, repeat, repeat, no-repeat;
 }
-:root[data-theme="christmas"] .sidebar-link.is-active::after,
-:root[data-theme="christmas"] .bottom-nav-item.is-active::after {
+/* Kolam border along the top: a red / turmeric / green band with a row of white kolam dots. */
+:root[data-theme="pongal"] :is(.admin-navbar, .app-header.is-phone)::before {
   content: "";
   position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 1px;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 10px;
   pointer-events: none;
+  background:
+    radial-gradient(circle at 6px 7px, #fff 0 1.5px, transparent 2px) 0 0 / 12px 10px repeat-x,
+    linear-gradient(45deg, transparent 45%, rgb(255 255 255 / 70%) 46% 54%, transparent 55%) 0 4px / 12px 6px repeat-x,
+    repeating-linear-gradient(90deg, #b91c1c 0 12px, #facc15 12px 24px, #15803d 24px 36px) top / 100% 4px no-repeat;
+}
+:root[data-theme="pongal"] .app-header.is-phone::before { top: var(--safe-top, 0px); }
+/* Thoranam: mango leaves hanging from a rope, with orange and yellow marigolds between them. */
+:root[data-theme="pongal"] :is(.admin-navbar, .app-header.is-phone)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -20px;
+  height: 22px;
+  pointer-events: none;
+  transform-origin: top center;
   background-image:
-    radial-gradient(circle at 3px 6px, #ff3b3b 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
-    radial-gradient(circle at 3px 6px, #22c55e 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
-    radial-gradient(circle at 3px 6px, #facc15 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
-    radial-gradient(circle at 3px 6px, #38bdf8 0 var(--serial-bulb), transparent calc(var(--serial-bulb) + .6px)),
-    linear-gradient(#64748b, #64748b);
-  background-size: var(--serial-gap) 10px, var(--serial-gap) 10px, var(--serial-gap) 10px, var(--serial-gap) 10px, 100% 1px;
-  background-position: 0 0, 6px 0, 12px 0, 18px 0, 0 3px;
-  background-repeat: repeat-x, repeat-x, repeat-x, repeat-x, no-repeat;
-  filter: drop-shadow(0 0 2px rgb(255 214 102 / 85%));
-  animation: serial-chase 1.6s steps(1, end) infinite, serial-glow 1.2s ease-in-out infinite alternate;
+    /* marigold centres */
+    radial-gradient(circle at 0 5px, #fef08a 0 1.4px, transparent 1.9px),
+    /* marigolds: orange and yellow taking turns */
+    radial-gradient(circle at 0 5px, #f97316 0 4px, transparent 4.5px),
+    radial-gradient(circle at 0 5px, #facc15 0 4px, transparent 4.5px),
+    /* leaf vein: a thin line down the middle of each leaf */
+    linear-gradient(90deg, transparent 13.5px, #14532d 13.5px 14.5px, transparent 14.5px),
+    /* mango leaf */
+    radial-gradient(4.6px 9px at 14px 11px, #2f8a3a 0 85%, transparent 100%),
+    /* rope */
+    linear-gradient(#7c2d12, #7c2d12);
+  background-size: 56px 22px, 56px 22px, 56px 22px, 28px 12px, 28px 22px, 100% 1.5px;
+  background-position: 0 0, 0 0, 28px 0, 0 4px, 0 0, 0 1px;
+  background-repeat: repeat-x, repeat-x, repeat-x, repeat-x, repeat-x, no-repeat;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 22%));
+  animation: pongal-sway 4s ease-in-out infinite alternate;
 }
-/* Bottom bar: smaller string that fits under the label; it replaces the active dot. */
-:root[data-theme="christmas"] .bottom-nav-item.is-active::after {
-  --serial-bulb: 2.2px;
-  --serial-gap: 20px;
-  left: 8px;
-  right: 8px;
-  bottom: 0;
+@keyframes pongal-sway {
+  from { transform: skewX(-3deg); }
+  to   { transform: skewX(3deg); }
 }
-:root[data-theme="christmas"] .bottom-nav-item.is-active .bottom-nav-dot { opacity: 0; }
+/* Pongal pot (paanai) on the logo, with a turmeric band, boiling over. */
+:root[data-theme="pongal"] .navbar-brand::before {
+  content: "";
+  position: absolute;
+  right: -13px;
+  bottom: -5px;
+  width: 20px;
+  height: 17px;
+  border-radius: 45% 45% 50% 50% / 30% 30% 70% 70%;
+  background:
+    radial-gradient(circle at 50% 62%, #fff 0 1.2px, transparent 1.6px),
+    linear-gradient(180deg, #b45309 0 34%, #facc15 34% 48%, #15803d 48% 54%, #b45309 54%);
+  box-shadow: inset -3px -2px 0 rgb(0 0 0 / 18%), 0 1px 2px rgb(0 0 0 / 30%);
+}
+:root[data-theme="pongal"] .navbar-brand::after {
+  content: "";
+  position: absolute;
+  right: -10px;
+  bottom: 10px;
+  width: 14px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fffaf0;
+  box-shadow: 5px -3px 0 -2px #fffaf0, -3px -4px 0 -3px #fffaf0, 0 1px 1px rgb(0 0 0 / 15%);
+  animation: pongal-boil 1.4s ease-in-out infinite alternate;
+}
+@keyframes pongal-boil {
+  from { transform: translateY(1px) scale(.92); }
+  to   { transform: translateY(-1px) scale(1.06); }
+}
+/* Two sugarcane stalks with leaves in the lower corner of the side menu. */
+:root[data-theme="pongal"] .admin-sidebar {
+  background-image:
+    radial-gradient(14px 4px at 50% 50%, #4ade80 0 85%, transparent 100%),
+    radial-gradient(12px 4px at 50% 50%, #22c55e 0 85%, transparent 100%),
+    repeating-linear-gradient(180deg, transparent 0 24px, rgb(30 6 24 / 55%) 24px 26px),
+    linear-gradient(90deg, #4a1d3f, #8b4577 45%, #4a1d3f),
+    repeating-linear-gradient(180deg, transparent 0 22px, rgb(30 6 24 / 55%) 22px 24px),
+    linear-gradient(90deg, #4a1d3f, #7e3a6b 45%, #4a1d3f),
+    var(--fx-side-dust),
+    linear-gradient(180deg, var(--fx-side-1), var(--fx-side-2));
+  background-size: 30px 10px, 26px 10px, 9px 150px, 9px 150px, 8px 118px, 8px 118px, var(--fx-side-dust-size), 100% 100%;
+  background-position:
+    right 12px bottom 146px, right 26px bottom 114px,
+    right 22px bottom 0, right 22px bottom 0,
+    right 36px bottom 0, right 36px bottom 0,
+    var(--fx-side-dust-position), 0 0;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat, no-repeat;
+}
+/* Kolam floor behind the pages: a soft dot-and-loop rangoli in turmeric and rice white. */
+:root[data-theme="pongal"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgb(234 88 12 / 22%) 0 1.6px, transparent 2.1px),
+    radial-gradient(circle, transparent 0 9px, rgb(234 88 12 / 10%) 9.5px 10.5px, transparent 11px),
+    radial-gradient(circle, transparent 0 9px, rgb(21 128 61 / 8%) 9.5px 10.5px, transparent 11px);
+  background-size: 28px 28px, 56px 56px, 56px 56px;
+  background-position: 0 0, 14px 14px, 42px 42px;
+}
 
-@keyframes serial-chase {
-  0%   { background-position: 0 0, 6px 0, 12px 0, 18px 0, 0 3px; }
-  25%  { background-position: 6px 0, 12px 0, 18px 0, 0 0, 0 3px; }
-  50%  { background-position: 12px 0, 18px 0, 0 0, 6px 0, 0 3px; }
-  75%  { background-position: 18px 0, 0 0, 6px 0, 12px 0, 0 3px; }
+
+/* =========================================================
+   Diwali — purple night, hanging lanterns (kandil), a lit diya, sparkles
+   ========================================================= */
+:root[data-theme="diwali"] {
+  --fx-bar-1: #6d28d9;
+  --fx-bar-2: #5b21b6;
+  --fx-bar-3: #3b0764;
+  --fx-bar-shadow: rgb(59 7 100 / 35%);
+  --fx-on-bar-muted: #f5d0fe;
+  --fx-crumb: #fae8ff;
+  --fx-accent: #fbbf24;
+  --fx-accent-rgb: 251 191 36;
+  --fx-side-1: #7f1d1d;
+  --fx-side-2: #450a0a;
+  --fx-side-text: #fff7ed;
+  --fx-side-muted: #fcd9b6;
+  --fx-side-heading: #fdba74;
+  --fx-active-bg: rgb(217 119 6 / 92%);
+  --fx-active-solid: #d97706;
+  --fx-active-icon: #7c2d12;
+  --fx-dust:
+    radial-gradient(circle, rgb(251 191 36 / 65%) 0 1.2px, transparent 1.7px),
+    radial-gradient(circle, rgb(255 255 255 / 35%) 0 .9px, transparent 1.4px);
+  --fx-dust-size: 38px 38px, 23px 23px;
+  --fx-dust-position: 4px 6px, 15px 12px;
+  --fx-bulb-1: #f59e0b;
+  --fx-bulb-2: #fde047;
+  --fx-bulb-3: #fb923c;
+  --fx-bulb-4: #f472b6;
+  --fx-wire: #b45309;
+  --fx-glow: rgb(251 191 36 / 90%);
 }
-@keyframes serial-glow {
-  from { filter: drop-shadow(0 0 1px rgb(255 214 102 / 55%)); opacity: .85; }
-  to   { filter: drop-shadow(0 0 4px rgb(255 214 102 / 100%)); opacity: 1; }
+/* Gold rangoli zigzag under a magenta line along the top. */
+:root[data-theme="diwali"] :is(.admin-navbar, .app-header.is-phone)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 9px;
+  pointer-events: none;
+  background:
+    linear-gradient(#db2777, #db2777) top / 100% 3px no-repeat,
+    linear-gradient(135deg, #fbbf24 33%, transparent 33%) 0 3px / 12px 6px repeat-x,
+    linear-gradient(225deg, #fbbf24 33%, transparent 33%) 0 3px / 12px 6px repeat-x;
 }
+:root[data-theme="diwali"] .app-header.is-phone::before { top: var(--safe-top, 0px); }
+/* Hanging lanterns, orange and pink in turn, glowing from inside. */
+:root[data-theme="diwali"] :is(.admin-navbar, .app-header.is-phone)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -24px;
+  height: 26px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 36px 14px, #fef9c3 0 1.6px, rgb(253 224 71 / 80%) 2.4px, transparent 4.5px),
+    radial-gradient(5px 7px at 36px 14px, #f97316 0 85%, transparent 100%),
+    radial-gradient(5px 7px at 36px 14px, #db2777 0 85%, transparent 100%),
+    linear-gradient(90deg, transparent 35px, #fbbf24 35px 37px, transparent 37px),
+    linear-gradient(90deg, transparent 35.5px, #fbbf24 35.5px 36.5px, transparent 36.5px);
+  background-size: 72px 26px, 144px 26px, 144px 26px, 72px 4px, 72px 8px;
+  background-position: 0 0, 0 0, 72px 0, 0 21px, 0 0;
+  background-repeat: repeat-x;
+  animation: diwali-flicker .9s ease-in-out infinite alternate;
+}
+@keyframes diwali-flicker {
+  from { filter: drop-shadow(0 0 2px rgb(251 191 36 / 55%)); }
+  to   { filter: drop-shadow(0 0 6px rgb(251 191 36 / 100%)); }
+}
+/* A clay diya with a flickering flame beside the logo. */
+:root[data-theme="diwali"] .navbar-brand::before {
+  content: "";
+  position: absolute;
+  right: -14px;
+  bottom: -4px;
+  width: 18px;
+  height: 8px;
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  background: linear-gradient(180deg, #ea580c, #7c2d12);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+}
+:root[data-theme="diwali"] .navbar-brand::after {
+  content: "";
+  position: absolute;
+  right: -8px;
+  bottom: 3px;
+  width: 6px;
+  height: 11px;
+  border-radius: 50% 50% 50% 50% / 65% 65% 35% 35%;
+  background: radial-gradient(circle at 50% 72%, #fffbeb 0 1.5px, #fde047 2.5px, #f97316 5px);
+  box-shadow: 0 0 8px 2px rgb(251 191 36 / 75%);
+  transform-origin: 50% 100%;
+  animation: diwali-flame .5s ease-in-out infinite alternate;
+}
+@keyframes diwali-flame {
+  from { transform: scaleY(.9) rotate(-4deg); }
+  to   { transform: scaleY(1.08) rotate(4deg); }
+}
+/* Twinkling sparkles behind the pages. */
+:root[data-theme="diwali"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgb(217 119 6 / 40%) 0 1.8px, transparent 2.3px),
+    radial-gradient(circle, rgb(219 39 119 / 28%) 0 1.5px, transparent 2px),
+    radial-gradient(circle, rgb(124 58 237 / 28%) 0 1.2px, transparent 1.7px);
+  background-size: 130px 130px, 170px 170px, 90px 90px;
+  background-position: 0 0, 60px 40px, 30px 70px;
+  animation: fx-twinkle 3s ease-in-out infinite alternate;
+}
+@keyframes fx-twinkle {
+  from { opacity: .45; }
+  to   { opacity: 1; }
+}
+
+/* =========================================================
+   Holi — colour splashes, rainbow edge, dripping colours
+   ========================================================= */
+:root[data-theme="holi"] {
+  --fx-bar-1: #ec4899;
+  --fx-bar-2: #c026d3;
+  --fx-bar-3: #7e22ce;
+  --fx-bar-shadow: rgb(126 34 206 / 30%);
+  --fx-on-bar-muted: #fce7f3;
+  --fx-crumb: #fdf4ff;
+  --fx-accent: #fde047;
+  --fx-accent-rgb: 253 224 71;
+  --fx-side-1: #312e81;
+  --fx-side-2: #1e1b4b;
+  --fx-side-text: #ffffff;
+  --fx-side-muted: #c7d2fe;
+  --fx-side-heading: #f9a8d4;
+  --fx-active-bg: rgb(219 39 119 / 92%);
+  --fx-active-solid: #db2777;
+  --fx-active-icon: #831843;
+  --fx-dust:
+    radial-gradient(circle, rgb(253 224 71 / 60%) 0 2px, transparent 2.6px),
+    radial-gradient(circle, rgb(74 222 128 / 55%) 0 1.6px, transparent 2.2px),
+    radial-gradient(circle, rgb(56 189 248 / 55%) 0 1.8px, transparent 2.4px);
+  --fx-dust-size: 40px 40px, 31px 31px, 53px 53px;
+  --fx-dust-position: 0 0, 12px 18px, 27px 7px;
+  --fx-side-dust:
+    radial-gradient(circle, rgb(253 224 71 / 22%) 0 1.6px, transparent 2.1px),
+    radial-gradient(circle, rgb(74 222 128 / 18%) 0 1.4px, transparent 1.9px),
+    radial-gradient(circle, rgb(244 114 182 / 20%) 0 1.5px, transparent 2px);
+  --fx-side-dust-size: 40px 40px, 31px 31px, 53px 53px;
+  --fx-side-dust-position: 0 0, 12px 18px, 27px 7px;
+  --fx-bulb-1: #f43f5e;
+  --fx-bulb-2: #facc15;
+  --fx-bulb-3: #22c55e;
+  --fx-bulb-4: #3b82f6;
+  --fx-wire: #f9a8d4;
+  --fx-glow: rgb(255 255 255 / 60%);
+}
+/* Bar: big soft gulal clouds over the gradient. */
+:root[data-theme="holi"] :is(.admin-navbar, .app-header.is-phone) {
+  background-image:
+    radial-gradient(70px 30px at 18% 30%, rgb(250 204 21 / 40%), transparent 70%),
+    radial-gradient(80px 34px at 55% 85%, rgb(34 197 94 / 35%), transparent 70%),
+    radial-gradient(70px 30px at 86% 20%, rgb(56 189 248 / 40%), transparent 70%),
+    var(--fx-dust),
+    linear-gradient(180deg, var(--fx-bar-1) 0%, var(--fx-bar-2) 55%, var(--fx-bar-3) 100%);
+  background-size: 100% 100%, 100% 100%, 100% 100%, var(--fx-dust-size), 100% 100%;
+  background-position: 0 0, 0 0, 0 0, var(--fx-dust-position), 0 0;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, repeat, repeat, no-repeat;
+}
+/* Rainbow edge along the top. */
+:root[data-theme="holi"] :is(.admin-navbar, .app-header.is-phone)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  pointer-events: none;
+  background: linear-gradient(90deg, #ef4444, #f97316, #facc15, #22c55e, #06b6d4, #3b82f6, #a855f7, #ec4899);
+}
+:root[data-theme="holi"] .app-header.is-phone::before { top: var(--safe-top, 0px); }
+/* Colours dripping from the bottom edge, each with a drop below it. */
+:root[data-theme="holi"] :is(.admin-navbar, .app-header.is-phone)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -18px;
+  height: 18px;
+  pointer-events: none;
+  transform-origin: top center;
+  background-image:
+    radial-gradient(circle at 15px 13px, #ec4899 0 2.4px, transparent 2.9px),
+    radial-gradient(3.5px 8px at 15px 0, #ec4899 0 90%, transparent 100%),
+    radial-gradient(circle at 15px 15px, #facc15 0 2.4px, transparent 2.9px),
+    radial-gradient(3.5px 11px at 15px 0, #facc15 0 90%, transparent 100%),
+    radial-gradient(circle at 15px 11px, #22c55e 0 2.4px, transparent 2.9px),
+    radial-gradient(3.5px 6px at 15px 0, #22c55e 0 90%, transparent 100%),
+    radial-gradient(circle at 15px 14px, #3b82f6 0 2.4px, transparent 2.9px),
+    radial-gradient(3.5px 9px at 15px 0, #3b82f6 0 90%, transparent 100%);
+  background-size: 120px 18px;
+  background-position: 0 0, 0 0, 30px 0, 30px 0, 60px 0, 60px 0, 90px 0, 90px 0;
+  background-repeat: repeat-x;
+  animation: holi-drip 3s ease-in-out infinite alternate;
+}
+@keyframes holi-drip {
+  from { transform: scaleY(.8); }
+  to   { transform: scaleY(1.08); }
+}
+/* A splash of colour powder beside the logo. */
+:root[data-theme="holi"] .navbar-brand::before {
+  content: "";
+  position: absolute;
+  right: -10px;
+  bottom: -5px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #facc15;
+  box-shadow: 6px -6px 0 -2px #22c55e, -6px -5px 0 -3px #3b82f6, 3px 7px 0 -3px #ec4899, 9px 3px 0 -3px #a855f7;
+}
+/* Soft gulal clouds in the corners of the page. */
+:root[data-theme="holi"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 92%, rgb(236 72 153 / 12%), transparent 28%),
+    radial-gradient(circle at 94% 86%, rgb(250 204 21 / 13%), transparent 26%),
+    radial-gradient(circle at 86% 14%, rgb(59 130 246 / 10%), transparent 24%),
+    radial-gradient(circle at 18% 22%, rgb(34 197 94 / 9%), transparent 24%);
+}
+
+/* =========================================================
+   Aurora — night sky with moving northern lights, stars and a moon
+   ========================================================= */
+:root[data-theme="aurora"] {
+  --fx-bar-1: #111a3a;
+  --fx-bar-2: #0b1026;
+  --fx-bar-3: #050816;
+  --fx-bar-shadow: rgb(5 8 22 / 45%);
+  --fx-on-bar-muted: #a5b4fc;
+  --fx-crumb: #c7d2fe;
+  --fx-accent: #5eead4;
+  --fx-accent-rgb: 94 234 212;
+  --fx-side-1: #0f172a;
+  --fx-side-2: #050816;
+  --fx-side-text: #e2e8f0;
+  --fx-side-muted: #94a3b8;
+  --fx-side-heading: #5eead4;
+  --fx-active-bg: linear-gradient(90deg, rgb(20 184 166 / 45%), rgb(139 92 246 / 40%));
+  --fx-active-solid: #0f766e;
+  --fx-active-icon: #042f2e;
+  --fx-dust:
+    radial-gradient(circle, rgb(255 255 255 / 75%) 0 .9px, transparent 1.4px),
+    radial-gradient(circle, rgb(255 255 255 / 40%) 0 .7px, transparent 1.2px);
+  --fx-dust-size: 37px 37px, 23px 23px;
+  --fx-dust-position: 3px 9px, 14px 4px;
+  --fx-bulb-1: #5eead4;
+  --fx-bulb-2: #a78bfa;
+  --fx-bulb-3: #34d399;
+  --fx-bulb-4: #818cf8;
+  --fx-wire: rgb(148 163 184 / 50%);
+  --fx-glow: rgb(94 234 212 / 80%);
+}
+/* Northern lights drifting across the bar (behind the bar's contents). */
+:root[data-theme="aurora"] :is(.admin-navbar, .app-header.is-phone)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(22% 130% at 15% 0%, rgb(52 211 153 / 45%), transparent 70%),
+    radial-gradient(20% 130% at 40% 0%, rgb(167 139 250 / 40%), transparent 70%),
+    radial-gradient(22% 130% at 65% 0%, rgb(45 212 191 / 40%), transparent 70%),
+    radial-gradient(18% 130% at 88% 0%, rgb(129 140 248 / 40%), transparent 70%);
+  background-size: 200% 100%;
+  animation: aurora-drift 14s ease-in-out infinite alternate;
+}
+@keyframes aurora-drift {
+  from { background-position: 0% 0; }
+  to   { background-position: 100% 0; }
+}
+/* A glowing aurora line along the bottom edge. */
+:root[data-theme="aurora"] :is(.admin-navbar, .app-header.is-phone)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 3px;
+  pointer-events: none;
+  background: linear-gradient(90deg, #34d399, #22d3ee, #a78bfa, #34d399) 0 0 / 200% 100%;
+  box-shadow: 0 0 10px rgb(94 234 212 / 60%);
+  animation: aurora-line 8s linear infinite;
+}
+@keyframes aurora-line {
+  from { background-position: 0% 0; }
+  to   { background-position: 200% 0; }
+}
+/* Crescent moon and a twinkling star beside the logo. */
+:root[data-theme="aurora"] .navbar-brand::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: -16px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  box-shadow: 4px 3px 0 0 #fde68a;
+  filter: drop-shadow(0 0 3px rgb(253 230 138 / 85%));
+}
+:root[data-theme="aurora"] .navbar-brand::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  right: -16px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 4px 1px #fff;
+  animation: fx-twinkle 1.8s ease-in-out infinite alternate;
+}
+/* Side menu: a faint aurora glow at the top. */
+:root[data-theme="aurora"] .admin-sidebar {
+  background-image: radial-gradient(130% 35% at 50% 0%, rgb(45 212 191 / 18%), transparent 70%), var(--fx-side-dust), linear-gradient(180deg, var(--fx-side-1), var(--fx-side-2));
+  background-size: 100% 100%, var(--fx-side-dust-size), 100% 100%;
+  background-position: 0 0, var(--fx-side-dust-position), 0 0;
+  background-repeat: no-repeat, repeat, repeat, no-repeat;
+}
+/* Faint aurora wash at the top of the page. */
+:root[data-theme="aurora"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 30% at 30% 0%, rgb(45 212 191 / 9%), transparent 70%),
+    radial-gradient(50% 30% at 75% 0%, rgb(167 139 250 / 9%), transparent 70%);
+}
+
+/* =========================================================
+   Deep Sea — ocean bar with moving waves, bubbles and a fish
+   ========================================================= */
+:root[data-theme="deepsea"] {
+  --fx-bar-1: #0891b2;
+  --fx-bar-2: #0e7490;
+  --fx-bar-3: #164e63;
+  --fx-bar-shadow: rgb(22 78 99 / 35%);
+  --fx-on-bar-muted: #cffafe;
+  --fx-crumb: #ecfeff;
+  --fx-accent: #fcd34d;
+  --fx-accent-rgb: 252 211 77;
+  --fx-side-1: #075985;
+  --fx-side-2: #082f49;
+  --fx-side-text: #f0f9ff;
+  --fx-side-muted: #a5d8f3;
+  --fx-side-heading: #67e8f9;
+  --fx-active-bg: rgb(8 145 178 / 92%);
+  --fx-active-solid: #0891b2;
+  --fx-active-icon: #083344;
+  --fx-dust:
+    radial-gradient(circle, transparent 0 2.4px, rgb(255 255 255 / 45%) 2.6px 3.3px, transparent 3.6px),
+    radial-gradient(circle, rgb(255 255 255 / 35%) 0 1.1px, transparent 1.6px);
+  --fx-dust-size: 48px 48px, 26px 26px;
+  --fx-dust-position: 10px 12px, 3px 5px;
+  --fx-bulb-1: #f0f9ff;
+  --fx-bulb-2: #22d3ee;
+  --fx-bulb-3: #fde68a;
+  --fx-bulb-4: #0c4a6e; /* an "off" bulb, so the blinking chase shows */
+  --fx-wire: #0e7490;
+  --fx-glow: rgb(165 243 252 / 80%);
+}
+/* Sunlight rippling through the water (behind the bar's contents). */
+:root[data-theme="deepsea"] :is(.admin-navbar, .app-header.is-phone)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(28% 140% at 25% -30%, rgb(255 255 255 / 20%), transparent 70%),
+    radial-gradient(24% 140% at 70% 130%, rgb(165 243 252 / 18%), transparent 70%);
+  background-size: 200% 100%;
+  animation: aurora-drift 10s ease-in-out infinite alternate;
+}
+/* Waves rolling along the bottom edge. */
+:root[data-theme="deepsea"] :is(.admin-navbar, .app-header.is-phone)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -13px;
+  height: 14px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 12px 0, transparent 0 11px, rgb(207 250 254 / 75%) 11.5px 12.5px, transparent 13px),
+    radial-gradient(circle at 12px 0, #164e63 0 11px, transparent 11.5px),
+    radial-gradient(circle at 12px 0, rgb(14 116 144 / 85%) 0 13px, transparent 13.5px);
+  background-size: 24px 14px;
+  background-position: 0 0, 0 0, 12px 0;
+  background-repeat: repeat-x;
+  animation: deepsea-waves 4s linear infinite;
+}
+@keyframes deepsea-waves {
+  from { background-position: 0 0, 0 0, 12px 0; }
+  to   { background-position: 24px 0, 24px 0, -12px 0; }
+}
+/* A little orange fish swimming beside the logo. */
+:root[data-theme="deepsea"] .navbar-brand::before {
+  content: "";
+  position: absolute;
+  right: -17px;
+  bottom: 2px;
+  width: 14px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 4px 3.5px, #0f172a 0 1px, transparent 1.4px), linear-gradient(180deg, #fb923c, #ea580c);
+  animation: deepsea-swim 2s ease-in-out infinite alternate;
+}
+:root[data-theme="deepsea"] .navbar-brand::after {
+  content: "";
+  position: absolute;
+  right: -23px;
+  bottom: 2px;
+  width: 7px;
+  height: 8px;
+  background: #ea580c;
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  animation: deepsea-swim 2s ease-in-out infinite alternate;
+}
+@keyframes deepsea-swim {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(-3px, -2px); }
+}
+/* Side menu: bubbles slowly rising. */
+:root[data-theme="deepsea"] .admin-sidebar {
+  background-image:
+    radial-gradient(circle, transparent 0 3px, rgb(255 255 255 / 25%) 3.3px 4px, transparent 4.4px),
+    var(--fx-side-dust),
+    linear-gradient(180deg, var(--fx-side-1), var(--fx-side-2));
+  background-size: 70px 110px, var(--fx-side-dust-size), 100% 100%;
+  background-position: 20px 0, var(--fx-side-dust-position), 0 0;
+  background-repeat: repeat, repeat, repeat, no-repeat;
+  animation: deepsea-rise 12s linear infinite;
+}
+@keyframes deepsea-rise {
+  from { background-position: 20px 0, 10px 12px, 3px 5px, 0 0; }
+  to   { background-position: 20px -110px, 10px 12px, 3px 5px, 0 0; }
+}
+/* Faint bubbles rising behind the pages. */
+:root[data-theme="deepsea"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, transparent 0 4px, rgb(14 116 144 / 14%) 4.5px 5.5px, transparent 6px),
+    radial-gradient(circle, transparent 0 2.5px, rgb(14 116 144 / 12%) 3px 3.8px, transparent 4.2px);
+  background-size: 90px 140px, 60px 100px;
+  background-position: 0 0, 40px 30px;
+  animation: deepsea-page-rise 24s linear infinite;
+}
+@keyframes deepsea-page-rise {
+  from { background-position: 0 0, 40px 30px; }
+  to   { background-position: 0 -140px, 40px -70px; }
+}
+
+/* =========================================================
+   Black Gold — black bar, gold shimmer sweep, gold trim and a crown
+   ========================================================= */
+:root[data-theme="luxe"] {
+  --fx-bar-1: #1c1917;
+  --fx-bar-2: #0c0a09;
+  --fx-bar-3: #000000;
+  --fx-bar-shadow: rgb(0 0 0 / 45%);
+  --fx-on-bar-muted: #d6c38a;
+  --fx-crumb: #e7d9a8;
+  --fx-accent: #d4af37;
+  --fx-accent-rgb: 212 175 55;
+  --fx-side-1: #1c1917;
+  --fx-side-2: #0c0a09;
+  --fx-side-text: #f5f0e1;
+  --fx-side-muted: #a8a29e;
+  --fx-side-heading: #d4af37;
+  /* Active item: a gold bar with dark text and a black icon tile. */
+  --fx-active-bg: linear-gradient(135deg, #f5d77a, #d4af37 45%, #a67c00);
+  --fx-active-fg: #1a1405;
+  --fx-active-muted: #4a3a10;
+  --fx-active-icon: #f5d77a;
+  --fx-active-icon-bg: #0c0a09;
+  --fx-active-solid: #b8860b;
+  --fx-dust:
+    radial-gradient(circle, rgb(212 175 55 / 40%) 0 .9px, transparent 1.4px),
+    radial-gradient(circle, rgb(212 175 55 / 22%) 0 .8px, transparent 1.3px);
+  --fx-dust-size: 31px 31px, 19px 19px;
+  --fx-dust-position: 5px 7px, 12px 3px;
+  --fx-bulb-1: #f5d77a;
+  --fx-bulb-2: #d4af37;
+  --fx-bulb-3: #fff3c4;
+  --fx-bulb-4: #4a3a10; /* an "off" bulb, so the blinking chase shows on an all-gold string */
+  --fx-wire: #8a6d1d;
+  --fx-glow: rgb(212 175 55 / 70%);
+}
+:root[data-theme="luxe"] :is(.admin-navbar, .app-header.is-phone) { border-top: 2px solid #d4af37; }
+:root[data-theme="luxe"] .admin-sidebar { border-right: 1px solid rgb(212 175 55 / 35%); }
+/* Gold light sweeping across the bar (behind the bar's contents). */
+:root[data-theme="luxe"] :is(.admin-navbar, .app-header.is-phone)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgb(245 215 122 / 22%) 50%, transparent 62%) 0 0 / 300% 100% no-repeat;
+  animation: luxe-shimmer 7s ease-in-out infinite;
+}
+@keyframes luxe-shimmer {
+  0%       { background-position: 100% 0; }
+  60%, 100% { background-position: 0% 0; }
+}
+/* Gold trim under the bar: two fine lines with gold beads between them. */
+:root[data-theme="luxe"] :is(.admin-navbar, .app-header.is-phone)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 6px;
+  pointer-events: none;
+  background:
+    linear-gradient(#d4af37, #d4af37) 0 0 / 100% 1px no-repeat,
+    radial-gradient(circle at 10px 3px, #d4af37 0 1.5px, transparent 2px) 0 0 / 20px 6px repeat-x,
+    linear-gradient(rgb(212 175 55 / 50%), rgb(212 175 55 / 50%)) 0 5px / 100% 1px no-repeat;
+}
+/* Gold-framed logo wearing a small crown. */
+:root[data-theme="luxe"] .navbar-brand { box-shadow: 0 0 0 1.5px #d4af37, 0 2px 10px rgb(212 175 55 / 35%); }
+:root[data-theme="luxe"] .navbar-brand::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  right: -7px;
+  width: 16px;
+  height: 11px;
+  background: linear-gradient(180deg, #fff3c4, #d4af37 50%, #a67c00);
+  clip-path: polygon(0 100%, 0 25%, 25% 65%, 50% 0, 75% 65%, 100% 25%, 100% 100%);
+  transform: rotate(18deg);
+}
+
+/* =========================================================
+   Midnight — deep indigo glass with neon violet glow
+   ========================================================= */
+:root[data-theme="midnight"] {
+  --fx-bar-1: #262262;
+  --fx-bar-2: #17153b;
+  --fx-bar-3: #0b0a24;
+  --fx-bar-shadow: rgb(11 10 36 / 50%);
+  --fx-on-bar-muted: #c7d2fe;
+  --fx-crumb: #e0e7ff;
+  --fx-accent: #a78bfa;
+  --fx-accent-rgb: 167 139 250;
+  --fx-side-1: #1e1b4b;
+  --fx-side-2: #0b0a24;
+  --fx-side-text: #e0e7ff;
+  --fx-side-muted: #a5b4fc;
+  --fx-side-heading: #818cf8;
+  --fx-active-bg: linear-gradient(90deg, rgb(99 102 241 / 60%), rgb(168 85 247 / 38%));
+  --fx-active-solid: #4f46e5;
+  --fx-active-muted: #ddd6fe;
+  --fx-active-icon: #fff;
+  --fx-active-icon-bg: linear-gradient(135deg, #6366f1, #a855f7);
+  /* Fine neon grid. */
+  --fx-dust:
+    linear-gradient(rgb(129 140 248 / 9%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(129 140 248 / 9%) 1px, transparent 1px);
+  --fx-dust-size: 24px 24px, 24px 24px;
+  --fx-dust-position: 0 0, 0 0;
+  --fx-side-dust:
+    linear-gradient(rgb(129 140 248 / 6%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(129 140 248 / 6%) 1px, transparent 1px);
+  --fx-bulb-1: #818cf8;
+  --fx-bulb-2: #a855f7;
+  --fx-bulb-3: #22d3ee;
+  --fx-bulb-4: #e879f9;
+  --fx-wire: rgb(129 140 248 / 40%);
+  --fx-glow: rgb(167 139 250 / 90%);
+}
+/* A violet glow drifting slowly across the bar (behind its contents). */
+:root[data-theme="midnight"] :is(.admin-navbar, .app-header.is-phone)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(18% 160% at 20% 120%, rgb(168 85 247 / 40%), transparent 70%),
+    radial-gradient(16% 160% at 70% -20%, rgb(34 211 238 / 22%), transparent 70%);
+  background-size: 200% 100%;
+  animation: aurora-drift 12s ease-in-out infinite alternate;
+}
+/* Neon line along the bottom edge that gently pulses. */
+:root[data-theme="midnight"] :is(.admin-navbar, .app-header.is-phone)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, #6366f1 15%, #a855f7 50%, #22d3ee 85%, transparent);
+  box-shadow: 0 0 8px rgb(167 139 250 / 80%), 0 0 18px rgb(99 102 241 / 50%);
+  animation: midnight-pulse 2.6s ease-in-out infinite alternate;
+}
+@keyframes midnight-pulse {
+  from { opacity: .6; }
+  to   { opacity: 1; }
+}
+/* Logo inside a glowing neon ring, with a small sparkle. */
+:root[data-theme="midnight"] .navbar-brand { box-shadow: 0 0 0 1.5px #818cf8, 0 2px 8px rgb(0 0 0 / 30%); }
+:root[data-theme="midnight"] .navbar-brand::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow: 0 0 12px 2px rgb(139 92 246 / 75%);
+  animation: midnight-pulse 2.6s ease-in-out infinite alternate;
+}
+:root[data-theme="midnight"] .navbar-brand::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: -7px;
+  width: 11px;
+  height: 11px;
+  background: #e0e7ff;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  filter: drop-shadow(0 0 3px #a78bfa);
+  animation: fx-twinkle 1.6s ease-in-out infinite alternate;
+}
+/* Side menu: neon edge. */
+:root[data-theme="midnight"] .admin-sidebar { border-right: 1px solid rgb(129 140 248 / 35%); box-shadow: 1px 0 14px rgb(99 102 241 / 22%); }
+:root[data-theme="midnight"] .admin-sidebar .sidebar-link.is-active { box-shadow: inset 0 0 0 1px rgb(167 139 250 / 55%), 0 0 14px rgb(139 92 246 / 35%); }
+/* Faint violet and cyan glows behind the pages. */
+:root[data-theme="midnight"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 0% 0%, rgb(99 102 241 / 10%), transparent 35%),
+    radial-gradient(circle at 100% 100%, rgb(34 211 238 / 8%), transparent 35%);
+}
+
+/* =========================================================
+   Gold — polished gold bar, gold-coin garland (kasu malai), espresso menu
+   ========================================================= */
+:root[data-theme="gold"] {
+  --fx-bar-1: #dcaa45;
+  --fx-bar-2: #b07d1c;
+  --fx-bar-3: #6e4808;
+  --fx-bar-shadow: rgb(110 72 8 / 35%);
+  --fx-on-bar-muted: #fff3d6;
+  --fx-crumb: #fff8e6;
+  --fx-accent: #f7d774;
+  --fx-accent-rgb: 247 215 116;
+  --fx-side-1: #3b2a1a;
+  --fx-side-2: #22170d;
+  --fx-side-text: #fdf3dc;
+  --fx-side-muted: #c9b48f;
+  --fx-side-heading: #e8b94a;
+  /* Active item: gold foil with dark text and a dark icon tile. */
+  --fx-active-bg: linear-gradient(135deg, #fbe7a1, #e3b04b 40%, #b07d1c);
+  --fx-active-fg: #2a1a05;
+  --fx-active-muted: #5a3d0c;
+  --fx-active-icon: #f7d774;
+  --fx-active-icon-bg: #22170d;
+  --fx-active-solid: #b07d1c;
+  /* Little glints of light on the metal. */
+  --fx-dust:
+    radial-gradient(circle, rgb(255 255 255 / 55%) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgb(255 248 220 / 35%) 0 .8px, transparent 1.3px);
+  --fx-dust-size: 33px 33px, 21px 21px;
+  --fx-dust-position: 6px 9px, 15px 4px;
+  --fx-side-dust:
+    radial-gradient(circle, rgb(232 185 74 / 24%) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgb(232 185 74 / 12%) 0 .8px, transparent 1.3px);
+  --fx-bulb-1: #f7d774;
+  --fx-bulb-2: #fff3c4;
+  --fx-bulb-3: #d4a03a;
+  --fx-bulb-4: #5a3d0c; /* an "off" bulb, so the blinking chase shows on an all-gold string */
+  --fx-wire: #8a5c0f;
+  --fx-glow: rgb(247 215 116 / 80%);
+}
+/* White text needs a soft shadow to stand out on bright gold. */
+:root[data-theme="gold"] :is(.admin-navbar, .app-header.is-phone) { text-shadow: 0 1px 1px rgb(60 35 0 / 40%); }
+:root[data-theme="gold"] .admin-sidebar { border-right: 1px solid rgb(232 185 74 / 30%); }
+/* Brushed-metal lines and a satin sheen sweeping across (behind the bar's contents). */
+:root[data-theme="gold"] :is(.admin-navbar, .app-header.is-phone)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 38%) 50%, transparent 62%) 100% 0 / 300% 100% no-repeat,
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 6%) 0 1px, transparent 1px 3px);
+  animation: gold-sheen 6s ease-in-out infinite;
+}
+@keyframes gold-sheen {
+  0%        { background-position: 100% 0, 0 0; }
+  55%, 100% { background-position: 0% 0, 0 0; }
+}
+/* Kasu malai: gold coins hanging from a fine chain, swaying gently. */
+:root[data-theme="gold"] :is(.admin-navbar, .app-header.is-phone)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -15px;
+  height: 17px;
+  pointer-events: none;
+  transform-origin: top center;
+  background-image:
+    radial-gradient(circle at 13px 10px, #fff7d6 0 1.5px, transparent 2px),
+    radial-gradient(circle at 13px 10px, #fbe7a1 0 2.6px, #e3b04b 3.4px, #b07d1c 4.6px, #6e4808 5.4px, transparent 5.9px),
+    radial-gradient(circle at 13px 3.5px, transparent 0 1px, #b07d1c 1.2px 1.9px, transparent 2.2px),
+    linear-gradient(#8a5c0f, #8a5c0f);
+  background-size: 26px 17px, 26px 17px, 26px 17px, 100% 1px;
+  background-position: 0 0, 0 0, 0 0, 0 1px;
+  background-repeat: repeat-x, repeat-x, repeat-x, no-repeat;
+  filter: drop-shadow(0 1px 1.5px rgb(60 35 0 / 45%));
+  animation: pongal-sway 4.5s ease-in-out infinite alternate;
+}
+/* Gold-framed logo with a glint of light. */
+:root[data-theme="gold"] .navbar-brand { box-shadow: 0 0 0 2px #fbe7a1, 0 0 0 3px #8a5c0f, 0 3px 10px rgb(60 35 0 / 35%); }
+:root[data-theme="gold"] .navbar-brand::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  filter: drop-shadow(0 0 3px #fff3c4);
+  animation: fx-twinkle 1.4s ease-in-out infinite alternate;
+}
+/* Faint golden glints twinkling behind the pages. */
+:root[data-theme="gold"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgb(212 160 58 / 38%) 0 1.6px, transparent 2.1px),
+    radial-gradient(circle, rgb(212 160 58 / 22%) 0 1.1px, transparent 1.6px);
+  background-size: 110px 110px, 70px 70px;
+  background-position: 0 0, 35px 50px;
+  animation: fx-twinkle 3.2s ease-in-out infinite alternate;
+}
+
+/* ---------- Reduced motion: stop every festive animation ---------- */
 @media (prefers-reduced-motion: reduce) {
-  :root[data-theme="christmas"] .sidebar-link.is-active::after,
-  :root[data-theme="christmas"] .bottom-nav-item.is-active::after { animation: none; }
+  :root[data-festive] :is(.admin-navbar, .app-header.is-phone, .sidebar-link.is-active, .bottom-nav-item.is-active, .navbar-brand, body)::after,
+  :root[data-festive] :is(.admin-navbar, .app-header.is-phone, .navbar-brand, body)::before,
+  :root[data-festive] .admin-sidebar { animation: none !important; }
 }
+
+/* ---------- Normal / Premium theme groups ---------- */
+.theme-tier + .theme-tier { margin-top: 22px; }
+.theme-tier-title { display: flex; align-items: center; gap: 8px; }
+.theme-premium-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-pill); color: #7a4b00; background: linear-gradient(135deg, #fde68a, #f4c542); font-size: 11px; font-weight: 700; letter-spacing: .02em; vertical-align: middle; box-shadow: inset 0 0 0 1px rgb(180 120 0 / 25%); }
+.theme-card-premium { position: absolute; top: 10px; left: 10px; display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; color: #7a4b00; background: linear-gradient(135deg, #fde68a, #f4c542); font-size: 12px; box-shadow: var(--shadow-xs); }
+.theme-access { margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--color-border); }
+.theme-access-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.theme-access-header .feature-section-title { margin-top: 0; }
+.theme-access-group + .theme-access-group { margin-top: 18px; }
+.theme-access-group-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 8px; }
+.theme-access-group-head > span { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.theme-access-group-head small { flex-basis: 100%; color: var(--color-text-muted); font-size: 12px; }
+.theme-access-swatch { background: var(--swatch) !important; box-shadow: inset 0 0 0 3px rgb(255 255 255 / 55%); }
+.profile-theme-tier { margin-top: 12px; }
+.profile-theme-tier-title { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--color-text-muted); font-size: 13px; font-weight: 600; }

@@ -8,9 +8,11 @@ import BillShareModal from "../components/BillShareModal.jsx";
 import { useToast } from "../hooks/useToast.js";
 import { compressImage } from "../utils/image.js";
 import { useProducts } from "../hooks/useProducts.js";
+import { useAppSettings } from "../settings/appSettingsContext.js";
 import { formatRupees, localDateInputValue as getTodayDate } from "../utils/format.js";
 
-const itemCategories = ["Metal", "Plastic", "Paper", "Electronics"];
+// Friendlier names for common units in the unit dropdown; any other unit shows as typed.
+const unitLabels = { kg: "Kilogram (kg)", pcs: "Pieces (pcs)", ton: "Ton", g: "Gram (g)", litre: "Litre", metre: "Metre", bundle: "Bundle" };
 const emptyDealerForm = (type = "Regular Dealer") => ({ name: "", phone: "", location: "", type, image: "", cardColor: "#fff3e8", cardBackground: "", active: true });
 const emptyItemForm = () => ({ name: "", category: "", quantity: "", price: "", unit: "kg", image: "", note: "" });
 // Dealers saved before the status existed count as active.
@@ -37,8 +39,10 @@ function Itemsentry() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editingDealerId, setEditingDealerId] = useState(null);
-  const [dealerForm, setDealerForm] = useState(() => emptyDealerForm());
-  const [dealerCategories, setDealerCategories] = useState(["Regular Dealer", "Wholesale Dealer"]);
+  const { lists } = useAppSettings();
+  const [dealerForm, setDealerForm] = useState(() => emptyDealerForm(lists.dealerCategories[0]));
+  // Categories found on saved dealers or added here; the main list comes from Settings → Dropdown lists.
+  const [extraDealerCategories, setDealerCategories] = useState([]);
   const [newDealerCategory, setNewDealerCategory] = useState("");
   const [billDate, setBillDate] = useState(getTodayDate);
   const [billItems, setBillItems] = useState([]);
@@ -50,8 +54,9 @@ function Itemsentry() {
   const { products: inventoryItems } = useProducts();
   const [pickedItemId, setPickedItemId] = useState("");
   const pickedItem = inventoryItems.find((item) => item._id === pickedItemId) || null;
-  const categoryOptions = [...new Set([...itemCategories, itemForm.category].filter(Boolean))];
-  const unitOptions = [["kg", "Kilogram (kg)"], ["pcs", "Pieces (pcs)"], ["ton", "Ton"]];
+  const dealerCategories = [...new Set([...lists.dealerCategories, ...extraDealerCategories])];
+  const categoryOptions = [...new Set([...lists.itemCategories, itemForm.category].filter(Boolean))];
+  const unitOptions = lists.units.map((unit) => [unit, unitLabels[unit] || unit]);
   if (itemForm.unit && !unitOptions.some(([value]) => value === itemForm.unit)) unitOptions.push([itemForm.unit, itemForm.unit]);
 
   function pickInventoryItem(id) {

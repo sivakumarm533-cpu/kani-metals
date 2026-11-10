@@ -4,14 +4,15 @@ import { useAuth } from '../auth/authContextValue.js'
 import { useAppSettings } from '../settings/appSettingsContext.js'
 import { apiRequest } from '../services/api.js'
 import { compressImageFile } from '../utils/image.js'
-import { applyTheme, cachedThemeId, findTheme, THEMES } from '../theme/themes.js'
+import { applyTheme, cachedThemeId, findTheme, THEME_TIERS, THEMES, themeTier } from '../theme/themes.js'
+import { PremiumBadge } from '../components/ui.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { LANGUAGES, savedLanguage, switchLanguage } from '../utils/translate.js'
 import Toast from '../components/Toast.jsx'
 import Modal from '../components/Modal.jsx'
 import BottomNav from '../components/BottomNav.jsx'
 import { Avatar } from '../components/Navbar.jsx'
-import { BOTTOM_NAV_CHOICES, BOTTOM_NAV_MAX, bottomNavItems, canUseItem, DEFAULT_BOTTOM_NAV, NAV_STYLES, roleLabel } from '../config/navigation.js'
+import { BOTTOM_NAV_CHOICES, BOTTOM_NAV_MAX, bottomNavItems, canUseItem, DEFAULT_BOTTOM_NAV, isManager, NAV_STYLES, roleLabel } from '../config/navigation.js'
 
 function Card({ icon, title, intro, children, id }) {
   return (
@@ -126,8 +127,11 @@ function PasswordCard({ user, notify }) {
 }
 
 function AppearanceCard({ user, updateUser, notify }) {
-  const { allowUserThemes, features, theme: workspaceTheme } = useAppSettings()
-  const saved = user.preferences || {}
+  const { allowUserThemes, userThemes, features, theme: workspaceTheme, personalTheme } = useAppSettings()
+  // Team members see only the themes the administrator switched on; admins and sub-admins see all.
+  const themeChoices = isManager(user) ? THEMES : THEMES.filter((option) => userThemes.includes(option.id))
+  // A saved theme the administrator has since switched off counts as "Workspace".
+  const saved = { ...user.preferences, theme: personalTheme }
   const [theme, setTheme] = useState(saved.theme || '')
   const [navStyle, setNavStyle] = useState(saved.navStyle || 'light')
   const [navKeys, setNavKeys] = useState(() => bottomNavItems(saved.bottomNav, user, features).map((item) => item.key))
@@ -192,13 +196,24 @@ function AppearanceCard({ user, updateUser, notify }) {
           <span className="profile-theme-swatch is-default" aria-hidden="true"><i className="bi bi-building" /></span>
           <span><strong>Workspace</strong><small>{findTheme(workspaceTheme).name}</small></span>
         </button>
-        {THEMES.map((option) => (
-          <button key={option.id} type="button" role="radio" aria-checked={theme === option.id} className={`profile-theme-option${theme === option.id ? ' is-selected' : ''}`} onClick={() => pickTheme(option.id)} style={{ '--swatch': option.primary }}>
-            <span className="profile-theme-swatch" aria-hidden="true" />
-            <span><strong>{option.name}</strong><small>{option.description}</small></span>
-          </button>
-        ))}
-      </div> : <p className="profile-hint"><i className="bi bi-lock" aria-hidden="true" /> Your administrator uses one theme for everyone ({findTheme(workspaceTheme).name}).</p>}
+      </div> : null}
+      {allowUserThemes ? THEME_TIERS.map((tier) => {
+        const options = themeChoices.filter((option) => themeTier(option) === tier.id)
+        if (!options.length) return null
+        return (
+          <div key={tier.id} className="profile-theme-tier">
+            <h4 className="profile-theme-tier-title">{tier.name} {tier.id === 'premium' && <PremiumBadge />}</h4>
+            <div className="profile-theme-grid" role="radiogroup" aria-label={tier.name}>
+              {options.map((option) => (
+                <button key={option.id} type="button" role="radio" aria-checked={theme === option.id} className={`profile-theme-option${theme === option.id ? ' is-selected' : ''}`} onClick={() => pickTheme(option.id)} style={{ '--swatch': option.primary }}>
+                  <span className="profile-theme-swatch" aria-hidden="true" />
+                  <span><strong>{option.name}</strong><small>{option.description}</small></span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      }) : <p className="profile-hint"><i className="bi bi-lock" aria-hidden="true" /> Your administrator uses one theme for everyone ({findTheme(workspaceTheme).name}).</p>}
 
       <h3 className="profile-subheading">Mobile bottom bar</h3>
       <p className="profile-hint">On a phone, these screens stay at the bottom of the screen. Pick up to {BOTTOM_NAV_MAX}; everything else is under <strong>More</strong>.</p>

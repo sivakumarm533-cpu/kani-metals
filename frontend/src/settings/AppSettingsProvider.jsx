@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../services/api.js'
-import { applyTheme } from '../theme/themes.js'
+import { applyTheme, THEME_IDS } from '../theme/themes.js'
 import { useAuth } from '../auth/authContextValue.js'
-import { AppSettingsContext, DEFAULT_BUSINESS } from './appSettingsContext.js'
+import { AppSettingsContext, DEFAULT_BUSINESS, DEFAULT_LISTS } from './appSettingsContext.js'
 
 const CACHE_KEY = 'kani-app-settings'
 
@@ -17,9 +17,12 @@ function normalize(result) {
   return {
     theme: result?.theme || 'copper',
     allowUserThemes: result?.allowUserThemes !== false,
+    // Themes team members may pick; older settings without the list allow every theme.
+    userThemes: Array.isArray(result?.userThemes) ? THEME_IDS.filter((id) => result.userThemes.includes(id)) : [...THEME_IDS],
     features: result?.features || {},
     menuOrder: Array.isArray(result?.menuOrder) ? result.menuOrder : [],
     billTemplate: result?.billTemplate || 'classic',
+    lists: Object.fromEntries(Object.keys(DEFAULT_LISTS).map((key) => [key, Array.isArray(result?.lists?.[key]) && result.lists[key].length ? result.lists[key] : DEFAULT_LISTS[key]])),
     business: { ...DEFAULT_BUSINESS, ...result?.business },
   }
 }
@@ -48,8 +51,11 @@ export function AppSettingsProvider({ children }) {
     return () => { active = false }
   }, [])
 
-  // A personal theme (when allowed) wins over the workspace theme.
-  const personalTheme = settings.allowUserThemes ? user?.preferences?.theme || '' : ''
+  // A personal theme (when allowed) wins over the workspace theme. Team members only keep
+  // it while the administrator still allows that theme; admins and sub-admins may use any.
+  const manager = user?.role === 'admin' || user?.role === 'subadmin'
+  const savedPersonal = user?.preferences?.theme || ''
+  const personalTheme = settings.allowUserThemes && savedPersonal && (manager || settings.userThemes.includes(savedPersonal)) ? savedPersonal : ''
   const effectiveTheme = personalTheme || settings.theme
   useEffect(() => { applyTheme(effectiveTheme) }, [effectiveTheme])
 

@@ -7,12 +7,14 @@ import BillShareModal from '../components/BillShareModal.jsx'
 import LoadError from '../components/LoadError.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { formatRupees } from '../utils/format.js'
+import { useAppSettings } from '../settings/appSettingsContext.js'
 
-const categories = ['Metal', 'Plastic', 'Paper', 'Electronics']
 const units = ['kg', 'g', 'ton', 'pcs', 'box', 'meter', 'liter']
 const billDate = (value) => new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 
 function DealerBills() {
+  // Item categories from Settings → Dropdown lists.
+  const categories = useAppSettings().lists.itemCategories
   const { dealerId } = useParams()
   const [data, setData] = useState({ key: '', dealer: null, bills: [], error: '' })
   const [retry, setRetry] = useState(0)

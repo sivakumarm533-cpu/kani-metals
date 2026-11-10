@@ -104,3 +104,8 @@ export function ConfirmDialog({ title, message, confirmLabel = 'Confirm', cancel
     </Modal>
   )
 }
+
+/** Small gold "Premium" tag for premium themes. */
+export function PremiumBadge() {
+  return <span className="theme-premium-badge"><i className="bi bi-gem" aria-hidden="true" /> Premium</span>
+}

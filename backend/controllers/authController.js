@@ -9,7 +9,7 @@ import { getJwtSecret } from '../config/secrets.js'
 import { decryptTotpSecret, encryptTotpSecret, hashChallenge, makeTotpQr, newChallenge, newRecoveryCodes, newTotpSecret } from '../utils/totp.js'
 import { recordActivity } from '../utils/activity.js'
 import { profilePictureDataUrl } from '../utils/profilePicture.js'
-import { THEME_IDS } from '../models/AppSetting.js'
+import AppSetting, { THEME_IDS } from '../models/AppSetting.js'
 import { BOTTOM_NAV_KEYS, BOTTOM_NAV_MAX, DASHBOARD_WIDGETS, DEFAULT_BOTTOM_NAV, FEATURE_KEYS, NAV_STYLES, LANGUAGE_CODES } from '../config/features.js'
 import { forgetSession, forgetUserSessions } from '../middleware/auth.js'
 
@@ -409,6 +409,14 @@ export async function deleteUser(req, res, next) {
   } catch (error) { next(error) }
 }
 
+/** Team members may only pick themes the administrator switched on; admins and sub-admins may pick any. */
+async function themeAllowedFor(user, theme) {
+  if (!theme || user.role === 'admin' || user.role === 'subadmin') return true
+  const settings = await AppSetting.findOne({ key: 'app' }).select('allowUserThemes userThemes').lean()
+  if (settings?.allowUserThemes === false) return false
+  return !Array.isArray(settings?.userThemes) || settings.userThemes.includes(theme)
+}
+
 function preferencesFromBody(input, current) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'Preferences are invalid.' }
   const next = { ...publicPreferences(current) }
@@ -453,6 +461,9 @@ export async function updateOwnProfile(req, res, next) {
     if (preferences !== undefined) {
       const result = preferencesFromBody(preferences, user.preferences)
       if (result.error) return res.status(400).json({ message: result.error })
+      if (preferences?.theme !== undefined && preferences.theme !== (user.preferences?.theme || '') && !(await themeAllowedFor(user, preferences.theme))) {
+        return res.status(400).json({ message: 'That theme is not available. Ask your administrator to switch it on.' })
+      }
       user.preferences = result.preferences
     }
     const removePhoto = req.body?.removeProfilePicture === true

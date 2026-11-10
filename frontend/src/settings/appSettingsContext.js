@@ -13,6 +13,13 @@ export const DEFAULT_BUSINESS = {
   greeting: 'Thank you for your business',
 }
 
+/** Dropdown choices until the saved lists load. Keep in sync with DEFAULT_LISTS in backend/config/features.js. */
+export const DEFAULT_LISTS = {
+  itemCategories: ['Metal', 'Plastic', 'Paper', 'Electronics'],
+  dealerCategories: ['Regular Dealer', 'Wholesale Dealer'],
+  units: ['kg', 'pcs', 'ton', 'g', 'litre', 'metre', 'bundle'],
+}
+
 export const AppSettingsContext = createContext(null)
 
 export function useAppSettings() {

@@ -34,6 +34,19 @@ export function patternLayers(pattern, color, alpha = 0.07) {
       const big = rgba(color, Math.min(1, alpha * 1.6))
       return { image: `radial-gradient(${big} 2px, transparent 2.6px), radial-gradient(${c} 1.2px, transparent 1.7px), radial-gradient(${c} 1.5px, transparent 2px)`, size: '64px 64px, 40px 40px, 52px 52px', position: '0 0, 20px 26px, 34px 8px' }
     }
+    // Kolam: a grid of rice-flour dots with loops drawn around alternate dots.
+    case 'kolam': {
+      const dot = rgba(color, Math.min(1, alpha * 1.8))
+      return { image: `radial-gradient(${dot} 1.5px, transparent 2px), radial-gradient(circle, transparent 9px, ${c} 9.5px, ${c} 10.5px, transparent 11px)`, size: '28px 28px, 56px 56px', position: '0 0, 14px 14px' }
+    }
+    case 'sparkle': {
+      const big = rgba(color, Math.min(1, alpha * 1.8))
+      return { image: `radial-gradient(${big} 1.6px, transparent 2.1px), radial-gradient(${c} 1px, transparent 1.5px)`, size: '34px 34px, 21px 21px', position: '0 0, 11px 14px' }
+    }
+    case 'splash': return { image: `radial-gradient(${c} 3px, transparent 3.6px), radial-gradient(${c} 1.6px, transparent 2.1px), radial-gradient(${c} 2.2px, transparent 2.8px)`, size: '46px 46px, 27px 27px, 61px 61px', position: '0 0, 13px 9px, 30px 22px' }
+    case 'stars': return { image: `radial-gradient(${c} 1.1px, transparent 1.6px), radial-gradient(${c} .8px, transparent 1.3px)`, size: '41px 41px, 23px 23px', position: '0 0, 15px 8px' }
+    case 'bubbles': return { image: `radial-gradient(circle, transparent 4px, ${c} 4.5px, ${c} 5.5px, transparent 6px), radial-gradient(${c} 1.2px, transparent 1.7px)`, size: '40px 40px, 22px 22px', position: '0 0, 9px 13px' }
+    case 'lattice': return { image: `repeating-linear-gradient(60deg, ${c} 0 1px, transparent 1px 18px), repeating-linear-gradient(-60deg, ${c} 0 1px, transparent 1px 18px)`, size: 'auto' }
     default: return { image: 'none', size: 'auto' }
   }
 }
@@ -46,12 +59,28 @@ export const THEMES = [
   { id: 'crimson', name: 'Crimson', description: 'Strong red accent', primary: '#DC2626', pattern: 'crosshatch', patternName: 'Crosshatch' },
   { id: 'teal', name: 'Teal', description: 'Cool blue-green', primary: '#0D9488', pattern: 'zigzag', patternName: 'Zigzag' },
   { id: 'steel', name: 'Steel Grey', description: 'Neutral metal tones', primary: '#475569', pattern: 'triangles', patternName: 'Triangles' },
-  { id: 'gold', name: 'Gold', description: 'Warm brass and gold', primary: '#B7791F', pattern: 'checker', patternName: 'Checker' },
+  { id: 'gold', name: 'Gold', description: 'Polished gold with a gold-coin garland and satin sheen', primary: '#B07D1C', pattern: 'sparkle', patternName: 'Gold glints', tier: 'premium', festive: true, barColor: '#b07d1c', sideColor: '#2e2013' },
   { id: 'rose', name: 'Rose', description: 'Soft pink accent', primary: '#DB2777', pattern: 'rings', patternName: 'Rings' },
-  { id: 'midnight', name: 'Midnight', description: 'Dark navigation with indigo', primary: '#4F46E5', pattern: 'lines', patternName: 'Fine lines', darkChrome: true },
+  { id: 'midnight', name: 'Midnight', description: 'Deep indigo glass with a neon violet glow', primary: '#4F46E5', pattern: 'grid', patternName: 'Neon grid', tier: 'premium', festive: true, barColor: '#17153b', sideColor: '#141238' },
   // Festive: red accent, snowflake background, Christmas-lights stripe and gentle snowfall (see styles/features.css).
-  { id: 'christmas', name: 'Christmas', description: 'Festive red with snow and lights', primary: '#C0262D', pattern: 'snow', patternName: 'Snowflakes' },
+  // Festive: saffron bar with a kolam border, mango-leaf thoranam, pongal pot and sugarcane (see styles/features.css).
+  { id: 'pongal', name: 'Pongal', description: 'Harvest festival: kolam, thoranam, pongal pot and sugarcane', primary: '#EA580C', pattern: 'kolam', patternName: 'Kolam', tier: 'premium', festive: true, barColor: '#ea580c', sideColor: '#14532d' },
+  { id: 'diwali', name: 'Diwali', description: 'Festival of lights: lanterns, a lit diya and sparkles', primary: '#7E22CE', pattern: 'sparkle', patternName: 'Sparkles', tier: 'premium', festive: true, barColor: '#5b21b6', sideColor: '#5c1010' },
+  { id: 'holi', name: 'Holi', description: 'Festival of colours: splashes, rainbow and dripping colours', primary: '#C026D3', pattern: 'splash', patternName: 'Colour splash', tier: 'premium', festive: true, barColor: '#c026d3', sideColor: '#28245f' },
+  { id: 'aurora', name: 'Aurora', description: 'Night sky with moving northern lights, stars and a moon', primary: '#0F766E', pattern: 'stars', patternName: 'Stars', tier: 'premium', festive: true, barColor: '#0b1026', sideColor: '#0a1020' },
+  { id: 'deepsea', name: 'Deep Sea', description: 'Ocean waves, rising bubbles and a little fish', primary: '#0E7490', pattern: 'bubbles', patternName: 'Bubbles', tier: 'premium', festive: true, barColor: '#0e7490', sideColor: '#08385a' },
+  { id: 'luxe', name: 'Black Gold', description: 'Black and gold with a shimmer sweep and a crown', primary: '#A16207', pattern: 'lattice', patternName: 'Gold lattice', tier: 'premium', festive: true, barColor: '#0c0a09', sideColor: '#141110' },
+  { id: 'christmas', name: 'Christmas', description: 'Festive red with snow and lights', primary: '#C0262D', pattern: 'snow', patternName: 'Snowflakes', tier: 'premium', festive: true, barColor: '#b3202a', sideColor: '#11472f' },
 ]
+
+/** Theme groups. Themes without a tier are Normal. */
+export const THEME_TIERS = [
+  { id: 'normal', name: 'Normal themes', description: 'Simple colour and pattern themes.' },
+  { id: 'premium', name: 'Premium themes', description: 'Special themes with extra styling such as dark menus or festive effects.' },
+]
+export const themeTier = (theme) => (theme?.tier === 'premium' ? 'premium' : 'normal')
+export const isPremiumTheme = (theme) => themeTier(theme) === 'premium'
+export const THEME_IDS = THEMES.map((theme) => theme.id)
 
 export const DEFAULT_THEME = 'copper'
 const STORAGE_KEY = 'kani-theme'
@@ -86,7 +115,10 @@ export function applyTheme(id, { persist = true } = {}) {
   root.style.setProperty('--app-pattern-position', layers.position || '0 0')
   root.dataset.theme = theme.id
   root.dataset.chrome = theme.darkChrome ? 'dark' : 'light'
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.darkChrome ? '#1e1b4b' : '#ffffff')
+  // Festive (premium) themes share the decorated top bar and menu in styles/features.css.
+  if (theme.festive) root.dataset.festive = 'true'
+  else delete root.dataset.festive
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.barColor || (theme.darkChrome ? '#1e1b4b' : '#ffffff'))
   if (persist) { try { localStorage.setItem(STORAGE_KEY, theme.id) } catch { /* storage unavailable */ } }
   return theme
 }

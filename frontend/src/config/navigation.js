@@ -41,6 +41,7 @@ export const SETTINGS_ITEMS = [
   { to: '/settings/features', icon: 'bi-toggles', label: 'Feature access', description: 'Choose what users can open' },
   { to: '/settings/activity', icon: 'bi-clock-history', label: 'User activity', description: 'Who changed what, and when' },
   { to: '/settings/menu', icon: 'bi-list-ol', label: 'Menu order', description: 'Arrange the main menu' },
+  { to: '/settings/lists', icon: 'bi-ui-checks', label: 'Dropdown lists', description: 'Categories and units in forms' },
   { to: '/settings/theme', icon: 'bi-palette', label: 'Workspace theme', description: 'Default colours for everyone' },
   { to: '/settings/bill', icon: 'bi-receipt', label: 'Bill settings', description: 'Business details on bills' },
   { to: '/settings/backup', icon: 'bi-database-down', label: 'Database backup', description: 'Export or restore records', primaryOnly: true },

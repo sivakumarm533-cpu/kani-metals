@@ -10,6 +10,7 @@ import { compressImage } from '../utils/image.js'
 import { formatRupees } from '../utils/format.js'
 import { useMediaQuery } from '../hooks/useMediaQuery.js'
 import { FloatingActionButton, StatusBadge } from '../components/ui.jsx'
+import { useAppSettings } from '../settings/appSettingsContext.js'
 import './Inventory.css'
 
 /*
@@ -18,15 +19,13 @@ import './Inventory.css'
  * Saving a bill never changes stock.
  */
 
-const UNITS = ['kg', 'pcs', 'ton', 'g', 'litre', 'metre', 'bundle']
-const CATEGORIES = ['Metal', 'Plastic', 'Paper', 'Electronics']
 const qty = (value) => Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 })
 const shortDate = (value) => (value ? new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
 const isLow = (item) => item.quantity <= LOW_STOCK_LIMIT
 const MODES = [['add', 'Add', 'bi-plus-lg'], ['remove', 'Remove', 'bi-dash-lg'], ['set', 'Set to', 'bi-pencil']]
 
-function AddItemModal({ categories, onClose, onAdded, notify }) {
-  const [form, setForm] = useState({ name: '', category: 'Metal', unit: 'kg', quantity: '', price: '', image: '' })
+function AddItemModal({ categories, units, onClose, onAdded, notify }) {
+  const [form, setForm] = useState({ name: '', category: categories[0] || '', unit: units[0] || 'kg', quantity: '', price: '', image: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
@@ -71,7 +70,7 @@ function AddItemModal({ categories, onClose, onAdded, notify }) {
         <div className="stock-grid">
           <label>Category<input list="inv-categories" required maxLength="60" value={form.category} onChange={set('category')} /></label>
           <datalist id="inv-categories">{categories.map((name) => <option key={name} value={name} />)}</datalist>
-          <label>Unit<select value={form.unit} onChange={set('unit')}>{UNITS.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>
+          <label>Unit<select value={form.unit} onChange={set('unit')}>{units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>
         </div>
         <div className="stock-grid">
           <label>Opening stock ({form.unit})<input type="number" inputMode="decimal" min="0" step="any" value={form.quantity} onChange={set('quantity')} placeholder="0" /></label>
@@ -235,7 +234,9 @@ function Inventory() {
   const [modal, setModal] = useState(null)
   const [toast, notify] = useToast()
 
-  const categories = useMemo(() => [...new Set([...CATEGORIES, ...products.map((item) => item.category).filter(Boolean)])], [products])
+  const { lists } = useAppSettings()
+  // Settings → Dropdown lists first, then any category already used on an item.
+  const categories = useMemo(() => [...new Set([...lists.itemCategories, ...products.map((item) => item.category).filter(Boolean)])], [lists.itemCategories, products])
   const lowCount = products.filter(isLow).length
   // Phone stock bars compare items that use the same unit.
   const maxByUnit = useMemo(() => {
@@ -358,7 +359,7 @@ function Inventory() {
         </div>
       )}
 
-      {modal?.type === 'add' && <AddItemModal categories={categories} notify={notify} onClose={() => setModal(null)} onAdded={afterSave} />}
+      {modal?.type === 'add' && <AddItemModal categories={categories} units={lists.units} notify={notify} onClose={() => setModal(null)} onAdded={afterSave} />}
       {modal?.type === 'stock' && <StockModal items={modal.items} initialMode={modal.mode} notify={notify} onClose={() => setModal(null)} onSaved={afterSave} />}
       {modal?.type === 'history' && <HistoryModal item={modal.item} onClose={() => setModal(null)} />}
     </section>

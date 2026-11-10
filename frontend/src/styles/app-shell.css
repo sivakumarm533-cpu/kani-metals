@@ -563,3 +563,42 @@ html.is-translated body { top: 0 !important; position: static !important; }
   :root .admin-content .price-view-toggle button { width: 52px; min-width: 52px; height: 38px; min-height: 38px; padding: 0; }
   .price-view-toggle { flex: 0 0 auto; }
 }
+
+/* =========================================================
+   Settings → Dropdown lists
+   ========================================================= */
+.list-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+.list-section { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-xs); }
+.list-section-head { display: flex; align-items: center; gap: 12px; }
+.list-section-head > div { flex: 1; min-width: 0; }
+.list-section-head h2 { margin: 0; font-size: 16px; }
+.list-section-head p { margin: 2px 0 0; color: var(--color-text-muted); font-size: 12px; }
+.list-count { display: grid; min-width: 30px; height: 26px; place-items: center; padding: 0 8px; border-radius: 999px; color: var(--color-primary-strong); background: var(--color-primary-soft); font-size: 12px; font-weight: 700; }
+.list-rows { display: grid; margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-md); list-style: none; }
+.list-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 8px 6px 12px; background: var(--color-surface); }
+.list-row + .list-row { border-top: 1px solid var(--color-border); }
+.list-row-number { flex: 0 0 22px; color: var(--color-text-subtle); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.list-row-name { flex: 1; min-width: 0; overflow: hidden; color: var(--color-text); font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.list-row-actions { display: flex; flex: 0 0 auto; gap: 4px; }
+.list-icon-btn { display: grid; width: 38px; height: 38px; min-height: 38px !important; place-items: center; padding: 0; border: 1px solid var(--color-border); border-radius: 10px; color: var(--color-text-muted); background: var(--color-surface); }
+.list-icon-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary-strong); background: var(--color-primary-faint); }
+.list-icon-btn.is-danger:hover:not(:disabled) { border-color: var(--color-danger); color: var(--color-danger-strong); background: var(--color-danger-soft); }
+.list-icon-btn:disabled { opacity: .4; }
+.list-edit, .list-add { display: flex; flex: 1; gap: 8px; }
+.list-edit input, .list-add input { flex: 1; min-width: 0; min-height: 42px; padding: 8px 12px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); color: var(--color-text); background: var(--color-surface); font: inherit; }
+.list-edit input:focus, .list-add input:focus { border-color: var(--color-primary); outline: none; box-shadow: var(--focus-ring); }
+.list-edit button, .list-add button { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; min-height: 42px; padding-inline: 14px; }
+@media (max-width: 720px) {
+  .list-section { padding: 14px; }
+  .list-row-actions { gap: 2px; }
+  .list-icon-btn { width: 40px; height: 40px; min-height: 40px !important; }
+  .list-edit { flex-wrap: wrap; }
+  .list-edit input { flex-basis: 100%; }
+  .list-edit button { flex: 1; justify-content: center; }
+}
+/* Rows: number | name (shrinks with …) | buttons (never cut off). */
+.list-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; }
+.list-row > .list-edit { grid-column: 1 / -1; }
+.list-row-name { display: block; }
+@media (min-width: 961px) and (max-width: 1500px) { .list-sections { grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); } }
+.list-section { grid-template-columns: minmax(0, 1fr); }

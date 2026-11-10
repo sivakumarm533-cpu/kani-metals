@@ -16,6 +16,18 @@ export const BOTTOM_NAV_KEYS = ['dashboard', ...FEATURE_KEYS, 'profile', 'settin
 export const DEFAULT_BOTTOM_NAV = ['dashboard', 'itemEntry', 'dealerPayments', 'inventory']
 export const BOTTOM_NAV_MAX = 4
 export const NAV_STYLES = ['light', 'color', 'dark']
+
+/**
+ * Choices offered in form dropdowns. Admins and sub-admins edit them in
+ * Settings → Dropdown lists. Saved records keep their values when a choice is
+ * renamed or removed (bills are never changed).
+ */
+export const DEFAULT_LISTS = {
+  itemCategories: ['Metal', 'Plastic', 'Paper', 'Electronics'],
+  dealerCategories: ['Regular Dealer', 'Wholesale Dealer'],
+  units: ['kg', 'pcs', 'ton', 'g', 'litre', 'metre', 'bundle'],
+}
+export const LIST_KEYS = Object.keys(DEFAULT_LISTS)
 /** Languages the app can be shown in (Google Translate codes). Keep in sync with frontend/src/utils/translate.js. */
 export const LANGUAGE_CODES = ['en', 'ta', 'hi', 'te', 'kn', 'ml', 'mr', 'bn', 'gu', 'pa', 'ur']
 

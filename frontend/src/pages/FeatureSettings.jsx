@@ -5,7 +5,7 @@ import { useToast } from '../hooks/useToast.js'
 import Toast from '../components/Toast.jsx'
 import LoadError from '../components/LoadError.jsx'
 
-function Switch({ checked, onChange, label, disabled }) {
+export function Switch({ checked, onChange, label, disabled }) {
   return (
     <label className={`feature-switch${checked ? ' is-on' : ''}`}>
       <input type="checkbox" role="switch" checked={checked} onChange={(event) => onChange(event.target.checked)} disabled={disabled} aria-label={label} />

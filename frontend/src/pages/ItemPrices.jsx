@@ -7,6 +7,7 @@ import LoadError from '../components/LoadError.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { compressImage } from '../utils/image.js'
 import { FloatingActionButton } from '../components/ui.jsx'
+import { useAppSettings } from '../settings/appSettingsContext.js'
 import scrapImages from '../assets/scrap/scrap-materials-sheet.webp'
 import './ItemPrices.css'
 
@@ -494,11 +495,10 @@ function DetailModal({ itemKey, onClose, onChanged, onPhotoChanged, notify }) {
   )
 }
 
-const UNITS = ['kg', 'g', 'ton', 'piece', 'litre', 'metre', 'bundle']
 
 /** Adds an item that is not on any bill yet, with its price and an optional photo. */
-function AddItemModal({ categories, onClose, onAdded, notify }) {
-  const [form, setForm] = useState({ name: '', category: '', unit: 'kg', price: '', note: '', image: '' })
+function AddItemModal({ categories, units, onClose, onAdded, notify }) {
+  const [form, setForm] = useState({ name: '', category: '', unit: units[0] || 'kg', price: '', note: '', image: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
@@ -547,7 +547,7 @@ function AddItemModal({ categories, onClose, onAdded, notify }) {
           <label>Category<input list="price-add-categories" maxLength="80" value={form.category} onChange={set('category')} placeholder="For example: Metal" /></label>
           <datalist id="price-add-categories">{categories.map((name) => <option key={name} value={name} />)}</datalist>
           <label>Unit<input list="price-add-units" required maxLength="20" value={form.unit} onChange={set('unit')} /></label>
-          <datalist id="price-add-units">{UNITS.map((unit) => <option key={unit} value={unit} />)}</datalist>
+          <datalist id="price-add-units">{units.map((unit) => <option key={unit} value={unit} />)}</datalist>
         </div>
         <div className="price-add-grid">
           <label>Price per {form.unit || 'unit'} (₹)<input required type="number" inputMode="decimal" min="0.01" step="0.01" value={form.price} onChange={set('price')} placeholder="0.00" /></label>
@@ -566,6 +566,7 @@ function AddItemModal({ categories, onClose, onAdded, notify }) {
 const SORTS = [['recent', 'Recently updated'], ['name', 'Name A–Z'], ['high', 'Highest price'], ['low', 'Lowest price'], ['change', 'Biggest change']]
 
 export default function ItemPrices() {
+  const { lists } = useAppSettings()
   const [state, setState] = useState({ loading: true, error: '', items: [], categories: [] })
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
@@ -665,7 +666,7 @@ export default function ItemPrices() {
 
       {openKey && <DetailModal itemKey={openKey} onClose={() => setOpenKey(null)} onChanged={load} onPhotoChanged={setImage} notify={notify} />}
       {!adding && !openKey && <FloatingActionButton icon="bi-plus-lg" label="Add item" onClick={() => setAdding(true)} />}
-      {adding && <AddItemModal categories={state.categories} notify={notify} onClose={() => setAdding(false)} onAdded={(key, image) => { setAdding(false); if (image) setImage(key, image); load(); setOpenKey(key) }} />}
+      {adding && <AddItemModal categories={[...new Set([...lists.itemCategories, ...state.categories])]} units={lists.units} notify={notify} onClose={() => setAdding(false)} onAdded={(key, image) => { setAdding(false); if (image) setImage(key, image); load(); setOpenKey(key) }} />}
     </section>
   )
 }
