@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import Modal from './Modal.jsx'
 
@@ -76,10 +77,14 @@ export function SkeletonLoader({ rows = 3, variant = 'row' }) {
   return <div className={`ui-skeleton-list is-${variant}`} aria-hidden="true">{Array.from({ length: rows }, (_, index) => <span key={index} className="skeleton" />)}</div>
 }
 
-/** Round action button that floats above the phone bottom bar. */
+/**
+ * Action button that floats above the phone bottom bar (hidden on larger screens).
+ * Rendered into <body> so page animations or containers can never move it.
+ */
 export function FloatingActionButton({ icon = 'bi-plus-lg', label, onClick, to }) {
   const content = <><i className={`bi ${icon}`} aria-hidden="true" /><span>{label}</span></>
-  return to ? <Link className="ui-fab" to={to}>{content}</Link> : <button type="button" className="ui-fab" onClick={onClick}>{content}</button>
+  const button = to ? <Link className="ui-fab" to={to}>{content}</Link> : <button type="button" className="ui-fab" onClick={onClick}>{content}</button>
+  return createPortal(button, document.body)
 }
 
 /** Accessible yes/no question. `tone="danger"` for destructive actions. */

@@ -49,7 +49,7 @@ export default function MenuSettings() {
       </header>
       <LoadError message={error} />
 
-      <div className="feature-summary" role="status"><i className="bi bi-info-circle" aria-hidden="true" /> Use the arrows to move a screen up or down. Team members only see the screens switched on in Feature access.</div>
+      <div className="feature-summary" role="status"><i className="bi bi-info-circle" aria-hidden="true" /><span>Use the arrows to move a screen up or down. Team members only see the screens switched on in Feature access.</span></div>
 
       <ol className="feature-list menu-order-list">
         {items.map((item, index) => (

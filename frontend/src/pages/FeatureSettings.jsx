@@ -47,7 +47,7 @@ export default function FeatureSettings() {
       </header>
       <LoadError message={error} />
 
-      <div className="feature-summary" role="status"><i className="bi bi-info-circle" aria-hidden="true" /> Team members can use <strong>{enabledCount} of {FEATURE_ITEMS.length}</strong> features. The dashboard and their own profile are always available. To change one person only, use <strong>Menu</strong> next to their name in Users &amp; roles.</div>
+      <div className="feature-summary" role="status"><i className="bi bi-info-circle" aria-hidden="true" /><span>Team members can use <strong>{enabledCount} of {FEATURE_ITEMS.length}</strong> features. The dashboard and their own profile are always available. To change one person only, use <strong>Menu</strong> next to their name in Users &amp; roles.</span></div>
 
       <ul className="feature-list">
         {FEATURE_ITEMS.map((item) => {

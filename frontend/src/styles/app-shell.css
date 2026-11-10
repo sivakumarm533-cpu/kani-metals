@@ -182,7 +182,9 @@ a.ui-stat:hover { border-color: var(--color-primary); color: var(--color-text); 
   .admin-content { padding: 12px 16px calc(var(--bottom-nav-height) + 28px + var(--safe-bottom)); }
   .admin-layout.has-bottom-nav .admin-content { padding-bottom: calc(var(--bottom-nav-height) + 28px + var(--safe-bottom)); }
   .page-container { gap: 16px; }
-  .page-transition { animation: phone-page-in 220ms var(--ease-out) both; }
+  /* backwards (not both): once finished, no transform is left on the page, which would
+     otherwise trap position: fixed children such as the floating Add button. */
+  .page-transition { animation: phone-page-in 220ms var(--ease-out) backwards; }
 
   /* Page headers: the app bar already names the screen, so headers are compact. */
   .page-header { align-items: flex-start; }
@@ -218,7 +220,7 @@ a.ui-stat:hover { border-color: var(--color-primary); color: var(--color-text); 
   .app-toast { top: auto !important; right: 12px !important; bottom: calc(var(--bottom-nav-height) + 14px + var(--safe-bottom)) !important; left: 12px !important; max-width: none !important; }
 
   /* Floating action button above the bottom bar. */
-  .ui-fab { position: fixed; right: 16px; bottom: calc(var(--bottom-nav-height) + 16px + var(--safe-bottom)); z-index: 35; display: inline-flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 20px 0 18px; border: 0; border-radius: 18px; color: #fff; background: var(--color-primary); box-shadow: 0 8px 20px rgb(var(--color-primary-rgb) / 35%), 0 2px 6px rgb(16 24 40 / 18%); font-size: 15px; font-weight: 600; text-decoration: none; }
+  .ui-fab { position: fixed; right: 16px; bottom: calc(var(--bottom-nav-height) + 26px + var(--safe-bottom)); z-index: 35; display: inline-flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 20px 0 18px; border: 0; border-radius: 18px; color: #fff; background: var(--color-primary); box-shadow: 0 8px 20px rgb(var(--color-primary-rgb) / 35%), 0 2px 6px rgb(16 24 40 / 18%); font-size: 15px; font-weight: 600; text-decoration: none; }
   .ui-fab:hover, .ui-fab:active { color: #fff; background: var(--color-primary-hover); }
   .ui-fab i { font-size: 20px; }
 
@@ -491,3 +493,15 @@ a.ui-stat:hover { border-color: var(--color-primary); color: var(--color-text); 
 [data-chrome="dark"] .admin-sidebar .sidebar-link .sidebar-text small { color: #8b93b8; }
 [data-chrome="dark"] .admin-sidebar .sidebar-link.is-active .sidebar-text small { color: #c7d2fe; }
 [data-chrome="dark"] .admin-sidebar .sidebar-link.is-active::before { background: #a5b4fc; }
+
+/* Info alerts: icon + one wrapping paragraph. */
+.feature-summary { align-items: flex-start; line-height: 1.5; }
+.feature-summary > i { flex: 0 0 auto; margin-top: 2px; }
+.feature-summary > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.payment-advance-note > span, .payment-after-note > span, .payment-extra-note > span, .payment-advance-banner > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.payment-after-note { flex-wrap: nowrap; align-items: flex-start; }
+.payment-after-note > i { margin-top: 2px; }
+@media (max-width: 720px) {
+  /* Room at the end of the page so the floating button never covers the last card. */
+  body:has(.ui-fab) .admin-layout.has-bottom-nav .admin-content { padding-bottom: calc(var(--bottom-nav-height) + 110px + var(--safe-bottom)); }
+}
