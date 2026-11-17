@@ -1653,3 +1653,35 @@ body {
 .bill-delete-choice { margin: 12px 0; border-color: var(--color-border); background: var(--color-surface-muted); text-align: left; }
 .bill-delete-choice legend { color: var(--color-text); font-weight: 600; }
 .bill-delete-choice .payment-extra-option small { display: block; color: var(--color-text-muted); }
+
+/* ---- Item entry on phones: steps fit, dealer cards are compact ---- */
+@media (max-width: 720px) {
+  /* Three steps: only the current one keeps its label, the others are numbered circles. */
+  :root .billing-step { flex: 0 0 auto; min-width: 0; }
+  :root .billing-step.active { flex: 1 1 auto; }
+  :root .billing-step:not(.active) > div { display: none; }
+  :root .billing-step.active strong { overflow: hidden; text-overflow: ellipsis; }
+  :root .step-line { flex: 1 1 12px; min-width: 12px; width: auto; }
+
+  /* Dealer card: avatar beside name and tags, contact on one line, actions in the bottom row. */
+  :root .dealer-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; column-gap: 12px; row-gap: 4px; align-items: center; height: auto; padding: 12px 14px; }
+  :root .dealer-card-top { display: contents; }
+  :root .dealer-card .dealer-avatar { grid-column: 1; grid-row: 1 / span 2; width: 44px; height: 44px; font-size: 14px; }
+  :root .dealer-card .selected-icon { display: none; }
+  :root .dealer-card-name { grid-column: 2 / -1; grid-row: 1; margin: 0; font-size: 15px; }
+  :root .dealer-card-tags { grid-column: 2 / -1; grid-row: 2; }
+  :root .dealer-card .dealer-info { display: flex; flex-wrap: wrap; grid-column: 1 / -1; grid-row: 3; gap: 2px 14px; margin: 6px 0 0; }
+  :root .dealer-card .dealer-info p { min-width: 0; margin: 0; }
+  :root .dealer-card .select-dealer-btn { grid-column: 1 / 3; grid-row: 4; min-height: 42px; margin-top: 8px; }
+  :root .dealer-card .dealer-card-actions { grid-column: 3; grid-row: 4; align-self: end; margin: 8px 0 0; }
+  /* Cards in one column with a smaller gap. */
+  .items-entery .row.g-3.mt-3 { --bs-gutter-y: 10px; }
+  .items-entery .dealer-search { max-width: none; }
+  .items-entery .dealer-status-filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .items-entery .dealer-status-filter .dealer-pick-chip { flex: 0 0 auto; }
+  .items-entery .dealer-header .add-dealer-btn { width: 100%; min-height: 44px; }
+}
+/* No hover "lift" on touch screens: it sticks after a tap. */
+@media (hover: none) {
+  .dealer-card:hover { transform: none; }
+}
