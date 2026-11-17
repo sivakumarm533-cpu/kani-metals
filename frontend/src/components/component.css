@@ -217,3 +217,5 @@ input, select, textarea, button { max-width: 100%; }
   .sign-out-button { padding: 6px 7px; font-size: 11px; }
   .admin-content { padding: 13px 9px; }
 }
+.sidebar-submenu-group { margin: 8px 0 2px; padding: 0 10px; color: var(--color-text-subtle, var(--color-text-muted)); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.sidebar-submenu-group:first-child { margin-top: 2px; }

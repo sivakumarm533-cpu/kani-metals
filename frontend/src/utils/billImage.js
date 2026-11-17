@@ -103,9 +103,10 @@ function hexColor(value) {
 
 /**
  * Draws the dealer bill in the chosen template and returns a PNG Blob.
- * @param {{ business, dealer, bill, state: {totalPaise, receivedPaise, pendingPaise}, payments, accent, template }} data
+ * `oldBalance` (optional) adds the dealer's unpaid amounts from earlier bills: { totalPaise, bills: [{ bill, pendingPaise }] }.
+ * @param {{ business, dealer, bill, state: {totalPaise, receivedPaise, pendingPaise}, payments, oldBalance, accent, template }} data
  */
-export async function renderBillImage({ business, dealer, bill, state, payments, accent: themeAccent = '#B96C35', template = 'classic' }) {
+export async function renderBillImage({ business, dealer, bill, state, payments, oldBalance = null, accent: themeAccent = '#B96C35', template = 'classic' }) {
   const look = templateStyle(template, hexColor(themeAccent))
   const accent = look.accent
   if (document.fonts?.load) await Promise.all([document.fonts.load(font(700, 40)), document.fonts.load(font(400, 24))]).catch(() => {})
@@ -142,8 +143,23 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
   const infoH = 170
   const tableHeadH = 62
   const summaryRowH = 58
-  const summaryH = summaryRowH * 3
-  const paymentsH = received.length ? 70 + Math.min(received.length, 6) * 40 : 0
+  const withOld = oldBalance?.totalPaise > 0
+  const summary = [
+    ['Total :', formatPaise(state.totalPaise), TEXT, 700],
+    // Nothing paid yet: the Paid row is left out.
+    ...(state.receivedPaise > 0 ? [['Paid (Advance / Partial) :', formatPaise(state.receivedPaise), '#15803d', 600]] : []),
+    // Nothing paid (no money, no advance): the balance equals the Total, so it is not repeated.
+    // With old balance, Total Amount Due is the final figure, so this bill's own balance is not shown.
+    ...(state.receivedPaise === 0 || withOld ? [] : [[withOld ? 'Balance Due (this bill) :' : 'Balance Due :', formatPaise(state.pendingPaise), state.pendingPaise ? accent : '#15803d', withOld ? 600 : 800]]),
+    ...(withOld ? [
+      ['Old Balance :', formatPaise(oldBalance.totalPaise), '#b45309', 600],
+      ['Total Amount Due :', formatPaise(state.pendingPaise + oldBalance.totalPaise), accent, 800],
+    ] : []),
+  ]
+  const summaryH = summaryRowH * summary.length
+  const oldBills = withOld ? oldBalance.bills.slice(0, 6) : []
+  const oldBillsH = oldBills.length ? 70 + oldBills.length * 40 + (oldBalance.bills.length > oldBills.length ? 36 : 0) : 0
+  const paymentsH = (received.length ? 70 + Math.min(received.length, 6) * 40 : 0) + oldBillsH
   const termsH = (showTerms ? 70 + termsLines.length * 34 : 0) + (showGreeting ? 70 : 24)
   const footerH = 60
   const height = headerH + titleH + infoH + tableHeadH + bodyHeight + summaryH + paymentsH + termsH + footerH
@@ -284,15 +300,12 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
   // ---- Totals ----
   y = bodyBottom
   const labelRight = xs[4] - 24
-  const summary = [
-    ['Total :', formatPaise(state.totalPaise), TEXT, 700],
-    ['Paid (Advance / Partial) :', formatPaise(state.receivedPaise), '#15803d', 600],
-    ['Balance Due :', formatPaise(state.pendingPaise), state.pendingPaise ? accent : '#15803d', 800],
-  ]
+  const lastRow = summary.length - 1
   summary.forEach(([label, value, color, weight], index) => {
     const rowTop = y + index * summaryRowH
-    if (index === 2) { ctx.fillStyle = `${accent}14`; ctx.fillRect(xs[4], rowTop, columns[4].width, summaryRowH) }
-    ctx.fillStyle = TEXT; ctx.font = font(index === 2 ? 700 : 500, 26); ctx.textAlign = 'right'
+    // The last row is the amount the dealer owes in the end, so it is highlighted.
+    if (index === lastRow) { ctx.fillStyle = `${accent}14`; ctx.fillRect(xs[4], rowTop, columns[4].width, summaryRowH) }
+    ctx.fillStyle = TEXT; ctx.font = font(index === lastRow ? 700 : 500, 26); ctx.textAlign = 'right'
     ctx.fillText(label, labelRight, rowTop + summaryRowH / 2)
     ctx.fillStyle = color; ctx.font = font(weight, 27)
     ctx.fillText(value, WIDTH - 18, rowTop + summaryRowH / 2, columns[4].width - 24)
@@ -313,7 +326,23 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
       ctx.fillStyle = '#15803d'; ctx.font = font(600, 23); ctx.textAlign = 'right'
       ctx.fillText(formatPaise(payment.amountPaise), WIDTH - 40, rowY)
     })
-    y += paymentsH
+    y += 70 + Math.min(received.length, 6) * 40
+  }
+
+  // ---- Old balance: earlier bills still unpaid ----
+  if (oldBills.length) {
+    ctx.textAlign = 'left'; ctx.fillStyle = TEXT; ctx.font = font(700, 24)
+    ctx.fillText('Old balance (earlier bills)', 40, y + 40)
+    oldBills.forEach((row, index) => {
+      const rowY = y + 82 + index * 40
+      ctx.fillStyle = MUTED; ctx.font = font(400, 23); ctx.textAlign = 'left'
+      ctx.fillText(`${formatBillDate(row.bill.issuedDate)}  ·  ${billNumber(row.bill)}`, 40, rowY)
+      ctx.fillStyle = '#b45309'; ctx.font = font(600, 23); ctx.textAlign = 'right'
+      ctx.fillText(formatPaise(row.pendingPaise), WIDTH - 40, rowY)
+    })
+    const more = oldBalance.bills.length - oldBills.length
+    if (more > 0) { ctx.fillStyle = MUTED; ctx.font = font(400, 21, 'italic'); ctx.textAlign = 'left'; ctx.fillText(`+ ${more} more ${more === 1 ? 'bill' : 'bills'}`, 40, y + 82 + oldBills.length * 40) }
+    y += oldBillsH
   }
 
   // ---- Terms & conditions and greeting (each can be switched off in Bill settings) ----
@@ -344,7 +373,7 @@ export async function renderBillImage({ business, dealer, bill, state, payments,
 }
 
 /** Plain-text bill for WhatsApp messages (WhatsApp renders *bold*). */
-export function billMessage({ business, dealer, bill, state, payments }) {
+export function billMessage({ business, dealer, bill, state, payments, oldBalance = null }) {
   const lines = [
     `*${business.name || 'Kani Metals'}*`,
     business.phone ? `Phone: ${business.phone}` : null,
@@ -357,10 +386,15 @@ export function billMessage({ business, dealer, bill, state, payments }) {
     ...bill.items.map((item, index) => `${index + 1}. ${item.name} — ${quantityText(item)} × ${formatPaise(Math.round((Number(item.price) || 0) * 100))} = ${formatPaise(lineAmountPaise(item))}${item.note ? `\n   _Note: ${item.note}_` : ''}`),
     '',
     `*Total:* ${formatPaise(state.totalPaise)}`,
-    `*Paid (Advance / Partial):* ${formatPaise(state.receivedPaise)}`,
-    `*Balance Due:* ${formatPaise(state.pendingPaise)}`,
+    state.receivedPaise > 0 ? `*Paid (Advance / Partial):* ${formatPaise(state.receivedPaise)}` : null,
+    state.receivedPaise === 0 || oldBalance?.totalPaise > 0 ? null : `*Balance Due${oldBalance?.totalPaise > 0 ? ' (this bill)' : ''}:* ${formatPaise(state.pendingPaise)}`,
     `Status: ${statusText(state)}`,
   ]
+  if (oldBalance?.totalPaise > 0) {
+    lines.push('', '*Old balance (earlier bills)*')
+    oldBalance.bills.forEach((row) => lines.push(`• ${formatBillDate(row.bill.issuedDate)} — ${billNumber(row.bill)}: ${formatPaise(row.pendingPaise)}`))
+    lines.push(`*Old Balance:* ${formatPaise(oldBalance.totalPaise)}`, `*Total Amount Due:* ${formatPaise(state.pendingPaise + oldBalance.totalPaise)}`)
+  }
   const received = billPayments(bill, payments)
   if (received.length) {
     lines.push('', '*Payments received*')

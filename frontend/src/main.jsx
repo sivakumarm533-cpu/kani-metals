@@ -28,7 +28,7 @@ function hideSplash() {
   if (!splash) return
   let seen = false
   try { seen = sessionStorage.getItem('kani-splash-seen') === '1'; sessionStorage.setItem('kani-splash-seen', '1') } catch { /* storage unavailable */ }
-  const minimum = seen ? 300 : 1200
+  const minimum = seen ? 300 : 600
   const wait = Math.max(0, minimum - performance.now())
   window.setTimeout(() => {
     requestAnimationFrame(() => {

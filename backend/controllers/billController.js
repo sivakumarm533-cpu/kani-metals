@@ -3,8 +3,9 @@ import Dealer from '../models/Dealer.js'
 import mongoose from 'mongoose'
 import Payment from '../models/Payment.js'
 import { recordActivity } from '../utils/activity.js'
-import { useAdvanceOnBill } from '../utils/advance.js'
-import { formatPaise } from '../utils/money.js'
+import { addDealerAdvance, useAdvanceOnBill } from '../utils/advance.js'
+import { appliedPaise, formatPaise, paymentCountsAsReceived } from '../utils/money.js'
+import { isManagerRole } from '../config/features.js'
 import { billItemsPayload, billTotal, objectId, validDate } from '../utils/validation.js'
 
 /**
@@ -87,13 +88,58 @@ export async function updateBill(req, res, next) {
   } catch (error) { next(error) }
 }
 
-export async function deleteBill(req, res, next) {
+/** What deleting a bill would remove: its payments and the money they put on the bill. */
+async function billPaymentImpact(billId, session = null) {
+  const payments = await Payment.find({ bill: billId }).session(session).lean()
+  const counting = payments.filter(paymentCountsAsReceived)
+  const advanceUsedPaise = counting.filter((payment) => payment.paymentMethod === 'advance').reduce((sum, payment) => sum + appliedPaise(payment), 0)
+  const paidPaise = counting.filter((payment) => payment.paymentMethod !== 'advance').reduce((sum, payment) => sum + appliedPaise(payment), 0)
+  const activeCount = payments.filter((payment) => !['reversed', 'bounced'].includes(payment.paymentStatus)).length
+  return { payments: activeCount, historyCount: payments.length, paidPaise, advanceUsedPaise }
+}
+
+export async function getBillDeleteSummary(req, res, next) {
   try {
     const billId = objectId(req.params.id, 'bill ID')
-    if (await Payment.exists({ bill: billId, ...ACTIVE_PAYMENT })) return res.status(409).json({ message: 'This bill has payments and cannot be deleted. Reverse its payments first (Payments → Reverse), then delete the bill.' })
-    const bill = await Bill.findByIdAndDelete(billId)
-    if (!bill) return res.status(404).json({ message: 'Bill not found.' })
-    await recordActivity(req, { action: 'delete', entity: 'bill', entityId: bill._id, before: bill, after: null })
-    res.json({ message: 'Bill deleted.' })
+    if (!await Bill.exists({ _id: billId })) return res.status(404).json({ message: 'Bill not found.' })
+    const impact = await billPaymentImpact(billId)
+    res.json({ ...impact, canDelete: impact.payments === 0 || isManagerRole(req.user?.role) })
   } catch (error) { next(error) }
+}
+
+/**
+ * Deletes a bill. A bill with payments can be deleted only by an administrator or sub-admin and only
+ * when `paidHandling` says what happens to the money already paid on it:
+ * 'advance' keeps it for the dealer as advance, 'delete' removes it with the bill.
+ * Advance that was used on the bill always goes back to the dealer.
+ */
+export async function deleteBill(req, res, next) {
+  const session = await mongoose.startSession()
+  try {
+    const billId = objectId(req.params.id, 'bill ID')
+    const paidHandling = ['advance', 'delete'].includes(req.body?.paidHandling) ? req.body.paidHandling : ''
+    const hasActive = await Payment.exists({ bill: billId, ...ACTIVE_PAYMENT })
+    if (hasActive && !isManagerRole(req.user?.role)) return res.status(403).json({ message: 'This bill has payments. Only an administrator or sub-admin can delete it. You can reverse its payments first (Payments → Reverse).' })
+    if (hasActive && !paidHandling) return res.status(400).json({ message: 'This bill has payments. Choose whether the money paid is kept as advance or deleted with the bill.' })
+    let bill = null
+    let impact = null
+    let returnedPaise = 0
+    await session.withTransaction(async () => {
+      bill = await Bill.findById(billId).session(session)
+      if (!bill) return
+      impact = await billPaymentImpact(billId, session)
+      returnedPaise = impact.advanceUsedPaise + (paidHandling === 'advance' ? impact.paidPaise : 0)
+      await addDealerAdvance(bill.dealer, returnedPaise, session)
+      await Payment.deleteMany({ bill: billId }, { session })
+      await Bill.deleteOne({ _id: billId }, { session })
+    })
+    if (!bill) return res.status(404).json({ message: 'Bill not found.' })
+    const label = impact.historyCount ? `Bill ${bill._id} (with ${impact.historyCount} payments)` : undefined
+    await recordActivity(req, { action: 'delete', entity: 'bill', entityId: bill._id, entityLabel: label, before: bill, after: null })
+    const message = !impact.historyCount ? 'Bill deleted.'
+      : returnedPaise > 0 ? `Bill and its payments deleted. ${formatPaise(returnedPaise)} kept as advance for the dealer.`
+        : 'Bill and its payments deleted.'
+    res.json({ message, ...impact, returnedPaise })
+  } catch (error) { next(error) }
+  finally { await session.endSession() }
 }

@@ -27,6 +27,8 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
   const [phone, setPhone] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  // Whether the dealer's unpaid amounts from earlier bills are added to this bill.
+  const [includeOld, setIncludeOld] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -47,12 +49,27 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
     return { business, dealer: details.dealer, bill: row.bill, state: row, payments: details.payments }
   }, [details, billId, business])
 
+  // Earlier bills (older date, or same date but saved before) that still have money to pay, oldest first.
+  const oldBalance = useMemo(() => {
+    if (!details || !data) return null
+    const isEarlier = (other) => {
+      const a = new Date(other.issuedDate) - new Date(data.bill.issuedDate)
+      return a < 0 || (a === 0 && String(other._id) < String(data.bill._id))
+    }
+    const bills = details.bills
+      .filter((row) => row.pendingPaise > 0 && String(row.bill._id) !== String(billId) && isEarlier(row.bill))
+      .sort((a, b) => new Date(a.bill.issuedDate) - new Date(b.bill.issuedDate))
+      .map((row) => ({ bill: row.bill, pendingPaise: row.pendingPaise }))
+    return bills.length ? { bills, totalPaise: bills.reduce((sum, row) => sum + row.pendingPaise, 0) } : null
+  }, [details, data, billId])
+  const sendData = useMemo(() => (data ? { ...data, oldBalance: includeOld ? oldBalance : null } : null), [data, includeOld, oldBalance])
+
   useEffect(() => {
-    if (!data) return undefined
+    if (!sendData) return undefined
     let active = true
     let url = ''
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#B96C35'
-    renderBillImage({ ...data, accent, template: billTemplate })
+    renderBillImage({ ...sendData, accent, template: billTemplate })
       .then((blob) => {
         if (!active) return
         url = URL.createObjectURL(blob)
@@ -60,11 +77,11 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
       })
       .catch((issue) => { if (active) setError(issue.message) })
     return () => { active = false; if (url) URL.revokeObjectURL(url) }
-  }, [data, billTemplate])
+  }, [sendData, billTemplate])
 
   const missingBill = details && !data
   const fileName = data ? `${billNumber(data.bill)}.png` : 'bill.png'
-  const message = data ? billMessage(data) : ''
+  const message = sendData ? billMessage(sendData) : ''
   const number = whatsappNumber(phone)
   const chatUrl = `https://wa.me/${number}`
 
@@ -109,10 +126,24 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
         </div>
         {data && <dl className="bill-share-summary">
           <div><dt>Total</dt><dd>{formatPaise(data.state.totalPaise)}</dd></div>
-          <div><dt>Paid (advance / partial)</dt><dd className="is-paid">{formatPaise(data.state.receivedPaise)}</dd></div>
-          <div><dt>Balance due</dt><dd className={data.state.pendingPaise ? 'is-due' : 'is-paid'}>{formatPaise(data.state.pendingPaise)}</dd></div>
+          {data.state.receivedPaise > 0 && <div><dt>Paid (advance / partial)</dt><dd className="is-paid">{formatPaise(data.state.receivedPaise)}</dd></div>}
+          {data.state.receivedPaise > 0 && !(includeOld && oldBalance) && <div><dt>Balance due</dt><dd className={data.state.pendingPaise ? 'is-due' : 'is-paid'}>{formatPaise(data.state.pendingPaise)}</dd></div>}
           <div><dt>Status</dt><dd>{statusText(data.state)}</dd></div>
+          {includeOld && oldBalance && <>
+            <div><dt>Old balance</dt><dd className="is-due">{formatPaise(oldBalance.totalPaise)}</dd></div>
+            <div><dt>Total amount due</dt><dd className="is-due"><strong>{formatPaise(data.state.pendingPaise + oldBalance.totalPaise)}</strong></dd></div>
+          </>}
         </dl>}
+        {oldBalance && <label className={`bill-share-old${includeOld ? ' is-on' : ''}`}>
+          <span className="bill-share-old-text">
+            <strong>Add old balance</strong>
+            <small>{formatPaise(oldBalance.totalPaise)} still unpaid from {oldBalance.bills.length} earlier {oldBalance.bills.length === 1 ? 'bill' : 'bills'}. {includeOld ? 'Shown on the bill with the total amount due.' : 'Not shown on the bill.'}</small>
+          </span>
+          <span className={`feature-switch${includeOld ? ' is-on' : ''}`}>
+            <input type="checkbox" role="switch" checked={includeOld} onChange={(event) => { setIncludeOld(event.target.checked); setImage(null); setNotice('') }} aria-label="Add old balance to the bill" />
+            <span className="feature-switch-track" aria-hidden="true"><span /></span>
+          </span>
+        </label>}
         <label className="bill-share-phone">Dealer WhatsApp number
           <input className="form-control" type="tel" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="10-digit mobile number" />
           <small>{number ? `Opens chat with +${number}` : 'Enter a valid number, or WhatsApp will ask you to pick a contact.'}</small>

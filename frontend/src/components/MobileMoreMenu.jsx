@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContextValue.js'
 import { useAppSettings } from '../settings/appSettingsContext.js'
-import { canUseItem, isManager, itemIsActive, orderNavItems, PROFILE_ITEM, roleLabel, SETTINGS_ITEMS } from '../config/navigation.js'
+import { canUseItem, itemIsActive, orderNavItems, PROFILE_ITEM, roleLabel, settingsGroupsFor } from '../config/navigation.js'
 import BottomSheet from './BottomSheet.jsx'
 import { Avatar } from './Navbar.jsx'
 
@@ -15,7 +15,7 @@ export default function MobileMoreMenu({ onClose, barKeys = [] }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const screens = orderNavItems(menuOrder).filter((item) => canUseItem(item, user, features) && !barKeys.includes(item.key))
-  const settings = isManager(user) ? SETTINGS_ITEMS.filter((item) => !item.primaryOnly || user?.role === 'admin') : []
+  const settingsGroups = settingsGroupsFor(user)
 
   // `replace` swaps out the sheet's own history entry, so Back after moving goes to the previous screen.
   const go = (to) => { onClose(); navigate(to, { replace: true }) }
@@ -45,10 +45,10 @@ export default function MobileMoreMenu({ onClose, barKeys = [] }) {
         </ul>
       </>}
 
-      {settings.length > 0 && <>
-        <h3 className="more-heading">Settings</h3>
+      {settingsGroups.map((group) => <div key={group.id}>
+        <h3 className="more-heading">Settings · {group.label}</h3>
         <ul className="more-list">
-          {settings.map((item) => {
+          {group.items.map((item) => {
             const active = pathname === item.to
             return (
               <li key={item.to}>
@@ -61,7 +61,7 @@ export default function MobileMoreMenu({ onClose, barKeys = [] }) {
             )
           })}
         </ul>
-      </>}
+      </div>)}
     </BottomSheet>
   )
 }

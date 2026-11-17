@@ -66,7 +66,7 @@ export default function BillSettings() {
     try {
       await saveSettings({ business: form, billTemplate: template })
       discard()
-      notify('Bill settings saved. Bills you send now use them.')
+      notify('Bill details saved. Bills you send now use them.')
     } catch (issue) { setError(issue.message) } finally { setSaving(false) }
   }
 
@@ -74,7 +74,7 @@ export default function BillSettings() {
     <section className="boarder-box settings-page bill-settings-page">
       <Toast toast={toast} />
       <header className="bill-header settings-page-header">
-        <div><h1 className="page-title">Bill settings</h1><p>Bill design and business details printed on the bills you send to dealers on WhatsApp.</p></div>
+        <div><h1 className="page-title">Bill details</h1><p>Bill design and business details printed on the bills you send to dealers on WhatsApp.</p></div>
       </header>
       <LoadError message={error} />
       <div className="bill-settings-layout">

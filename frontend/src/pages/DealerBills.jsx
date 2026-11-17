@@ -7,6 +7,7 @@ import BillShareModal from '../components/BillShareModal.jsx'
 import LoadError from '../components/LoadError.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { formatRupees } from '../utils/format.js'
+import { formatPaise } from '../utils/billImage.js'
 import { useAppSettings } from '../settings/appSettingsContext.js'
 
 const units = ['kg', 'g', 'ton', 'pcs', 'box', 'meter', 'liter']
@@ -20,6 +21,10 @@ function DealerBills() {
   const [retry, setRetry] = useState(0)
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  // What deleting the bill would also remove: { payments, paidPaise, advanceUsedPaise, canDelete } or { error }.
+  const [deleteSummary, setDeleteSummary] = useState(null)
+  // Money already paid on a bill being deleted: kept as dealer advance (default) or deleted with it.
+  const [paidHandling, setPaidHandling] = useState('advance')
   const [sharingBillId, setSharingBillId] = useState(null)
   const [error, setError] = useState('')
   const [toast, notify] = useToast()
@@ -59,15 +64,24 @@ function DealerBills() {
     } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
 
+  function askDelete(bill) {
+    setDeleting(bill)
+    setDeleteSummary(null)
+    setPaidHandling('advance')
+    apiRequest(`/bills/${bill._id}/delete-summary`)
+      .then(setDeleteSummary)
+      .catch((err) => setDeleteSummary({ error: err.message }))
+  }
+
   async function confirmDelete() {
     if (!deleting) return
     setBusy(true); setError('')
     try {
-      await apiRequest(`/bills/${deleting._id}`, { method: 'DELETE' })
+      const result = await apiRequest(`/bills/${deleting._id}`, { method: 'DELETE', body: JSON.stringify({ paidHandling }) })
       setBills((current) => current.filter((entry) => entry._id !== deleting._id))
       if (editing?._id === deleting._id) setEditing(null)
       setDeleting(null)
-      notify('Bill deleted successfully.', 'danger', 'bi-trash3-fill')
+      notify(result?.message || 'Bill deleted successfully.', 'danger', 'bi-trash3-fill')
     } catch (err) { setDeleting(null); setError(err.message) } finally { setBusy(false) }
   }
 
@@ -96,15 +110,49 @@ function DealerBills() {
       </tr>)}</tbody></table></div>
       <button type="button" className="back-button" onClick={() => setEditing((current) => ({ ...current, items: [...current.items, { editorKey: crypto.randomUUID(), name: '', category: categories[0], quantity: 1, unit: units[0], price: 0, image: '' }] }))}><i className="bi bi-plus-lg" aria-hidden="true" /> Add item</button>
       <div className="dealer-bill-edit-total">Bill total: {formatRupees(editTotal)}</div>
-      <div className="dealer-delete-actions"><button type="button" className="remove-bill-item" onClick={() => setDeleting(editing)}>Delete bill</button><button type="button" className="back-button" onClick={() => setEditing(null)}>Cancel</button><button className="continue-btn" disabled={busy || !editing.items.length}>{busy ? 'Saving…' : 'Save and update bill'}</button></div>
+      <div className="dealer-delete-actions"><button type="button" className="remove-bill-item" onClick={() => askDelete(editing)}>Delete bill</button><button type="button" className="back-button" onClick={() => setEditing(null)}>Cancel</button><button className="continue-btn" disabled={busy || !editing.items.length}>{busy ? 'Saving…' : 'Save and update bill'}</button></div>
     </form>}
     {!loading && dealer && (!bills.length ? <div className="empty-state empty-state-panel"><i className="bi bi-receipt" aria-hidden="true" /><strong>No bills saved for this dealer yet</strong><span>Create the first bill from Item entry.</span><Link className="continue-btn" to={`/itemsentry?dealer=${dealerId}`}>Add bill</Link></div> : <div className="dealer-bill-list">{bills.map((bill) => <article className="dealer-bill-card" key={bill._id}>
       <div className="dealer-bill-heading"><div><h3>Bill · {billDate(bill.issuedDate)}</h3><span>{bill.items.length} {bill.items.length === 1 ? 'item' : 'items'}</span></div><strong>{formatRupees(bill.total)}</strong></div>
       <div className="table-responsive"><table className="table align-middle mb-0 responsive-card-table"><thead><tr><th>Item</th><th>Category</th><th>Quantity</th><th>Price / unit</th><th>Amount</th></tr></thead><tbody>{bill.items.map((item, index) => <tr key={`${item.name}-${index}`}><td data-label="Item"><span>{item.name}{item.note && <small className="bill-item-note">{item.note}</small>}</span></td><td data-label="Category">{item.category}</td><td data-label="Quantity">{item.quantity} {item.unit}</td><td data-label="Price / unit">{formatRupees(item.price)}</td><td data-label="Amount">{formatRupees(Number(item.quantity) * Number(item.price))}</td></tr>)}</tbody></table></div>
-      <div className="dealer-bill-actions"><button type="button" className="whatsapp-inline-btn" onClick={() => setSharingBillId(bill._id)}><i className="bi bi-whatsapp" aria-hidden="true" /> Send on WhatsApp</button><Link className="back-button" to={`/dealer-payments/${dealerId}?bill=${bill._id}`}><i className="bi bi-wallet2" aria-hidden="true" /> Payments</Link>{bill.hasPayments ? <span className="bill-locked-note" title="Reverse this bill's payments in Payments to edit or delete it."><i className="bi bi-lock" aria-hidden="true" /> Has payments · reverse them to edit</span> : <><button type="button" className="edit-bill-item" onClick={() => beginEdit(bill)}>Edit bill</button><button type="button" className="remove-bill-item" onClick={() => setDeleting(bill)}>Delete bill</button></>}</div>
+      <div className="dealer-bill-actions"><button type="button" className="whatsapp-inline-btn" onClick={() => setSharingBillId(bill._id)}><i className="bi bi-whatsapp" aria-hidden="true" /> Send on WhatsApp</button><Link className="back-button" to={`/dealer-payments/${dealerId}?bill=${bill._id}`}><i className="bi bi-wallet2" aria-hidden="true" /> Payments</Link>{bill.hasPayments ? <span className="bill-locked-note" title="Reverse this bill's payments in Payments to edit it."><i className="bi bi-lock" aria-hidden="true" /> Has payments · reverse them to edit</span> : <button type="button" className="edit-bill-item" onClick={() => beginEdit(bill)}>Edit bill</button>}<button type="button" className="remove-bill-item" onClick={() => askDelete(bill)}><i className="bi bi-trash3" aria-hidden="true" /> Delete bill</button></div>
     </article>)}</div>)}
     {sharingBillId && <BillShareModal dealerId={dealerId} billId={sharingBillId} onClose={() => setSharingBillId(null)} />}
-    {deleting && <Modal role="alertdialog" busy={busy} onClose={() => setDeleting(null)} labelledBy="bill-delete-title" describedBy="bill-delete-description"><div className="dealer-delete-icon"><i className="bi bi-trash3" aria-hidden="true" /></div><h2 id="bill-delete-title">Delete bill?</h2><p id="bill-delete-description">Delete this bill dated <strong>{billDate(deleting.issuedDate)}</strong>? This cannot be undone.</p><div className="dealer-delete-actions"><button type="button" className="back-button" disabled={busy} onClick={() => setDeleting(null)} data-autofocus>Cancel</button><button type="button" className="confirm-delete-btn" disabled={busy} onClick={confirmDelete}>{busy ? 'Deleting…' : 'Delete bill'}</button></div></Modal>}
+    {deleting && (() => {
+      const summary = deleteSummary
+      const hasPayments = Boolean(summary && !summary.error && summary.payments > 0)
+      const blocked = !summary || summary.error || summary.canDelete === false
+      const advanceBack = (summary?.advanceUsedPaise || 0) + (paidHandling === 'advance' ? summary?.paidPaise || 0 : 0)
+      return <Modal role="alertdialog" busy={busy} onClose={() => setDeleting(null)} labelledBy="bill-delete-title" describedBy="bill-delete-description">
+        <div className="dealer-delete-icon"><i className="bi bi-trash3" aria-hidden="true" /></div>
+        <h2 id="bill-delete-title">Delete bill?</h2>
+        <p id="bill-delete-description">Delete the bill dated <strong>{billDate(deleting.issuedDate)}</strong> for <strong>{formatRupees(deleting.total)}</strong>? This cannot be undone.</p>
+        {!summary && <p>Checking this bill's payments…</p>}
+        {summary?.error && <p className="api-error" role="alert">{summary.error}</p>}
+        {hasPayments && <>
+          <p className="dealer-delete-tip"><i className="bi bi-exclamation-triangle" aria-hidden="true" /> This bill has <strong>{summary.payments} {summary.payments === 1 ? 'payment' : 'payments'}</strong>. They will be deleted with the bill.</p>
+          {summary.canDelete === false
+            ? <p className="api-error" role="alert">Only an administrator or sub-admin can delete a bill that has payments. You can reverse its payments first in Payments.</p>
+            : <>
+              {summary.paidPaise > 0 && <fieldset className="payment-extra-choice bill-delete-choice">
+                <legend>{formatPaise(summary.paidPaise)} was already paid on this bill. What should happen to it?</legend>
+                <label className={`payment-extra-option${paidHandling === 'advance' ? ' is-selected' : ''}`}>
+                  <input type="radio" name="paidHandling" checked={paidHandling === 'advance'} onChange={() => setPaidHandling('advance')} />
+                  <i className="bi bi-piggy-bank" aria-hidden="true" />
+                  <span><strong>Keep as advance</strong><small>{dealer?.name || 'The dealer'} keeps {formatPaise(summary.paidPaise)} to use on their next bill.</small></span>
+                </label>
+                <label className={`payment-extra-option${paidHandling === 'delete' ? ' is-selected' : ''}`}>
+                  <input type="radio" name="paidHandling" checked={paidHandling === 'delete'} onChange={() => setPaidHandling('delete')} />
+                  <i className="bi bi-x-circle" aria-hidden="true" />
+                  <span><strong>Delete it too</strong><small>Use this if the payments were entered by mistake.</small></span>
+                </label>
+              </fieldset>}
+              {advanceBack > 0 && <p className="dealer-delete-tip"><i className="bi bi-piggy-bank" aria-hidden="true" /> {formatPaise(advanceBack)} will be added to {dealer?.name || 'the dealer'}'s advance{summary.advanceUsedPaise > 0 ? ` (includes ${formatPaise(summary.advanceUsedPaise)} of advance that was used on this bill)` : ''}.</p>}
+            </>}
+        </>}
+        <div className="dealer-delete-actions"><button type="button" className="back-button" disabled={busy} onClick={() => setDeleting(null)} data-autofocus>Cancel</button><button type="button" className="confirm-delete-btn" disabled={busy || blocked} onClick={confirmDelete}>{busy ? 'Deleting…' : hasPayments ? 'Delete bill and payments' : 'Delete bill'}</button></div>
+      </Modal>
+    })()}
   </section>
 }
 

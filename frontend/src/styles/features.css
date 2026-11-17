@@ -1586,3 +1586,70 @@ body {
 .theme-access-swatch { background: var(--swatch) !important; box-shadow: inset 0 0 0 3px rgb(255 255 255 / 55%); }
 .profile-theme-tier { margin-top: 12px; }
 .profile-theme-tier-title { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--color-text-muted); font-size: 13px; font-weight: 600; }
+
+/* ---- Item entry: simpler flow ---- */
+.bill-form-subtitle { margin: 0; color: var(--color-text); font-size: 15px; font-weight: 700; }
+.item-extras-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; font-weight: 600; }
+.bill-done { display: grid; justify-items: center; gap: 6px; padding: 28px 18px; text-align: center; }
+.bill-done-icon { color: var(--color-success); font-size: 46px; line-height: 1; }
+.bill-done-summary { margin: 0; color: var(--color-text-muted); }
+.bill-done-total { margin: 2px 0 8px; color: var(--color-text); font-size: 28px; font-weight: 800; }
+.bill-done-question { margin: 6px 0 4px; color: var(--color-text); font-weight: 600; }
+.bill-done-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: min(620px, 100%); }
+.bill-done-action { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 14px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); text-align: left; text-decoration: none; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.bill-done-action:hover, .bill-done-action:focus-visible { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); color: var(--color-text); }
+.bill-done-action > i { flex: 0 0 auto; color: var(--color-primary); font-size: 22px; }
+.bill-done-action.is-whatsapp > i { color: #1fa855; }
+.bill-done-action span { display: grid; gap: 2px; min-width: 0; }
+.bill-done-action strong { overflow-wrap: anywhere; font-size: 14px; }
+.bill-done-action small { color: var(--color-text-muted); font-size: 12px; }
+
+/* ---- Record payment: numbered steps ---- */
+.payment-step { display: grid; gap: 10px; padding-bottom: 14px; border-bottom: 1px dashed var(--color-border); }
+.payment-step-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--color-text); font-size: 14px; font-weight: 700; }
+.payment-step-title > span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--color-primary); color: #fff; font-size: 12px; }
+.payment-fixed-dealer { display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--color-surface-muted); }
+.payment-fixed-dealer > i { color: var(--color-primary); font-size: 24px; }
+.payment-fixed-dealer span { display: grid; }
+.payment-fixed-dealer small { color: var(--color-text-muted); }
+.payment-all-paid { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--color-success-soft); color: var(--color-success); font-size: 13px; }
+.payment-bill-choices { display: grid; gap: 8px; max-height: 260px; overflow-y: auto; }
+.payment-form .payment-bill-choice { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font-size: 13px; font-weight: 400; cursor: pointer; }
+.payment-form .payment-bill-choice.is-selected { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+.payment-form .payment-bill-choice input { width: 18px; height: 18px; min-height: 0; margin: 0; accent-color: var(--color-primary); }
+.payment-bill-choice > span { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.payment-bill-choice small { color: var(--color-text-muted); font-size: 11px; }
+.payment-bill-choice > b { color: var(--color-success); font-size: 13px; white-space: nowrap; }
+.payment-bill-choice > b.is-due { color: var(--color-warning); }
+.payment-full-btn { display: inline-flex; align-items: center; justify-self: start; gap: 6px; padding: 7px 12px; border: 1.5px solid var(--color-primary); border-radius: 999px; background: var(--color-primary-faint, var(--color-primary-soft)); color: var(--color-primary-strong); font-size: 13px; font-weight: 700; }
+.payment-method-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.payment-method-choice { display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 58px; padding: 8px 6px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font-size: 12px; font-weight: 600; }
+.payment-method-choice > i { color: var(--color-primary); font-size: 18px; }
+.payment-method-choice small { color: var(--color-text-muted); font-size: 10px; }
+.payment-method-choice.is-selected { border-color: var(--color-primary); background: var(--color-primary-soft); box-shadow: 0 0 0 2px var(--color-primary-soft); }
+.payment-pay-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border: 0; border-radius: 6px; background: var(--color-primary); color: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; }
+
+@media (max-width: 560px) {
+  .bill-done-actions { grid-template-columns: 1fr; }
+  .payment-method-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.payment-form .payment-bill-choice.is-all { border-style: dashed; background: var(--color-surface-muted); }
+.payment-form .payment-bill-choice.is-all.is-selected { border-style: solid; }
+.payment-allocation { display: grid; gap: 6px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--color-surface-muted); }
+.payment-allocation small { color: var(--color-text-muted); font-size: 11px; font-weight: 600; }
+.payment-allocation ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.payment-allocation li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; color: var(--color-text); font-size: 12px; }
+.payment-allocation li b { font-weight: 700; }
+.payment-allocation li em { min-width: 80px; color: var(--color-text-muted); font-size: 11px; font-style: normal; text-align: right; }
+
+/* Send bill: optional old balance */
+.bill-share-old { display: flex; align-items: center; gap: 12px; margin: 12px 0 0; padding: 12px 14px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); cursor: pointer; }
+.bill-share-old.is-on { border-color: var(--color-warning); background: var(--color-warning-soft); }
+.bill-share-old-text { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.bill-share-old-text strong { color: var(--color-text); font-size: 14px; }
+.bill-share-old-text small { color: var(--color-text-muted); font-size: 12px; }
+
+/* Delete bill: what happens to money already paid */
+.bill-delete-choice { margin: 12px 0; border-color: var(--color-border); background: var(--color-surface-muted); text-align: left; }
+.bill-delete-choice legend { color: var(--color-text); font-weight: 600; }
+.bill-delete-choice .payment-extra-option small { display: block; color: var(--color-text-muted); }

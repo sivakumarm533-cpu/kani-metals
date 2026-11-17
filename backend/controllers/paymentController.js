@@ -134,19 +134,23 @@ export async function getDealerPaymentDetails(req, res, next) {
 
 export async function createPayment(req, res, next) {
   const session = await mongoose.startSession()
-  let createdPayment
+  let createdPayments = []
   try {
     const { dealer: dealerId, bill: billId, amount, paymentMethod, transactionReference = '', paymentDate, notes = '', methodDetails = {} } = req.body
-    if (!mongoose.isValidObjectId(dealerId) || !mongoose.isValidObjectId(billId)) return res.status(400).json({ message: 'Select a valid dealer and bill.' })
+    // bill: 'all' shares one payment across the dealer's unpaid bills, oldest first.
+    const payAll = billId === 'all'
+    if (!mongoose.isValidObjectId(dealerId) || (!payAll && !mongoose.isValidObjectId(billId))) return res.status(400).json({ message: 'Select a valid dealer and bill.' })
     if (!/^\d+(?:\.\d{1,2})?$/.test(String(amount ?? '').trim())) return res.status(400).json({ message: 'Enter a payment amount with up to two decimal places.' })
     const amountPaise = rupeesToPaise(amount)
     if (!amountPaise || amountPaise < 1) return res.status(400).json({ message: 'Enter a payment amount greater than zero with up to two decimal places.' })
     if (!methods.has(paymentMethod)) return res.status(400).json({ message: 'Select a valid payment method.' })
+    // A cheque clears or bounces as one piece, so it stays against a single bill.
+    if (payAll && paymentMethod === 'cheque') return res.status(400).json({ message: 'A cheque can be recorded against one bill at a time. Choose a single bill.' })
     const date = asDate(paymentDate)
     if (!date) return res.status(400).json({ message: 'A valid payment date is required.' })
     const dealer = await Dealer.findById(dealerId).lean()
-    const bill = await Bill.findOne({ _id: billId, dealer: dealerId }).lean()
-    if (!dealer || !bill) return res.status(404).json({ message: 'The selected bill does not belong to this dealer.' })
+    const bill = payAll ? null : await Bill.findOne({ _id: billId, dealer: dealerId }).lean()
+    if (!dealer || (!payAll && !bill)) return res.status(404).json({ message: 'The selected bill does not belong to this dealer.' })
     const fromAdvance = paymentMethod === 'advance'
     // Extra above the balance is either kept as dealer advance or written off as round-off.
     const excessType = req.body.extraHandling === 'roundoff' ? 'roundoff' : 'advance'
@@ -156,10 +160,41 @@ export async function createPayment(req, res, next) {
     if (['cheque', 'bank_deposit'].includes(paymentMethod) && !String(methodDetails.bankName || '').trim()) return res.status(400).json({ message: 'Enter the bank name for this payment.' })
     if (['cheque', 'bank_deposit'].includes(paymentMethod) && !reference) return res.status(400).json({ message: paymentMethod === 'cheque' ? 'Enter the cheque number.' : 'Enter the bank deposit reference number.' })
     if (paymentMethod === 'cheque' && !asDate(methodDetails.chequeDate)) return res.status(400).json({ message: 'Enter a valid cheque date.' })
+    const base = {
+      dealer: dealer._id, excessType, paymentMethod, transactionReference: reference,
+      paymentDate: date, notes: String(notes).trim().slice(0, 1000),
+      methodDetails: { bankName: String(methodDetails.bankName || '').trim().slice(0, 120), chequeDate: paymentMethod === 'cheque' && methodDetails.chequeDate ? asDate(methodDetails.chequeDate) : null },
+      paymentStatus: status, statusHistory: [{ status, changedBy: req.user._id }], createdBy: req.user._id,
+    }
     let excessPaise = 0
     await session.withTransaction(async () => {
       excessPaise = 0
+      createdPayments = []
       if (referenceKey && await Payment.exists({ referenceKey }).session(session)) throw httpError(409, 'A payment with this transaction reference already exists.')
+      if (payAll) {
+        if (fromAdvance && !await takeDealerAdvance(dealer._id, amountPaise, session)) throw httpError(400, 'This dealer does not have that much advance.')
+        const bills = await Bill.find({ dealer: dealer._id }).sort({ issuedDate: 1, _id: 1 }).select('_id').session(session).lean()
+        let remaining = amountPaise
+        const parts = []
+        for (const row of bills) {
+          if (remaining <= 0) break
+          const result = await applyToBill(row._id, remaining, session)
+          if (result?.applied > 0) { parts.push({ bill: row._id, amountPaise: result.applied, excessPaise: 0 }); remaining -= result.applied }
+        }
+        if (!parts.length) throw httpError(400, 'This dealer has no unpaid bills.')
+        if (remaining > 0) {
+          if (fromAdvance) throw httpError(400, 'Advance used cannot be more than the balance of all bills.')
+          // Money left after every bill is paid rides on the last part, like an over-payment on one bill.
+          excessPaise = remaining
+          parts.at(-1).amountPaise += remaining
+          parts.at(-1).excessPaise = remaining
+          if (excessType === 'advance') await addDealerAdvance(dealer._id, remaining, session)
+        }
+        // Parts of one payment share a splitId; the reference is unique, so only the first part carries its key.
+        const split = parts.length > 1 ? { splitId: new mongoose.Types.ObjectId().toString(), splitTotalPaise: amountPaise } : {}
+        createdPayments = await Payment.create(parts.map((part, index) => ({ ...base, ...split, ...part, referenceKey: index === 0 ? referenceKey : undefined })), { session, ordered: true })
+        return
+      }
       if (fromAdvance) {
         // Advance money can only settle a balance; it cannot create more advance.
         if (!await takeDealerAdvance(dealer._id, amountPaise, session)) throw httpError(400, 'This dealer does not have that much advance.')
@@ -171,20 +206,17 @@ export async function createPayment(req, res, next) {
         excessPaise = result.excess
         if (excessType === 'advance') await addDealerAdvance(dealer._id, excessPaise, session)
       }
-      const created = await Payment.create([{
-        dealer: dealer._id, bill: bill._id, amountPaise, excessPaise, excessType, paymentMethod, transactionReference: reference, referenceKey,
-        paymentDate: date, notes: String(notes).trim().slice(0, 1000),
-        methodDetails: { bankName: String(methodDetails.bankName || '').trim().slice(0, 120), chequeDate: paymentMethod === 'cheque' && methodDetails.chequeDate ? asDate(methodDetails.chequeDate) : null },
-        paymentStatus: status, statusHistory: [{ status, changedBy: req.user._id }], createdBy: req.user._id,
-      }], { session })
-      createdPayment = created[0]
+      createdPayments = await Payment.create([{ ...base, bill: bill._id, amountPaise, excessPaise, referenceKey }], { session })
     })
-    await safePaymentActivity(req, 'create', createdPayment, null, createdPayment)
+    for (const payment of createdPayments) await safePaymentActivity(req, 'create', payment, null, payment)
+    const extra = excessPaise > 0 && excessType === 'roundoff' ? ` ${formatPaise(excessPaise)} extra written off as round-off.`
+      : excessPaise > 0 ? ` ${formatPaise(excessPaise)} extra was kept as advance for ${dealer.name}.` : ''
     const message = status === 'pending' ? 'Cheque recorded as pending. It will count as received after clearing.'
-      : excessPaise > 0 && excessType === 'roundoff' ? `Payment recorded. Bill marked paid; ${formatPaise(excessPaise)} extra written off as round-off.`
-      : excessPaise > 0 ? `Payment recorded. ${formatPaise(excessPaise)} extra was kept as advance for ${dealer.name}.`
+      : createdPayments.length > 1 ? `Payment of ${formatPaise(amountPaise)} shared across ${createdPayments.length} bills, oldest first.${extra}`
+      : excessPaise > 0 && excessType === 'roundoff' ? `Payment recorded. Bill marked paid;${extra}`
+      : excessPaise > 0 ? `Payment recorded.${extra}`
         : 'Payment recorded successfully.'
-    res.status(201).json({ message, payment: createdPayment, excessPaise })
+    res.status(201).json({ message, payment: createdPayments[0], payments: createdPayments, excessPaise })
   } catch (error) {
     if (error.code === 11000) error.statusCode = 409
     next(error)

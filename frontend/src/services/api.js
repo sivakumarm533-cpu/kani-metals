@@ -5,6 +5,7 @@ export const API_BASE_URL = configuredApiUrl
 
 export const AUTH_TOKEN_KEY = 'kani-auth-token'
 export const AUTH_EXPIRED_EVENT = 'kani-auth-expired'
+export const DASHBOARD_CACHE_KEY = 'kani-dashboard-summary'
 
 export function getAuthToken() {
   try { return localStorage.getItem(AUTH_TOKEN_KEY) || memoryToken } catch { return memoryToken }
@@ -16,7 +17,8 @@ export function setAuthToken(token) {
   memoryToken = token || null
   try {
     if (token) localStorage.setItem(AUTH_TOKEN_KEY, token)
-    else { localStorage.removeItem(AUTH_TOKEN_KEY); localStorage.removeItem(AUTH_USER_KEY) }
+    // Signing out also clears the cached dashboard figures from this device.
+    else { localStorage.removeItem(AUTH_TOKEN_KEY); localStorage.removeItem(AUTH_USER_KEY); localStorage.removeItem(DASHBOARD_CACHE_KEY) }
   } catch { /* storage unavailable (private mode); the session lasts for this page only */ }
 }
 

@@ -19,6 +19,10 @@ const paymentSchema = new mongoose.Schema({
   excessType: { type: String, enum: ['advance', 'roundoff'], default: 'advance' },
   transactionReference: { type: String, trim: true, default: '' },
   referenceKey: { type: String, default: undefined },
+  /** Set when one payment was shared across several bills ("All bills"): every part has the same splitId. */
+  splitId: { type: String, default: undefined, index: { sparse: true } },
+  /** The full amount of that shared payment, so each part can show what it was part of. */
+  splitTotalPaise: { type: Number, default: undefined, min: 1 },
   paymentDate: { type: Date, required: true },
   notes: { type: String, trim: true, maxlength: 1000, default: '' },
   methodDetails: {

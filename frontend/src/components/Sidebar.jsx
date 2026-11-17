@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/authContextValue.js'
 import { useAppSettings } from '../settings/appSettingsContext.js'
-import { canUseItem, isManager, orderNavItems, PROFILE_ITEM, SETTINGS_ITEMS } from '../config/navigation.js'
+import { canUseItem, isManager, orderNavItems, PROFILE_ITEM, settingsGroupsFor } from '../config/navigation.js'
 
 const linkClass = ({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`
 
@@ -22,7 +22,7 @@ function Sidebar({ isOpen, isDesktop, onNavigate }) {
   const inSettings = location.pathname.startsWith('/settings')
   const [settingsOpen, setSettingsOpen] = useState(inSettings)
   const items = orderNavItems(menuOrder).filter((item) => canUseItem(item, user, features))
-  const settingsItems = SETTINGS_ITEMS.filter((item) => !item.primaryOnly || user?.role === 'admin')
+  const settingsGroups = settingsGroupsFor(user)
 
   return (
     <>
@@ -46,17 +46,20 @@ function Sidebar({ isOpen, isDesktop, onNavigate }) {
                 onClick={() => setSettingsOpen((open) => !open)}
               >
                 <span className="sidebar-icon" aria-hidden="true"><i className="bi bi-gear" /></span>
-                <span className="sidebar-text"><span>Settings</span><small>Team, features and workspace</small></span>
+                <span className="sidebar-text"><span>Settings</span><small>Team, workspace and data</small></span>
                 <i className={`bi bi-chevron-down settings-chevron${settingsOpen ? ' is-open' : ''}`} aria-hidden="true" />
               </button>
               {settingsOpen && <ul className="sidebar-submenu" id="settings-submenu">
-                {settingsItems.map((item) => (
-                  <li key={item.to}>
-                    <NavLink className={linkClass} to={item.to} onClick={onNavigate} title={item.description}>
-                      <i className={`bi ${item.icon}`} aria-hidden="true" /><span>{item.label}</span>
-                    </NavLink>
-                  </li>
-                ))}
+                {settingsGroups.map((group) => [
+                  <li key={group.id} className="sidebar-submenu-group" aria-hidden="true">{group.label}</li>,
+                  ...group.items.map((item) => (
+                    <li key={item.to}>
+                      <NavLink className={linkClass} to={item.to} onClick={onNavigate} title={`${group.label} · ${item.description}`}>
+                        <i className={`bi ${item.icon}`} aria-hidden="true" /><span>{item.label}</span>
+                      </NavLink>
+                    </li>
+                  )),
+                ])}
               </ul>}
             </li>}
           </ul>

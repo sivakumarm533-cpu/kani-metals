@@ -4,7 +4,7 @@ import { useAuth } from '../auth/authContextValue.js'
 import { useAppSettings } from '../settings/appSettingsContext.js'
 import { canUseItem, NAV_ITEMS } from '../config/navigation.js'
 import { LOW_STOCK_LIMIT, useProducts } from '../hooks/useProducts.js'
-import { apiRequest } from '../services/api.js'
+import { apiRequest, DASHBOARD_CACHE_KEY } from '../services/api.js'
 import LoadError from '../components/LoadError.jsx'
 import Modal from '../components/Modal.jsx'
 import { EmptyState, PageHeader, StatCard, StatusBadge } from '../components/ui.jsx'
@@ -102,16 +102,33 @@ const statusTone = { received: ['success', 'Paid'], cleared: ['success', 'Cleare
 /** Whole rupees for headline figures; the exact amount is in the tooltip. */
 const rupees = (paise = 0) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Math.round((Number(paise) || 0) / 100))
 
+/** The last summary is kept on this device so the dashboard shows figures at once, then refreshes. */
+function readCachedSummary(userId) {
+  try {
+    const cached = JSON.parse(localStorage.getItem(DASHBOARD_CACHE_KEY) || 'null')
+    return cached && userId && cached.userId === userId ? cached.data : null
+  } catch { return null }
+}
+function writeCachedSummary(userId, data) {
+  try { if (userId) localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ userId, data })) } catch { /* storage unavailable */ }
+}
+
 function useDashboardSummary() {
-  const [state, setState] = useState({ data: null, loading: true, error: '' })
+  const { user } = useAuth()
+  const userId = String(user?._id || user?.id || '')
+  const [state, setState] = useState(() => {
+    const cached = readCachedSummary(userId)
+    return { data: cached, loading: !cached, error: '' }
+  })
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     let active = true
     apiRequest('/dashboard/summary')
-      .then((data) => { if (active) setState({ data, loading: false, error: '' }) })
-      .catch((error) => { if (active) setState({ data: null, loading: false, error: error.message }) })
+      .then((data) => { if (active) { writeCachedSummary(userId, data); setState({ data, loading: false, error: '' }) } })
+      // With figures already on screen, a failed refresh (server waking up, offline) keeps them.
+      .catch((error) => { if (active) setState((current) => (current.data ? { ...current, loading: false } : { data: null, loading: false, error: error.message })) })
     return () => { active = false }
-  }, [attempt])
+  }, [attempt, userId])
   const retry = () => { setState((current) => ({ ...current, loading: true, error: '' })); setAttempt((count) => count + 1) }
   return { ...state, retry }
 }

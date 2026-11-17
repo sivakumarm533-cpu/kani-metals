@@ -10,6 +10,8 @@ import { compressImage } from "../utils/image.js";
 import { useProducts } from "../hooks/useProducts.js";
 import { useAppSettings } from "../settings/appSettingsContext.js";
 import { formatRupees, localDateInputValue as getTodayDate } from "../utils/format.js";
+import { useAuth } from "../auth/authContextValue.js";
+import { canUseItem, NAV_ITEMS } from "../config/navigation.js";
 
 // Friendlier names for common units in the unit dropdown; any other unit shows as typed.
 const unitLabels = { kg: "Kilogram (kg)", pcs: "Pieces (pcs)", ton: "Ton", g: "Gram (g)", litre: "Litre", metre: "Metre", bundle: "Bundle" };
@@ -18,6 +20,11 @@ const emptyItemForm = () => ({ name: "", category: "", quantity: "", price: "", 
 // Dealers saved before the status existed count as active.
 const mapDealer = (dealer) => ({ ...dealer, id: dealer._id, type: dealer.category, image: dealer.profileImage, active: dealer.active !== false });
 const statusFilters = [["all", "All"], ["active", "Active"], ["inactive", "Inactive"]];
+const flowSteps = [
+  { label: "Choose dealer", hint: "Who are you buying from?" },
+  { label: "Add items", hint: "What did you buy?" },
+  { label: "Done", hint: "Send bill or record payment" },
+];
 
 function Itemsentry() {
   const [searchParams] = useSearchParams();
@@ -39,7 +46,11 @@ function Itemsentry() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editingDealerId, setEditingDealerId] = useState(null);
-  const { lists } = useAppSettings();
+  const { lists, features } = useAppSettings();
+  const { user } = useAuth();
+  const canRecordPayment = canUseItem(NAV_ITEMS.find((item) => item.key === "dealerPayments"), user, features);
+  // Note and photo are optional, so they stay folded away unless needed.
+  const [showItemExtras, setShowItemExtras] = useState(false);
   const [dealerForm, setDealerForm] = useState(() => emptyDealerForm(lists.dealerCategories[0]));
   // Categories found on saved dealers or added here; the main list comes from Settings → Dropdown lists.
   const [extraDealerCategories, setDealerCategories] = useState([]);
@@ -95,6 +106,8 @@ function Itemsentry() {
   function selectDealer(dealer) {
     if (!dealer.active) { notify(`${dealer.name} is inactive. Edit the dealer and switch them to Active to create a bill.`, "info", "bi-pause-circle"); return; }
     setSelectedDealer(dealer);
+    setStep(2);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function askDeleteDealer(dealer) {
@@ -129,8 +142,8 @@ function Itemsentry() {
     setEditingItemId(null);
     setItemForm(emptyItemForm());
     setPickedItemId("");
+    setShowItemExtras(false);
     resetItemImageInput();
-   
     document.getElementById("itemName")?.focus();
   }
 
@@ -145,7 +158,7 @@ function Itemsentry() {
       image: item.image || "",
       note: item.note || "",
     });
-   
+    setShowItemExtras(Boolean(item.note || item.image));
     document.getElementById("itemName")?.focus();
   }
 
@@ -153,6 +166,7 @@ function Itemsentry() {
     setEditingItemId(null);
     setItemForm(emptyItemForm());
     setPickedItemId("");
+    setShowItemExtras(false);
     resetItemImageInput();
   }
 
@@ -169,17 +183,18 @@ function Itemsentry() {
           items: billItems.map(({ name, category, quantity, unit, price, image, note }) => ({ name, category, quantity, unit, price, image, note })),
         }),
       });
-      setLastSavedBill({ id: savedBill._id, dealerId: selectedDealer.id, dealerName: selectedDealer.name, total: savedBill.total });
+      setLastSavedBill({ id: savedBill._id, dealerId: selectedDealer.id, dealerName: selectedDealer.name, total: savedBill.total, itemCount: billItems.length, issuedDate: savedBill.issuedDate || billDate });
       notify(`Bill saved for ${selectedDealer.name}.`);
-      setStep(1);
+      setStep(3);
       setBillItems([]);
       setEditingItemId(null);
       setItemForm(emptyItemForm());
-    setPickedItemId("");
+      setPickedItemId("");
+      setShowItemExtras(false);
       setBillDate(getTodayDate());
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       setApiError(error.message);
-     
     } finally {
       setIsSaving(false);
     }
@@ -286,6 +301,13 @@ function Itemsentry() {
     }
   }
 
+  /** After a bill is saved: start another bill, for the same dealer or a different one. */
+  function startNewBill(sameDealer) {
+    setLastSavedBill(null);
+    if (sameDealer && selectedDealer) setStep(2);
+    else { setSelectedDealer(null); setStep(1); }
+  }
+
   function addDealerCategory() {
     const category = newDealerCategory.trim();
     if (!category) return;
@@ -304,43 +326,29 @@ function Itemsentry() {
         <div>
           <p className="eyebrow">BILLING</p>
           <h1 className="page-title">Item entry</h1>
-          <p className="page-description">Select a dealer, add the purchased items and save the bill.</p>
+          <p className="page-description">Three simple steps: choose the dealer, add what you bought, save the bill.</p>
         </div>
       </header>
 
-      {/* Step indicator */}
       <ol className="billing-steps" aria-label="Billing progress">
-        <li className={`billing-step ${step === 1 ? "active" : "completed"}`} aria-current={step === 1 ? "step" : undefined}>
-          <span>{step === 1 ? 1 : <i className="bi bi-check-lg" aria-hidden="true" />}</span>
-          <div>
-            <strong>Select Dealer</strong>
-            <small>Choose customer</small>
-          </div>
-        </li>
-
-        <li className={`step-line ${step === 2 ? "completed" : ""}`} aria-hidden="true" />
-
-        <li className={`billing-step ${step === 2 ? "active" : ""}`} aria-current={step === 2 ? "step" : undefined}>
-          <span>2</span>
-          <div>
-            <strong>Bill Details</strong>
-            <small>Enter item details</small>
-          </div>
-        </li>
+        {flowSteps.map((entry, index) => {
+          const number = index + 1;
+          const state = step === number ? "active" : step > number ? "completed" : "";
+          return [
+            index > 0 && <li key={`line-${number}`} className={`step-line ${step >= number ? "completed" : ""}`} aria-hidden="true" />,
+            <li key={entry.label} className={`billing-step ${state}`} aria-current={step === number ? "step" : undefined}>
+              <span>{step > number ? <i className="bi bi-check-lg" aria-hidden="true" /> : number}</span>
+              <div>
+                <strong>{entry.label}</strong>
+                <small>{number === 1 && selectedDealer && step > 1 ? selectedDealer.name : entry.hint}</small>
+              </div>
+            </li>,
+          ];
+        })}
       </ol>
 
       <LoadError message={apiError} />
 
-      {lastSavedBill && step === 1 && (
-        <div className="saved-bill-banner" role="status">
-          <span className="saved-bill-icon" aria-hidden="true"><i className="bi bi-check-circle-fill" /></span>
-          <div><strong>Bill saved for {lastSavedBill.dealerName}</strong><small>Total {formatRupees(lastSavedBill.total)} · send it to the dealer now?</small></div>
-          <div className="saved-bill-actions">
-            <button type="button" className="continue-btn whatsapp-btn" onClick={() => setSharingBill(lastSavedBill)}><i className="bi bi-whatsapp" aria-hidden="true" /> Send on WhatsApp</button>
-            <button type="button" className="link-button" onClick={() => setLastSavedBill(null)}>Dismiss</button>
-          </div>
-        </div>
-      )}
       {sharingBill && <BillShareModal dealerId={sharingBill.dealerId} billId={sharingBill.id} onClose={() => setSharingBill(null)} />}
 
       {dealerToDelete && (() => {
@@ -383,8 +391,8 @@ function Itemsentry() {
         <div className="boarder-box">
           <div className="dealer-header">
             <div>
-              <h2 className="section-title">Select Dealer</h2>
-              <p>Choose a dealer to create a new bill.</p>
+              <h2 className="section-title">Step 1 · Choose a dealer</h2>
+              <p>Tap a dealer to start their bill. New dealer? Tap <strong>Add Dealer</strong> first.</p>
             </div>
 
             <button type="button" className="add-dealer-btn" aria-expanded={showDealerForm} aria-controls="dealer-form" onClick={() => (showDealerForm ? cancelDealerEdit() : setShowDealerForm(true))}>
@@ -508,7 +516,7 @@ function Itemsentry() {
                         selectDealer(dealer);
                       }}
                     >
-                      {!dealer.active ? <><i className="bi bi-pause-circle" aria-hidden="true" /> Inactive</> : isSelected ? <><i className="bi bi-check2" aria-hidden="true" /> Selected</> : "Select Dealer"}
+                      {!dealer.active ? <><i className="bi bi-pause-circle" aria-hidden="true" /> Inactive</> : <>Start bill <i className="bi bi-arrow-right" aria-hidden="true" /></>}
                     </button>
                   </div>
                 </div>
@@ -523,21 +531,6 @@ function Itemsentry() {
             )}
           </div>
 
-          <div className="dealer-footer sticky-action-bar">
-            <div>
-              <small>Selected Dealer</small>
-              <h6>{selectedDealer?.name || "No dealer selected"}</h6>
-            </div>
-
-            <button
-              type="button"
-              className="continue-btn"
-              disabled={!selectedDealer}
-              onClick={() => setStep(2)}
-            >
-              Continue <i className="bi bi-arrow-right" aria-hidden="true" />
-            </button>
-          </div>
         </div>
       )}
 
@@ -546,8 +539,8 @@ function Itemsentry() {
         <div className="boarder-box">
           <div className="bill-header">
             <div>
-              <h2 className="section-title">Enter Bill Details</h2>
-              <p>Enter the items purchased by the selected dealer.</p>
+              <h2 className="section-title">Step 2 · Add items</h2>
+              <p>Fill in one item and tap <strong>Add item</strong>. Repeat for every item, then tap <strong>Save Bill</strong>.</p>
             </div>
 
             <button
@@ -575,7 +568,8 @@ function Itemsentry() {
 
           <form onSubmit={addBillItem} className="bill-item-form">
             <div className="row g-4 mt-1">
-              <div className="col-lg-7 col-12">
+              <div className="col-12"><h3 className="bill-form-subtitle">{editingItemId !== null ? "Edit item" : `Item ${billItems.length + 1}`}</h3></div>
+              <div className="col-12">
                 <div className="row g-3">
                   {inventoryItems.length > 0 && (
                     <div className="col-12">
@@ -629,26 +623,31 @@ function Itemsentry() {
                     </div>
                   </div>
 
+                  {itemForm.quantity && itemForm.price && <div className="col-12"><p className="item-line-total">Line amount: <strong>{formatRupees(Number(itemForm.quantity) * Number(itemForm.price))}</strong></p></div>}
                   <div className="col-12">
+                    <button type="button" className="link-button item-extras-toggle" aria-expanded={showItemExtras} aria-controls="item-extras" onClick={() => setShowItemExtras((open) => !open)}>
+                      <i className={`bi ${showItemExtras ? "bi-dash-circle" : "bi-plus-circle"}`} aria-hidden="true" /> {showItemExtras ? "Hide note and photo" : "Add a note or photo (optional)"}
+                    </button>
+                  </div>
+                  {showItemExtras && <div className="col-12" id="item-extras"><div className="row g-3">
+                  <div className="col-md-7 col-12">
                     <div className="form-group">
                       <label className="label-title" htmlFor="itemNote">Note <small className="text-muted">Optional · printed under the item on the bill</small></label>
                       <input id="itemNote" className="form-control" maxLength="200" placeholder="e.g. 1210 - 10 = 1200 (10 kg was waste material)" value={itemForm.note} onChange={(event) => setItemForm({ ...itemForm, note: event.target.value })} />
                     </div>
                   </div>
-
-                  {itemForm.quantity && itemForm.price && <div className="col-12"><p className="item-line-total">Line amount: <strong>{formatRupees(Number(itemForm.quantity) * Number(itemForm.price))}</strong></p></div>}
-                </div>
-              </div>
-
-              <div className="col-lg-5 col-12">
-                <div className="image-upload-box h-100">
-                  <label className="label-title" htmlFor="itemImage">
-                    Item Image <small className="text-muted">Optional</small>
-                  </label>
-                  <input id="itemImage" type="file" accept="image/png,image/jpeg,image/webp" className="form-control" onChange={(event) => readImageFile(event, "image", setItemForm, { maxSize: 800 })} />
-                  <div className="image-preview mt-3">
-                    {itemForm.image ? <img src={itemForm.image} alt="Selected item preview" /> : <><i className="bi bi-image" aria-hidden="true" /><span>Image preview will appear here</span></>}
+                  <div className="col-md-5 col-12">
+                    <div className="image-upload-box">
+                      <label className="label-title" htmlFor="itemImage">
+                        Item Image <small className="text-muted">Optional</small>
+                      </label>
+                      <input id="itemImage" type="file" accept="image/png,image/jpeg,image/webp" className="form-control" onChange={(event) => readImageFile(event, "image", setItemForm, { maxSize: 800 })} />
+                      <div className="image-preview mt-3">
+                        {itemForm.image ? <img src={itemForm.image} alt="Selected item preview" /> : <><i className="bi bi-image" aria-hidden="true" /><span>Image preview will appear here</span></>}
+                      </div>
+                    </div>
                   </div>
+                  </div></div>}
                 </div>
               </div>
             </div>
@@ -679,7 +678,7 @@ function Itemsentry() {
                 </thead>
                 <tbody>
                   {billItems.length === 0 ? (
-                    <tr className="table-empty-row"><td colSpan="7" className="bill-empty">Added items will appear here.</td></tr>
+                    <tr className="table-empty-row"><td colSpan="7" className="bill-empty">No items yet. Fill in the form above and tap “Add item”.</td></tr>
                   ) : billItems.map((item, index) => (
                     <tr key={item.id} className={editingItemId === item.id ? "is-editing" : ""}>
                       <td data-label="S.No.">{index + 1}</td>
@@ -703,10 +702,39 @@ function Itemsentry() {
 
           <div className="bill-actions sticky-action-bar">
             <button type="button" className="back-button" onClick={() => setStep(1)}>
-              Back
+              <i className="bi bi-arrow-left" aria-hidden="true" /> Back
             </button>
             <button type="button" className="continue-btn" disabled={billItems.length === 0 || isSaving} onClick={saveBill}>
               {isSaving ? <><span className="btn-spinner" aria-hidden="true" /> Saving…</> : `Save Bill · ${formatRupees(billTotal)}`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3 - DONE */}
+      {step === 3 && lastSavedBill && (
+        <div className="boarder-box bill-done">
+          <span className="bill-done-icon" aria-hidden="true"><i className="bi bi-check-circle-fill" /></span>
+          <h2 className="section-title">Bill saved</h2>
+          <p className="bill-done-summary">
+            <strong>{lastSavedBill.dealerName}</strong> · {lastSavedBill.itemCount} {lastSavedBill.itemCount === 1 ? "item" : "items"} · {new Date(lastSavedBill.issuedDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+          </p>
+          <p className="bill-done-total">{formatRupees(lastSavedBill.total)}</p>
+          <p className="bill-done-question">What would you like to do next?</p>
+          <div className="bill-done-actions">
+            <button type="button" className="bill-done-action is-whatsapp" onClick={() => setSharingBill(lastSavedBill)}>
+              <i className="bi bi-whatsapp" aria-hidden="true" /><span><strong>Send bill on WhatsApp</strong><small>Share it with the dealer</small></span>
+            </button>
+            {canRecordPayment && (
+              <Link className="bill-done-action" to={`/dealer-payments/${lastSavedBill.dealerId}?bill=${lastSavedBill.id}&record=1`}>
+                <i className="bi bi-wallet2" aria-hidden="true" /><span><strong>Record payment</strong><small>Money paid for this bill</small></span>
+              </Link>
+            )}
+            <button type="button" className="bill-done-action" onClick={() => startNewBill(true)}>
+              <i className="bi bi-plus-circle" aria-hidden="true" /><span><strong>Another bill for {lastSavedBill.dealerName}</strong><small>Same dealer, new bill</small></span>
+            </button>
+            <button type="button" className="bill-done-action" onClick={() => startNewBill(false)}>
+              <i className="bi bi-people" aria-hidden="true" /><span><strong>Bill for another dealer</strong><small>Go back to the dealer list</small></span>
             </button>
           </div>
         </div>
