@@ -308,9 +308,6 @@ body {
 }
 
 /* Bill: pick an item from inventory */
-.inventory-pick .label-title i { color: var(--color-primary); }
-.inventory-pick-note { display: block; margin-top: 6px; padding: 7px 10px; border-radius: var(--radius-sm); color: var(--color-text-muted); background: var(--color-primary-faint); font-size: 12px; }
-.inventory-pick-note b { color: var(--color-text); }
 
 /* Dashboard customisation */
 .page-header .dash-customize-button { flex: 0 0 auto; align-self: flex-start; }
@@ -1685,3 +1682,15 @@ body {
 @media (hover: none) {
   .dealer-card:hover { transform: none; }
 }
+
+/* Item name suggestions on the bill form (items entered before). */
+.item-suggest { position: relative; }
+.item-suggest-list { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20; max-height: 300px; margin: 0; padding: 4px; overflow-y: auto; list-style: none; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); box-shadow: 0 10px 24px rgb(16 24 40 / 14%); }
+.item-suggest-heading { padding: 6px 10px 4px; color: var(--color-text-subtle, var(--color-text-muted)); font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
+.item-suggest-option { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+.item-suggest-option:hover, .item-suggest-option.is-active { background: var(--color-primary-faint); }
+.item-suggest-name { display: flex; flex-direction: column; min-width: 0; color: var(--color-text); font-weight: 600; }
+.item-suggest-name small, .item-suggest-price small { color: var(--color-text-muted); font-size: 12px; font-weight: 500; }
+.item-suggest-price { flex-shrink: 0; color: var(--color-text); font-weight: 600; white-space: nowrap; }
+.item-duplicate-note { margin: 6px 0 0; padding: 7px 10px; border-radius: 8px; color: var(--color-text); background: var(--color-warning-soft); font-size: 13px; }
+.item-duplicate-note .link-button { padding: 0; font-weight: 600; }

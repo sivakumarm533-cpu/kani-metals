@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../services/api.js";
 import Toast from "../components/Toast.jsx";
 import Modal from "../components/Modal.jsx";
 import LoadError from "../components/LoadError.jsx";
 import BillShareModal from "../components/BillShareModal.jsx";
+import TamilKeyboard from "../components/TamilKeyboard.jsx";
 import { useToast } from "../hooks/useToast.js";
 import { compressImage } from "../utils/image.js";
 import { useProducts } from "../hooks/useProducts.js";
@@ -51,6 +52,8 @@ function Itemsentry() {
   const canRecordPayment = canUseItem(NAV_ITEMS.find((item) => item.key === "dealerPayments"), user, features);
   // Note and photo are optional, so they stay folded away unless needed.
   const [showItemExtras, setShowItemExtras] = useState(false);
+  // On-screen Tamil keyboard for the item name and note. While open, the phone's own keyboard stays hidden.
+  const [tamilKeyboard, setTamilKeyboard] = useState(false);
   const [dealerForm, setDealerForm] = useState(() => emptyDealerForm(lists.dealerCategories[0]));
   // Categories found on saved dealers or added here; the main list comes from Settings → Dropdown lists.
   const [extraDealerCategories, setDealerCategories] = useState([]);
@@ -61,23 +64,65 @@ function Itemsentry() {
   const [sharingBill, setSharingBill] = useState(null);
   const [editingItemId, setEditingItemId] = useState(null);
   const [itemForm, setItemForm] = useState(emptyItemForm);
-  // Inventory items can be picked to fill the line. Bills never change stock.
+  // Items entered before (on saved bills or in inventory) are suggested while typing the item name.
   const { products: inventoryItems } = useProducts();
-  const [pickedItemId, setPickedItemId] = useState("");
-  const pickedItem = inventoryItems.find((item) => item._id === pickedItemId) || null;
+  const [billedItems, setBilledItems] = useState([]);
+  const [nameFocused, setNameFocused] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const dealerCategories = [...new Set([...lists.dealerCategories, ...extraDealerCategories])];
   const categoryOptions = [...new Set([...lists.itemCategories, itemForm.category].filter(Boolean))];
   const unitOptions = lists.units.map((unit) => [unit, unitLabels[unit] || unit]);
   if (itemForm.unit && !unitOptions.some(([value]) => value === itemForm.unit)) unitOptions.push([itemForm.unit, itemForm.unit]);
 
-  function pickInventoryItem(id) {
-    setPickedItemId(id);
-    const item = inventoryItems.find((entry) => entry._id === id);
-    if (!item) return;
-    setItemForm((current) => ({ ...current, name: item.name, category: item.category, unit: item.unit, price: item.price ? String(item.price) : current.price, image: item.image || "" }));
-    resetItemImageInput();
+  // Every known item once (same name + unit): saved bills first (latest price), then inventory.
+  const knownItems = useMemo(() => {
+    const byKey = new Map();
+    const add = (item) => {
+      const name = (item.name || "").trim();
+      if (!name) return;
+      const key = `${name.toLowerCase()}|${(item.unit || "").toLowerCase()}`;
+      if (!byKey.has(key)) byKey.set(key, { key, name, category: item.category || "", unit: item.unit || "", price: Number(item.price) || 0, image: item.image || "" });
+    };
+    billedItems.forEach((item) => add({ ...item, price: item.currentPaise ? item.currentPaise / 100 : 0 }));
+    inventoryItems.forEach(add);
+    return [...byKey.values()];
+  }, [billedItems, inventoryItems]);
+
+  const typedName = itemForm.name.trim().toLowerCase();
+  const startsWithTyped = (item) => item.name.toLowerCase().startsWith(typedName);
+  const suggestions = typedName
+    ? knownItems
+      // Hide the suggestion once the form already holds exactly that item.
+      .filter((item) => item.name.toLowerCase().includes(typedName) && !(item.name.toLowerCase() === typedName && item.unit === itemForm.unit && item.category === itemForm.category))
+      .sort((a, b) => Number(startsWithTyped(b)) - Number(startsWithTyped(a)) || a.name.localeCompare(b.name))
+      .slice(0, 6)
+    : [];
+  const showSuggestions = nameFocused && suggestions.length > 0;
+  // The same item already added to this bill (not counting the line being edited).
+  const duplicateLine = typedName ? billItems.find((item) => item.id !== editingItemId && item.name.trim().toLowerCase() === typedName) : null;
+
+  function pickSuggestion(item) {
+    setItemForm((current) => ({ ...current, name: item.name, category: item.category || current.category, unit: item.unit || current.unit, price: item.price ? String(item.price) : current.price, image: item.image || current.image }));
+    setActiveSuggestion(-1);
+    setNameFocused(false);
     document.getElementById("quantity")?.focus();
   }
+
+  function onNameKeyDown(event) {
+    if (!showSuggestions) return;
+    if (event.key === "ArrowDown") { event.preventDefault(); setActiveSuggestion((index) => (index + 1) % suggestions.length); }
+    else if (event.key === "ArrowUp") { event.preventDefault(); setActiveSuggestion((index) => (index <= 0 ? suggestions.length - 1 : index - 1)); }
+    else if (event.key === "Enter" && suggestions[activeSuggestion]) { event.preventDefault(); pickSuggestion(suggestions[activeSuggestion]); }
+    else if (event.key === "Escape") setNameFocused(false);
+  }
+
+  useEffect(() => {
+    let active = true;
+    apiRequest("/item-prices")
+      .then((data) => { if (active) setBilledItems(Array.isArray(data?.items) ? data.items : []); })
+      .catch(() => { /* suggestions are optional: the form works without them */ });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -141,7 +186,6 @@ function Itemsentry() {
       : items.map((item) => item.id === editingItemId ? newItem : item));
     setEditingItemId(null);
     setItemForm(emptyItemForm());
-    setPickedItemId("");
     setShowItemExtras(false);
     resetItemImageInput();
     document.getElementById("itemName")?.focus();
@@ -165,7 +209,6 @@ function Itemsentry() {
   function cancelItemEdit() {
     setEditingItemId(null);
     setItemForm(emptyItemForm());
-    setPickedItemId("");
     setShowItemExtras(false);
     resetItemImageInput();
   }
@@ -189,7 +232,6 @@ function Itemsentry() {
       setBillItems([]);
       setEditingItemId(null);
       setItemForm(emptyItemForm());
-      setPickedItemId("");
       setShowItemExtras(false);
       setBillDate(getTodayDate());
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -568,25 +610,41 @@ function Itemsentry() {
 
           <form onSubmit={addBillItem} className="bill-item-form">
             <div className="row g-4 mt-1">
-              <div className="col-12"><h3 className="bill-form-subtitle">{editingItemId !== null ? "Edit item" : `Item ${billItems.length + 1}`}</h3></div>
+              <div className="col-12 d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                <h3 className="bill-form-subtitle">{editingItemId !== null ? "Edit item" : `Item ${billItems.length + 1}`}</h3>
+                <button type="button" className="link-button tamil-kb-toggle notranslate" translate="no" aria-pressed={tamilKeyboard} onClick={() => setTamilKeyboard((open) => !open)}>
+                  <i className="bi bi-keyboard" aria-hidden="true" /> {tamilKeyboard ? "Hide தமிழ் keyboard" : "தமிழ் keyboard"}
+                </button>
+              </div>
               <div className="col-12">
                 <div className="row g-3">
-                  {inventoryItems.length > 0 && (
-                    <div className="col-12">
-                      <div className="form-group inventory-pick">
-                        <label className="label-title" htmlFor="inventoryPick"><i className="bi bi-boxes" aria-hidden="true" /> Pick from inventory <small className="text-muted">Optional</small></label>
-                        <select id="inventoryPick" className="form-select" value={pickedItemId} onChange={(event) => pickInventoryItem(event.target.value)}>
-                          <option value="">Type a new item, or choose one…</option>
-                          {inventoryItems.map((item) => <option key={item._id} value={item._id}>{item.name} ({item.unit}){item.price ? ` · ${formatRupees(item.price)}` : ""} · stock {item.quantity}</option>)}
-                        </select>
-                        {pickedItem && <small className="inventory-pick-note">Filled from inventory. In stock: <b>{pickedItem.quantity} {pickedItem.unit}</b>. Saving the bill does not change stock.</small>}
-                      </div>
-                    </div>
-                  )}
                   <div className="col-md-6 col-12">
                     <div className="form-group">
                       <label className="label-title" htmlFor="itemName">Item Name</label>
-                      <input id="itemName" className="form-control" placeholder="Enter item name" maxLength="120" value={itemForm.name} onChange={(event) => setItemForm({ ...itemForm, name: event.target.value })} required />
+                      <div className="item-suggest">
+                        <input id="itemName" data-tamil-keyboard inputMode={tamilKeyboard ? "none" : undefined} className="form-control" placeholder="Enter item name" maxLength="120" autoComplete="off"
+                          role="combobox" aria-autocomplete="list" aria-expanded={showSuggestions} aria-controls="item-suggestions" aria-activedescendant={showSuggestions && activeSuggestion >= 0 ? `item-suggestion-${activeSuggestion}` : undefined}
+                          value={itemForm.name} onChange={(event) => { setItemForm({ ...itemForm, name: event.target.value }); setNameFocused(true); setActiveSuggestion(-1); }}
+                          onFocus={() => setNameFocused(true)} onBlur={() => setNameFocused(false)} onKeyDown={onNameKeyDown} required />
+                        {showSuggestions && (
+                          <ul id="item-suggestions" className="item-suggest-list" role="listbox" aria-label="Items entered before">
+                            <li className="item-suggest-heading" aria-hidden="true">Entered before · tap to fill</li>
+                            {suggestions.map((item, index) => (
+                              <li key={item.key} id={`item-suggestion-${index}`} role="option" aria-selected={index === activeSuggestion} className={`item-suggest-option${index === activeSuggestion ? " is-active" : ""}`}
+                                onMouseDown={(event) => event.preventDefault()} onClick={() => pickSuggestion(item)}>
+                                <span className="item-suggest-name">{item.name}<small>{[item.category, item.unit].filter(Boolean).join(" · ")}</small></span>
+                                {item.price > 0 && <span className="item-suggest-price">{formatRupees(item.price)}{item.unit && <small>/{item.unit}</small>}</span>}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      {duplicateLine && (
+                        <p className="item-duplicate-note" role="status">
+                          <i className="bi bi-info-circle" aria-hidden="true" /> {duplicateLine.name} is already in this bill ({duplicateLine.quantity} {duplicateLine.unit}).{" "}
+                          <button type="button" className="link-button" onClick={() => editBillItem(duplicateLine)}>Edit that line</button>
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -633,7 +691,7 @@ function Itemsentry() {
                   <div className="col-md-7 col-12">
                     <div className="form-group">
                       <label className="label-title" htmlFor="itemNote">Note <small className="text-muted">Optional · printed under the item on the bill</small></label>
-                      <input id="itemNote" className="form-control" maxLength="200" placeholder="e.g. 1210 - 10 = 1200 (10 kg was waste material)" value={itemForm.note} onChange={(event) => setItemForm({ ...itemForm, note: event.target.value })} />
+                      <input id="itemNote" data-tamil-keyboard inputMode={tamilKeyboard ? "none" : undefined} className="form-control" maxLength="200" placeholder="e.g. 1210 - 10 = 1200 (10 kg was waste material)" value={itemForm.note} onChange={(event) => setItemForm({ ...itemForm, note: event.target.value })} />
                     </div>
                   </div>
                   <div className="col-md-5 col-12">
@@ -662,6 +720,8 @@ function Itemsentry() {
               </button>
             </div>
           </form>
+
+          <TamilKeyboard open={tamilKeyboard} onClose={() => setTamilKeyboard(false)} defaultTargetId="itemName" />
 
           <section className="bill-preview" aria-label="Bill preview">
             <div className="bill-preview-heading">

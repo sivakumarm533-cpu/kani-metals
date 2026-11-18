@@ -10,7 +10,7 @@ import { decryptTotpSecret, encryptTotpSecret, hashChallenge, makeTotpQr, newCha
 import { recordActivity } from '../utils/activity.js'
 import { profilePictureDataUrl } from '../utils/profilePicture.js'
 import AppSetting, { THEME_IDS } from '../models/AppSetting.js'
-import { BOTTOM_NAV_KEYS, BOTTOM_NAV_MAX, DASHBOARD_WIDGETS, DEFAULT_BOTTOM_NAV, FEATURE_KEYS, NAV_STYLES, LANGUAGE_CODES } from '../config/features.js'
+import { BOTTOM_NAV_KEYS, BOTTOM_NAV_MAX, DASHBOARD_WIDGETS, DEFAULT_BOTTOM_NAV, FEATURE_KEYS, NAV_STYLES, UI_STYLES, LANGUAGE_CODES } from '../config/features.js'
 import { forgetSession, forgetUserSessions } from '../middleware/auth.js'
 
 const allowedAdminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase()
@@ -28,6 +28,7 @@ const publicPreferences = (preferences = {}) => ({
   theme: preferences.theme || '',
   bottomNav: Array.isArray(preferences.bottomNav) && preferences.bottomNav.length ? [...preferences.bottomNav] : [...DEFAULT_BOTTOM_NAV],
   navStyle: preferences.navStyle || 'light',
+  uiStyle: UI_STYLES.includes(preferences.uiStyle) ? preferences.uiStyle : 'modern',
   dashboardHidden: Array.isArray(preferences.dashboardHidden) ? preferences.dashboardHidden.filter((id) => DASHBOARD_WIDGETS.includes(id)) : [],
   language: LANGUAGE_CODES.includes(preferences.language) ? preferences.language : 'en',
 })
@@ -435,6 +436,10 @@ function preferencesFromBody(input, current) {
   if (input.navStyle !== undefined) {
     if (!NAV_STYLES.includes(input.navStyle)) return { error: 'Choose a bottom bar style.' }
     next.navStyle = input.navStyle
+  }
+  if (input.uiStyle !== undefined) {
+    if (!UI_STYLES.includes(input.uiStyle)) return { error: 'Choose an interface style.' }
+    next.uiStyle = input.uiStyle
   }
   if (input.dashboardHidden !== undefined) {
     if (!Array.isArray(input.dashboardHidden) || input.dashboardHidden.some((id) => !DASHBOARD_WIDGETS.includes(id))) return { error: 'Dashboard settings are invalid.' }

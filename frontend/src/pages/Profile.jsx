@@ -5,6 +5,7 @@ import { useAppSettings } from '../settings/appSettingsContext.js'
 import { apiRequest } from '../services/api.js'
 import { compressImageFile } from '../utils/image.js'
 import { applyTheme, cachedThemeId, findTheme, THEME_TIERS, THEMES, themeTier } from '../theme/themes.js'
+import { applyUiStyle, cachedUiStyle, normalizeUiStyle, UI_STYLES } from '../theme/uiStyles.js'
 import { PremiumBadge } from '../components/ui.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { LANGUAGES, savedLanguage, switchLanguage } from '../utils/translate.js'
@@ -134,16 +135,23 @@ function AppearanceCard({ user, updateUser, notify }) {
   const saved = { ...user.preferences, theme: personalTheme }
   const [theme, setTheme] = useState(saved.theme || '')
   const [navStyle, setNavStyle] = useState(saved.navStyle || 'light')
+  const savedUiStyle = normalizeUiStyle(saved.uiStyle)
+  const [uiStyle, setUiStyle] = useState(savedUiStyle)
   const [navKeys, setNavKeys] = useState(() => bottomNavItems(saved.bottomNav, user, features).map((item) => item.key))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const choices = BOTTOM_NAV_CHOICES.filter((item) => canUseItem(item, user, features))
   const previewItems = navKeys.map((key) => choices.find((item) => item.key === key)).filter(Boolean)
   const savedKeys = bottomNavItems(saved.bottomNav, user, features).map((item) => item.key)
-  const changed = (allowUserThemes && theme !== (saved.theme || '')) || navStyle !== (saved.navStyle || 'light') || navKeys.join() !== savedKeys.join()
+  const changed = uiStyle !== savedUiStyle || (allowUserThemes && theme !== (saved.theme || '')) || navStyle !== (saved.navStyle || 'light') || navKeys.join() !== savedKeys.join()
 
   // Leaving the page without saving puts the saved theme back.
-  useEffect(() => () => { applyTheme(cachedThemeId()) }, [])
+  useEffect(() => () => { applyTheme(cachedThemeId()); applyUiStyle(cachedUiStyle()) }, [])
+
+  function pickUiStyle(id) {
+    setUiStyle(id)
+    applyUiStyle(id, { persist: false })
+  }
 
   function pickTheme(id) {
     setTheme(id)
@@ -172,6 +180,7 @@ function AppearanceCard({ user, updateUser, notify }) {
 
   function reset() {
     pickTheme(saved.theme || '')
+    pickUiStyle(savedUiStyle)
     setNavStyle(saved.navStyle || 'light')
     setNavKeys(savedKeys)
     setError('')
@@ -180,9 +189,10 @@ function AppearanceCard({ user, updateUser, notify }) {
   async function save() {
     setBusy(true); setError('')
     try {
-      const preferences = { navStyle, bottomNav: navKeys.length ? navKeys : DEFAULT_BOTTOM_NAV }
+      const preferences = { uiStyle, navStyle, bottomNav: navKeys.length ? navKeys : DEFAULT_BOTTOM_NAV }
       if (allowUserThemes) preferences.theme = theme
       const result = await apiRequest('/auth/profile', { method: 'PATCH', body: JSON.stringify({ preferences }) })
+      applyUiStyle(result.user?.preferences?.uiStyle || uiStyle)
       updateUser(result.user)
       notify('Your appearance settings were saved.')
     } catch (issue) { setError(issue.message) } finally { setBusy(false) }
@@ -190,6 +200,18 @@ function AppearanceCard({ user, updateUser, notify }) {
 
   return (
     <Card id="profile-appearance" icon="bi-palette" title="Appearance" intro="Change how the app looks for you. Tap an option to preview it, then press Save.">
+      <h3 className="profile-subheading">Interface style</h3>
+      <p className="profile-hint">Changes the shape of cards, buttons, menus and tables. Your colour theme stays the same.</p>
+      <div className="ui-style-grid" role="radiogroup" aria-label="Interface style">
+        {UI_STYLES.map((style) => (
+          <button key={style.id} type="button" role="radio" aria-checked={uiStyle === style.id} className={`ui-style-option${uiStyle === style.id ? ' is-selected' : ''}`} onClick={() => pickUiStyle(style.id)}>
+            <span className={`ui-style-sample is-${style.id}`} aria-hidden="true"><span className="ui-style-sample-side"><i /><b /><i /></span><span className="ui-style-sample-main"><i /><i /><b /></span></span>
+            <span className="ui-style-text"><strong>{style.name}{style.id === 'classic' && <small className="ui-style-tag">Original</small>}</strong><small>{style.description}</small></span>
+            {uiStyle === style.id && <i className="bi bi-check-circle-fill ui-style-check" aria-hidden="true" />}
+          </button>
+        ))}
+      </div>
+
       <h3 className="profile-subheading">Colour theme</h3>
       {allowUserThemes ? <div className="profile-theme-grid" role="radiogroup" aria-label="Personal colour theme">
         <button type="button" role="radio" aria-checked={theme === ''} className={`profile-theme-option${theme === '' ? ' is-selected' : ''}`} onClick={() => pickTheme('')} style={{ '--swatch': findTheme(workspaceTheme).primary }}>

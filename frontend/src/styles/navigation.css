@@ -436,3 +436,48 @@
 }
 .payment-form .payment-extra-option { grid-template-columns: none; color: var(--color-text); font-size: 13px; }
 .payment-form .payment-extra-choice legend { font-size: 13px; font-weight: 500; }
+
+/* ---------- Interface style picker (Profile → Appearance) ----------
+   The mini previews use fixed sizes, not tokens, so each one keeps its own
+   look while the other style is being previewed. */
+.ui-style-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.ui-style-option {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface);
+  text-align: left;
+  cursor: pointer;
+}
+.ui-style-option:hover { border-color: var(--color-border-strong); background: var(--color-surface-muted); }
+.ui-style-option.is-selected { border-color: var(--color-primary); background: var(--color-primary-faint); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+.ui-style-text { display: grid; gap: 2px; padding-right: 24px; }
+.ui-style-text strong { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.ui-style-text > small { color: var(--color-text-muted); font-size: 12px; line-height: 1.4; }
+.ui-style-tag { padding: 1px 7px; border-radius: 999px; background: var(--color-surface-muted); color: var(--color-text-muted); font-size: 11px; font-weight: 600; }
+.ui-style-check { position: absolute; right: 12px; bottom: 14px; color: var(--color-primary); font-size: 18px; }
+
+.ui-style-sample { display: flex; gap: 6px; height: 76px; padding: 6px; overflow: hidden; }
+.ui-style-sample-side { display: grid; flex: 0 0 30%; align-content: start; gap: 5px; padding: 6px 5px; }
+.ui-style-sample-side > * { display: block; height: 8px; }
+.ui-style-sample-main { display: grid; flex: 1; grid-template-columns: 1fr 1fr; align-content: start; gap: 6px; padding: 6px; }
+.ui-style-sample-main > * { display: block; height: 26px; }
+.ui-style-sample-main > b { grid-column: 1 / -1; height: 12px; }
+
+.ui-style-sample.is-classic { border-radius: 8px; background: #F5F6F7; }
+.ui-style-sample.is-classic .ui-style-sample-side { border-radius: 6px; background: #fff; box-shadow: 0 1px 3px rgb(16 24 40 / 12%); }
+.ui-style-sample.is-classic .ui-style-sample-side > * { border-radius: 3px; background: #E4E6E9; }
+.ui-style-sample.is-classic .ui-style-sample-side > b { border-left: 3px solid var(--color-primary); background: var(--color-primary-soft); }
+.ui-style-sample.is-classic .ui-style-sample-main > * { border-radius: 5px; background: #fff; box-shadow: 0 2px 5px rgb(16 24 40 / 14%); }
+.ui-style-sample.is-classic .ui-style-sample-main > b { background: var(--color-primary); box-shadow: none; width: 45%; }
+
+.ui-style-sample.is-modern { border-radius: 12px; background: #F3F5F8; }
+.ui-style-sample.is-modern .ui-style-sample-side { border: 1px solid #E3E7EC; border-radius: 10px; background: #fff; }
+.ui-style-sample.is-modern .ui-style-sample-side > * { border-radius: 999px; background: #EEF1F4; }
+.ui-style-sample.is-modern .ui-style-sample-side > b { background: var(--color-primary); }
+.ui-style-sample.is-modern .ui-style-sample-main > * { border: 1px solid #E3E7EC; border-radius: 9px; background: #fff; }
+.ui-style-sample.is-modern .ui-style-sample-main > b { border: 0; border-radius: 999px; background: var(--color-primary); width: 45%; }

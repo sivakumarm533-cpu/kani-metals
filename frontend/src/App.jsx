@@ -12,6 +12,7 @@ import { useMediaQuery } from './hooks/useMediaQuery.js'
 import { AppSettingsProvider } from './settings/AppSettingsProvider.jsx'
 import { useAppSettings } from './settings/appSettingsContext.js'
 import { syncLanguage } from './utils/translate.js'
+import { applyUiStyle } from './theme/uiStyles.js'
 import { bottomNavItems, canUseItem, NAV_ITEMS } from './config/navigation.js'
 import './App.css'
 import './components/component.css'
@@ -21,6 +22,8 @@ import './styles/features.css'
 import './styles/navigation.css'
 import './styles/app-shell.css'
 import './styles/mobile-typography.css'
+// The Modern interface style; every rule is scoped to html[data-ui-style="modern"].
+import './styles/ui-modern.css'
 
 // Pages are split into separate chunks so the first load only downloads what is shown.
 const pageImports = {
@@ -60,6 +63,7 @@ const AdminSignup = lazy(() => import('./pages/AdminSignup.jsx'))
 
 const DESKTOP_QUERY = '(min-width: 961px)'
 const PHONE_QUERY = '(max-width: 720px)'
+const SIDEBAR_KEY = 'kani-sidebar'
 
 /** Downloads the other pages while the browser is idle so moving between screens is instant. */
 function usePrefetchPages() {
@@ -87,12 +91,17 @@ function AppLayout() {
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
   const isPhone = useMediaQuery(PHONE_QUERY)
   // Desktop starts with the sidebar open; small screens start with the drawer closed.
-  const [desktopOpen, setDesktopOpen] = useState(true)
+  // On desktop the menu button folds the sidebar into an icon rail; the choice is kept on this device.
+  const [desktopOpen, setDesktopOpen] = useState(() => { try { return localStorage.getItem(SIDEBAR_KEY) !== 'collapsed' } catch { return true } })
+  useEffect(() => { try { localStorage.setItem(SIDEBAR_KEY, desktopOpen ? 'open' : 'collapsed') } catch { /* storage unavailable */ } }, [desktopOpen])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const sidebarOpen = isDesktop ? desktopOpen : drawerOpen
   const quickItems = bottomNavItems(user?.preferences?.bottomNav, user, features)
   const navStyle = user?.preferences?.navStyle || 'light'
+  // The interface style saved on the profile follows the person to every device.
+  const uiStyle = user?.preferences?.uiStyle
+  useEffect(() => { if (uiStyle) applyUiStyle(uiStyle) }, [uiStyle])
   usePrefetchPages()
   // A language chosen on another device follows the person here.
   const profileLanguage = user?.preferences?.language
@@ -127,7 +136,7 @@ function AppLayout() {
       <AppHeader isPhone={isPhone} isDesktop={isDesktop} sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} onNavigate={closeDrawer} />
       <div className="admin-body">
         {/* Phones use the bottom bar and the More sheet instead of the side menu. */}
-        {!isPhone && <Sidebar isOpen={sidebarOpen} isDesktop={isDesktop} onNavigate={closeDrawer} />}
+        {!isPhone && <Sidebar isOpen={sidebarOpen} isDesktop={isDesktop} collapsed={isDesktop && !desktopOpen} onNavigate={closeDrawer} onExpand={() => setDesktopOpen(true)} />}
         <main className="admin-content" id="main-content" tabIndex={-1}>
           <div className="page-transition" key={location.pathname}>
             <Suspense fallback={<PageLoader />}>

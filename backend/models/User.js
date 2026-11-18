@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import { DEFAULT_BOTTOM_NAV, FEATURE_KEYS, NAV_STYLES, ROLES } from '../config/features.js'
+import { DEFAULT_BOTTOM_NAV, FEATURE_KEYS, NAV_STYLES, ROLES, UI_STYLES } from '../config/features.js'
 
 /** Per-person menu access set by an admin. A missing key means "follow the workspace Feature access". */
 const featureAccessSchema = new mongoose.Schema(Object.fromEntries(FEATURE_KEYS.map((key) => [key, { type: Boolean }])), { _id: false })
@@ -10,6 +10,8 @@ const preferencesSchema = new mongoose.Schema({
   /** Screens pinned to the mobile bottom bar, in order. */
   bottomNav: { type: [String], default: () => [...DEFAULT_BOTTOM_NAV] },
   navStyle: { type: String, enum: NAV_STYLES, default: 'light' },
+  /** Interface style: the new 'modern' look or the original 'classic' one. */
+  uiStyle: { type: String, enum: UI_STYLES, default: 'modern' },
   /** Dashboard sections this person chose to hide (new sections show by default). */
   dashboardHidden: { type: [String], default: () => [] },
   /** Language the app is shown in through Google Translate; 'en' means no translation. */

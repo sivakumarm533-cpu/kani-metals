@@ -16,6 +16,8 @@ export const BOTTOM_NAV_KEYS = ['dashboard', ...FEATURE_KEYS, 'profile', 'settin
 export const DEFAULT_BOTTOM_NAV = ['dashboard', 'itemEntry', 'dealerPayments', 'inventory']
 export const BOTTOM_NAV_MAX = 4
 export const NAV_STYLES = ['light', 'color', 'dark']
+/** Interface styles: 'modern' is the current design, 'classic' keeps the original look. */
+export const UI_STYLES = ['modern', 'classic']
 
 /**
  * Choices offered in form dropdowns. Admins and sub-admins edit them in

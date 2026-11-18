@@ -60,7 +60,7 @@ app.use('/api/dealers', requireFeature('itemEntry', { readWith: ['billComparison
 app.use('/api/products', requireFeature('inventory', { readWith: ['itemEntry'] }), productRoutes)
 app.use('/api/bills', requireFeature('itemEntry', { readWith: ['billComparison', 'dealerPayments'] }), billRoutes)
 app.use('/api/payments', requireFeature('dealerPayments', { readWith: ['itemEntry'] }), paymentRoutes)
-app.use('/api/item-prices', requireFeature('itemPrices'), itemPriceRoutes)
+app.use('/api/item-prices', requireFeature('itemPrices', { readWith: ['itemEntry'] }), itemPriceRoutes)
 app.use('/api/inventory', requireFeature('inventory'), inventoryRoutes)
 app.use('/api/admin/backup', backupRoutes)
 app.use('/api/app-settings', settingsRoutes)

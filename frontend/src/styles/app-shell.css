@@ -602,3 +602,43 @@ html.is-translated body { top: 0 !important; position: static !important; }
 .list-row-name { display: block; }
 @media (min-width: 961px) and (max-width: 1500px) { .list-sections { grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); } }
 .list-section { grid-template-columns: minmax(0, 1fr); }
+
+/* ---------- Desktop: collapsed sidebar becomes an icon rail ----------
+   The menu button folds the sidebar to 76px instead of hiding it. Labels stay
+   in the markup (visually hidden) for screen readers; links show tooltips. */
+@media (min-width: 961px) {
+  .admin-sidebar.is-collapsed:not(.is-open) {
+    display: block;
+    flex: 0 0 76px;
+    width: 76px;
+    padding: 16px 12px;
+    overflow-x: hidden;
+  }
+  .admin-sidebar.is-collapsed .sidebar-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .admin-sidebar.is-collapsed .settings-chevron { display: none; }
+  /* Section headings turn into a thin divider. */
+  .admin-sidebar.is-collapsed nav > .sidebar-heading {
+    height: 1px;
+    margin: 12px 6px;
+    overflow: hidden;
+    background: var(--color-border);
+    color: transparent;
+    font-size: 0;
+  }
+  .admin-sidebar.is-collapsed nav > .sidebar-heading:first-child { margin-top: 0; background: transparent; height: 0; }
+  .admin-sidebar.is-collapsed .sidebar-link {
+    justify-content: center;
+    width: 52px;
+    min-height: 48px;
+    gap: 0;
+    padding: 6px;
+  }
+  .admin-sidebar.is-collapsed .sidebar-link.is-active::before { display: none; }
+}

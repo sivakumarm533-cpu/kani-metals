@@ -52,7 +52,7 @@ export default function AppHeader({ isPhone, isDesktop, sidebarOpen, onToggleSid
       <button
         className={`menu-toggle${sidebarOpen ? ' is-open' : ''}`}
         type="button"
-        aria-label={sidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        aria-label={isDesktop ? (sidebarOpen ? 'Collapse navigation menu to icons' : 'Expand navigation menu') : (sidebarOpen ? 'Close navigation menu' : 'Open navigation menu')}
         aria-expanded={sidebarOpen}
         aria-controls="main-navigation"
         onClick={onToggleSidebar}
