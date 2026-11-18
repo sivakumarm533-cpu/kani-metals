@@ -29,6 +29,8 @@ function DealerBills() {
   const [error, setError] = useState('')
   const [toast, notify] = useToast()
   const [busy, setBusy] = useState(false)
+  // Bills shown open in the accordion. null = nothing chosen yet, so the newest bill starts open.
+  const [openBillIds, setOpenBillIds] = useState(null)
   const requestKey = `${dealerId}:${retry}`
   const loading = data.key !== requestKey
   const { dealer, bills } = data
@@ -87,6 +89,11 @@ function DealerBills() {
 
   if (!loading && data.error) return <section className="boarder-box"><LoadError message={data.error} onRetry={() => setRetry((count) => count + 1)} /><Link className="back-button" to="/itemsentry"><i className="bi bi-arrow-left" aria-hidden="true" /> Back to dealers</Link></section>
 
+  const isBillOpen = (bill, index) => (openBillIds ? openBillIds.includes(bill._id) : index === 0)
+  const allOpen = bills.length > 0 && bills.every(isBillOpen)
+  const toggleBill = (bill, index) => setOpenBillIds(bills.filter((entry, i) => (entry._id === bill._id ? !isBillOpen(bill, index) : isBillOpen(entry, i))).map((entry) => entry._id))
+  const itemPreview = (bill) => bill.items.slice(0, 3).map((item) => item.name).join(', ') + (bill.items.length > 3 ? ` +${bill.items.length - 3} more` : '')
+
   const editTotal = editing ? editing.items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.price || 0), 0) : 0
 
   return <section className="boarder-box dealer-bills-page">
@@ -112,11 +119,23 @@ function DealerBills() {
       <div className="dealer-bill-edit-total">Bill total: {formatRupees(editTotal)}</div>
       <div className="dealer-delete-actions"><button type="button" className="remove-bill-item" onClick={() => askDelete(editing)}>Delete bill</button><button type="button" className="back-button" onClick={() => setEditing(null)}>Cancel</button><button className="continue-btn" disabled={busy || !editing.items.length}>{busy ? 'Saving…' : 'Save and update bill'}</button></div>
     </form>}
-    {!loading && dealer && (!bills.length ? <div className="empty-state empty-state-panel"><i className="bi bi-receipt" aria-hidden="true" /><strong>No bills saved for this dealer yet</strong><span>Create the first bill from Item entry.</span><Link className="continue-btn" to={`/itemsentry?dealer=${dealerId}`}>Add bill</Link></div> : <div className="dealer-bill-list">{bills.map((bill) => <article className="dealer-bill-card" key={bill._id}>
-      <div className="dealer-bill-heading"><div><h3>Bill · {billDate(bill.issuedDate)}</h3><span>{bill.items.length} {bill.items.length === 1 ? 'item' : 'items'}</span></div><strong>{formatRupees(bill.total)}</strong></div>
+    {!loading && dealer && (!bills.length ? <div className="empty-state empty-state-panel"><i className="bi bi-receipt" aria-hidden="true" /><strong>No bills saved for this dealer yet</strong><span>Create the first bill from Item entry.</span><Link className="continue-btn" to={`/itemsentry?dealer=${dealerId}`}>Add bill</Link></div> : <>
+      <div className="dealer-bill-list-toolbar"><span>{bills.length} {bills.length === 1 ? 'bill' : 'bills'} · newest first</span><button type="button" className="link-button" onClick={() => setOpenBillIds(allOpen ? [] : bills.map((bill) => bill._id))}><i className={`bi ${allOpen ? 'bi-arrows-collapse' : 'bi-arrows-expand'}`} aria-hidden="true" /> {allOpen ? 'Collapse all' : 'Expand all'}</button></div>
+      <div className="dealer-bill-list dealer-bill-accordion">{bills.map((bill, index) => {
+      const open = isBillOpen(bill, index)
+      return <article className={`dealer-bill-card${open ? ' is-open' : ''}`} key={bill._id}>
+      <h3 className="dealer-bill-accordion-heading"><button type="button" className="dealer-bill-toggle" id={`bill-head-${bill._id}`} aria-expanded={open} aria-controls={`bill-panel-${bill._id}`} onClick={() => toggleBill(bill, index)}>
+        <span className="dealer-bill-toggle-icon" aria-hidden="true"><i className="bi bi-receipt" /></span>
+        <span className="dealer-bill-toggle-text"><span className="dealer-bill-toggle-title">Bill · {billDate(bill.issuedDate)}{bill.hasPayments && <span className="dealer-bill-paid-badge"><i className="bi bi-wallet2" aria-hidden="true" /> Payments</span>}</span><span className="dealer-bill-toggle-meta">{bill.items.length} {bill.items.length === 1 ? 'item' : 'items'}{!open && bill.items.length > 0 ? ` · ${itemPreview(bill)}` : ''}</span></span>
+        <strong className="dealer-bill-toggle-total">{formatRupees(bill.total)}</strong>
+        <i className="bi bi-chevron-down dealer-bill-chevron" aria-hidden="true" />
+      </button></h3>
+      {open && <div className="dealer-bill-panel" id={`bill-panel-${bill._id}`} role="region" aria-labelledby={`bill-head-${bill._id}`}>
       <div className="table-responsive"><table className="table align-middle mb-0 responsive-card-table"><thead><tr><th>Item</th><th>Category</th><th>Quantity</th><th>Price / unit</th><th>Amount</th></tr></thead><tbody>{bill.items.map((item, index) => <tr key={`${item.name}-${index}`}><td data-label="Item"><span>{item.name}{item.note && <small className="bill-item-note">{item.note}</small>}</span></td><td data-label="Category">{item.category}</td><td data-label="Quantity">{item.quantity} {item.unit}</td><td data-label="Price / unit">{formatRupees(item.price)}</td><td data-label="Amount">{formatRupees(Number(item.quantity) * Number(item.price))}</td></tr>)}</tbody></table></div>
       <div className="dealer-bill-actions"><button type="button" className="whatsapp-inline-btn" onClick={() => setSharingBillId(bill._id)}><i className="bi bi-whatsapp" aria-hidden="true" /> Send on WhatsApp</button><Link className="back-button" to={`/dealer-payments/${dealerId}?bill=${bill._id}`}><i className="bi bi-wallet2" aria-hidden="true" /> Payments</Link>{bill.hasPayments ? <span className="bill-locked-note" title="Reverse this bill's payments in Payments to edit it."><i className="bi bi-lock" aria-hidden="true" /> Has payments · reverse them to edit</span> : <button type="button" className="edit-bill-item" onClick={() => beginEdit(bill)}>Edit bill</button>}<button type="button" className="remove-bill-item" onClick={() => askDelete(bill)}><i className="bi bi-trash3" aria-hidden="true" /> Delete bill</button></div>
-    </article>)}</div>)}
+      </div>}
+    </article>
+    })}</div></>)}
     {sharingBillId && <BillShareModal dealerId={dealerId} billId={sharingBillId} onClose={() => setSharingBillId(null)} />}
     {deleting && (() => {
       const summary = deleteSummary
