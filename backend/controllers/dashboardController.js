@@ -3,11 +3,12 @@ import Dealer from '../models/Dealer.js'
 import Payment from '../models/Payment.js'
 import { appliedPaise, rupeesToPaise } from '../utils/money.js'
 import { userFeatureCheck } from '../middleware/auth.js'
+import { previousRate } from '../utils/priceTrend.js'
 
 const toPaise = (rupees) => rupeesToPaise(String(rupees ?? 0)) ?? 0
 
 /**
- * Dashboard data: dealers with outstanding balances and the latest purchase
+ * Dashboard data: dealers with outstanding balances and the latest selling
  * rate changes, derived from saved bills and received/cleared payments.
  */
 export async function getDashboardSummary(req, res, next) {
@@ -73,11 +74,11 @@ export async function getDashboardSummary(req, res, next) {
       .filter((row) => row.dealer)
       .sort((a, b) => b.pendingPaise - a.pendingPaise)
 
-    // ---- Purchase rate updates per product ----
+    // ---- Selling rate updates per product ----
     const rateUpdates = rateGroups.map((group) => {
       const [latest, ...older] = group.rates
-      // Compare with the most recent rate from a different bill (several lines in one bill are not an update).
-      const previous = older.find((rate) => String(rate.bill) !== String(latest.bill)) || null
+      // Compare with the last different price from another bill (see previousRate).
+      const previous = previousRate(latest, older)
       const latestPaise = toPaise(latest.price)
       const previousPaise = previous ? toPaise(previous.price) : null
       const changePaise = previousPaise === null ? null : latestPaise - previousPaise

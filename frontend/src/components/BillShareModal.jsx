@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import Modal from './Modal.jsx'
 import { apiRequest } from '../services/api.js'
 import { useAppSettings } from '../settings/appSettingsContext.js'
-import { billMessage, billNumber, formatPaise, renderBillImage, statusText, whatsappNumber } from '../utils/billImage.js'
+import { billMessage, billNumber, oldestFirst, formatPaise, renderBillImage, statusText, whatsappNumber } from '../utils/billImage.js'
+
+const shortDate = (value) => new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
 function downloadBlob(blob, name) {
   const url = URL.createObjectURL(blob)
@@ -29,6 +31,8 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
   const [busy, setBusy] = useState(false)
   // Whether the dealer's unpaid amounts from earlier bills are added to this bill.
   const [includeOld, setIncludeOld] = useState(false)
+  // Whether every other unpaid bill (any date) is added with its particulars, in its own section.
+  const [includeAll, setIncludeAll] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -49,20 +53,35 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
     return { business, dealer: details.dealer, bill: row.bill, state: row, payments: details.payments }
   }, [details, billId, business])
 
-  // Earlier bills (older date, or same date but saved before) that still have money to pay, oldest first.
+  // Other bills of the same day, saved before this one, that still have money to pay. Bills of older days are left out.
   const oldBalance = useMemo(() => {
     if (!details || !data) return null
-    const isEarlier = (other) => {
-      const a = new Date(other.issuedDate) - new Date(data.bill.issuedDate)
-      return a < 0 || (a === 0 && String(other._id) < String(data.bill._id))
-    }
+    const day = new Date(data.bill.issuedDate).toDateString()
+    const isEarlier = (other) => new Date(other.issuedDate).toDateString() === day && oldestFirst('issuedDate')(other, data.bill) < 0
     const bills = details.bills
       .filter((row) => row.pendingPaise > 0 && String(row.bill._id) !== String(billId) && isEarlier(row.bill))
-      .sort((a, b) => new Date(a.bill.issuedDate) - new Date(b.bill.issuedDate))
+      .sort((a, b) => oldestFirst('issuedDate')(a.bill, b.bill))
       .map((row) => ({ bill: row.bill, pendingPaise: row.pendingPaise }))
     return bills.length ? { bills, totalPaise: bills.reduce((sum, row) => sum + row.pendingPaise, 0) } : null
   }, [details, data, billId])
-  const sendData = useMemo(() => (data ? { ...data, oldBalance: includeOld ? oldBalance : null } : null), [data, includeOld, oldBalance])
+  // Every other bill of this dealer with money still due (any date), oldest first, with its items.
+  const pendingBills = useMemo(() => {
+    if (!details || !data) return null
+    const bills = details.bills
+      .filter((row) => row.pendingPaise > 0 && String(row.bill._id) !== String(billId))
+      .sort((a, b) => oldestFirst('issuedDate')(a.bill, b.bill))
+      .map((row) => ({ bill: row.bill, totalPaise: row.totalPaise, receivedPaise: row.receivedPaise, pendingPaise: row.pendingPaise }))
+    return bills.length ? { bills, totalPaise: bills.reduce((sum, row) => sum + row.pendingPaise, 0) } : null
+  }, [details, data, billId])
+  const sendData = useMemo(() => (data ? { ...data, oldBalance: includeOld && !includeAll ? oldBalance : null, pendingBills: includeAll ? pendingBills : null } : null), [data, includeOld, includeAll, oldBalance, pendingBills])
+  // Same-day bills add to this bill's balance; all pending bills turn the bill into a statement.
+  const extra = !includeAll && includeOld && oldBalance ? oldBalance : null
+  const statementRows = includeAll && pendingBills && data
+    ? [...pendingBills.bills, { bill: data.bill, totalPaise: data.state.totalPaise, receivedPaise: data.state.receivedPaise, pendingPaise: data.state.pendingPaise, current: true }].sort((a, b) => oldestFirst('issuedDate')(a.bill, b.bill))
+    : null
+  function toggle(setter, other) {
+    return (event) => { setter(event.target.checked); if (event.target.checked) other(false); setImage(null); setNotice('') }
+  }
 
   useEffect(() => {
     if (!sendData) return undefined
@@ -124,23 +143,39 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
         <div className="bill-share-preview">
           {image ? <img src={image.url} alt={`Bill ${data ? billNumber(data.bill) : ''} preview`} /> : <div className="skeleton bill-share-skeleton" aria-label="Preparing bill image" />}
         </div>
-        {data && <dl className="bill-share-summary">
+        {data && statementRows && <dl className="bill-share-summary">
+          {statementRows.map((row, index) => <div key={row.bill._id}><dt>Bill {index + 1}{row.current ? ' (this bill)' : ''} · {billNumber(row.bill)} · {shortDate(row.bill.issuedDate)}</dt><dd className={row.pendingPaise ? 'is-due' : 'is-paid'}>{formatPaise(row.pendingPaise)}</dd></div>)}
+          <div><dt>All bills total</dt><dd>{formatPaise(statementRows.reduce((sum, row) => sum + row.totalPaise, 0))}</dd></div>
+          <div><dt>Total received</dt><dd className="is-paid">{formatPaise(statementRows.reduce((sum, row) => sum + row.receivedPaise, 0))}</dd></div>
+          <div><dt>Total amount due</dt><dd className="is-due"><strong>{formatPaise(statementRows.reduce((sum, row) => sum + row.pendingPaise, 0))}</strong></dd></div>
+        </dl>}
+        {data && !statementRows && <dl className="bill-share-summary">
           <div><dt>Total</dt><dd>{formatPaise(data.state.totalPaise)}</dd></div>
           {data.state.receivedPaise > 0 && <div><dt>Paid (advance / partial)</dt><dd className="is-paid">{formatPaise(data.state.receivedPaise)}</dd></div>}
-          {data.state.receivedPaise > 0 && !(includeOld && oldBalance) && <div><dt>Balance due</dt><dd className={data.state.pendingPaise ? 'is-due' : 'is-paid'}>{formatPaise(data.state.pendingPaise)}</dd></div>}
+          {data.state.receivedPaise > 0 && !extra && <div><dt>Balance due</dt><dd className={data.state.pendingPaise ? 'is-due' : 'is-paid'}>{formatPaise(data.state.pendingPaise)}</dd></div>}
           <div><dt>Status</dt><dd>{statusText(data.state)}</dd></div>
-          {includeOld && oldBalance && <>
-            <div><dt>Old balance</dt><dd className="is-due">{formatPaise(oldBalance.totalPaise)}</dd></div>
-            <div><dt>Total amount due</dt><dd className="is-due"><strong>{formatPaise(data.state.pendingPaise + oldBalance.totalPaise)}</strong></dd></div>
+          {extra && <>
+            {extra.bills.map((row) => <div key={row.bill._id}><dt>{billNumber(row.bill)} · {shortDate(row.bill.issuedDate)}</dt><dd className="is-due">{formatPaise(row.pendingPaise)}</dd></div>)}
+            <div><dt>Total amount due</dt><dd className="is-due"><strong>{formatPaise(data.state.pendingPaise + extra.totalPaise)}</strong></dd></div>
           </>}
         </dl>}
+        {pendingBills && <label className={`bill-share-old${includeAll ? ' is-on' : ''}`}>
+          <span className="bill-share-old-text">
+            <strong>Add all pending bills</strong>
+            <small>{formatPaise(pendingBills.totalPaise)} unpaid from {pendingBills.bills.length} other {pendingBills.bills.length === 1 ? 'bill' : 'bills'}. {includeAll ? 'The bill becomes a statement: each bill with its items, received and balance (oldest first, this bill last), then the grand total.' : 'Not shown on the bill.'}</small>
+          </span>
+          <span className={`feature-switch${includeAll ? ' is-on' : ''}`}>
+            <input type="checkbox" role="switch" checked={includeAll} onChange={toggle(setIncludeAll, setIncludeOld)} aria-label="Add all pending bills to the bill" />
+            <span className="feature-switch-track" aria-hidden="true"><span /></span>
+          </span>
+        </label>}
         {oldBalance && <label className={`bill-share-old${includeOld ? ' is-on' : ''}`}>
           <span className="bill-share-old-text">
-            <strong>Add old balance</strong>
-            <small>{formatPaise(oldBalance.totalPaise)} still unpaid from {oldBalance.bills.length} earlier {oldBalance.bills.length === 1 ? 'bill' : 'bills'}. {includeOld ? 'Shown on the bill with the total amount due.' : 'Not shown on the bill.'}</small>
+            <strong>Add today's other bills</strong>
+            <small>{formatPaise(oldBalance.totalPaise)} unpaid from {oldBalance.bills.length} other {oldBalance.bills.length === 1 ? 'bill' : 'bills'} of the same day. {includeOld ? 'Shown on the bill with bill number, date and the total amount due.' : 'Not shown on the bill.'}</small>
           </span>
           <span className={`feature-switch${includeOld ? ' is-on' : ''}`}>
-            <input type="checkbox" role="switch" checked={includeOld} onChange={(event) => { setIncludeOld(event.target.checked); setImage(null); setNotice('') }} aria-label="Add old balance to the bill" />
+            <input type="checkbox" role="switch" checked={includeOld} onChange={toggle(setIncludeOld, setIncludeAll)} aria-label="Add today's other bills to the bill" />
             <span className="feature-switch-track" aria-hidden="true"><span /></span>
           </span>
         </label>}

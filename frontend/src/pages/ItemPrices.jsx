@@ -6,13 +6,16 @@ import Toast from '../components/Toast.jsx'
 import LoadError from '../components/LoadError.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { compressImage } from '../utils/image.js'
+import { readPriceMessage } from '../utils/priceMessage.js'
+import { useAuth } from '../auth/authContextValue.js'
+import { isManager } from '../config/navigation.js'
 import { FloatingActionButton } from '../components/ui.jsx'
 import { useAppSettings } from '../settings/appSettingsContext.js'
 import scrapImages from '../assets/scrap/scrap-materials-sheet.webp'
 import './ItemPrices.css'
 
 /*
- * Item prices: every item bought on a dealer bill, priced from the most recent bill.
+ * Item prices: every item sold on a dealer bill, priced from the most recent bill.
  * A manual price set here only changes this screen.
  */
 
@@ -185,7 +188,7 @@ function PriceChart({ history, manualPaise, unit }) {
     const days = RANGES.find(([id]) => id === range)?.[2]
     const all = history.slice().reverse()
     if (!days) return all
-    // Counted back from the latest purchase, so items bought rarely still show their recent run.
+    // Counted back from the latest sale, so items sold rarely still show their recent run.
     const from = new Date(all[all.length - 1].date).getTime() - days * 86400000
     const inRange = all.filter((point) => new Date(point.date).getTime() >= from)
     return inRange.length ? inRange : all.slice(-1)
@@ -203,11 +206,9 @@ function PriceChart({ history, manualPaise, unit }) {
   const spread = max - min
   min = Math.max(0, min - spread * 0.12)
   max += spread * 0.12
-  const times = points.map((point) => new Date(point.date).getTime())
-  const t0 = Math.min(...times)
-  const t1 = Math.max(...times)
-  // Several lines on one day are spread evenly instead of stacking on one x position.
-  const x = (index) => (t1 === t0 ? (points.length === 1 ? plotW / 2 : (index / (points.length - 1)) * plotW) : ((times[index] - t0) / (t1 - t0)) * plotW) + pad.left
+  // One even step per sale, so several sales on the same day each get their own point
+  // (by date they would sit on top of each other and hide the rise or drop).
+  const x = (index) => (points.length === 1 ? plotW / 2 : (index / (points.length - 1)) * plotW) + pad.left
   const y = (value) => pad.top + plotH - ((value - min) / (max - min)) * plotH
   const ticks = [0, 1, 2, 3].map((step) => min + ((max - min) * step) / 3)
   const path = points.map((point, index) => `${index ? 'L' : 'M'}${x(index).toFixed(1)},${y(point.pricePaise).toFixed(1)}`).join(' ')
@@ -229,13 +230,13 @@ function PriceChart({ history, manualPaise, unit }) {
   return (
     <div className="price-chart-card">
       <div className="price-chart-head">
-        <div><h3>Price history</h3><p>Bill price{perUnit(unit)} on each purchase</p></div>
+        <div><h3>Price history</h3><p>Bill price{perUnit(unit)} on each sale</p></div>
         <div className="price-range" role="radiogroup" aria-label="Time range">
           {RANGES.map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={range === id} className={range === id ? 'is-active' : ''} onClick={() => { setRange(id); setActive(null) }}>{label}</button>)}
         </div>
       </div>
       <div className="price-chart" ref={wrapRef}>
-        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Price history: ${points.length} purchases from ${shortDate(points[0]?.date)} to ${shortDate(points[points.length - 1]?.date)}, between ${money(Math.min(...points.map((p) => p.pricePaise)))} and ${money(Math.max(...points.map((p) => p.pricePaise)))}.`}
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Price history: ${points.length} sales from ${shortDate(points[0]?.date)} to ${shortDate(points[points.length - 1]?.date)}, between ${money(Math.min(...points.map((p) => p.pricePaise)))} and ${money(Math.max(...points.map((p) => p.pricePaise)))}.`}
           onPointerMove={pick} onPointerDown={pick} onPointerLeave={() => setActive(null)}>
           {ticks.map((tick) => (
             <g key={tick}>
@@ -430,8 +431,8 @@ function DetailModal({ itemKey, onClose, onChanged, onPhotoChanged, notify }) {
             <div><dt>Previous bill</dt><dd>{item.previousBillPaise === null ? '—' : money(item.previousBillPaise)}</dd><small>{item.previousBillDate ? shortDate(item.previousBillDate) : 'No earlier bill'}</small></div>
             <div><dt>Lowest</dt><dd>{money(data.stats.minPaise)}</dd><small>All bills</small></div>
             <div><dt>Highest</dt><dd>{money(data.stats.maxPaise)}</dd><small>All bills</small></div>
-            <div><dt>Average</dt><dd>{money(data.stats.avgPaise)}</dd><small>{data.history.length} purchase{data.history.length === 1 ? '' : 's'}</small></div>
-            <div><dt>Total bought</dt><dd>{quantityText(data.stats.totalQuantity, item.unit)}</dd><small>Since {shortDate(data.stats.firstDate)}</small></div>
+            <div><dt>Average</dt><dd>{money(data.stats.avgPaise)}</dd><small>{data.history.length} sale{data.history.length === 1 ? '' : 's'}</small></div>
+            <div><dt>Total sold</dt><dd>{quantityText(data.stats.totalQuantity, item.unit)}</dd><small>Since {shortDate(data.stats.firstDate)}</small></div>
           </dl>
 
           {data.history.length
@@ -442,13 +443,13 @@ function DetailModal({ itemKey, onClose, onChanged, onPhotoChanged, notify }) {
 
           <section className="price-tabs-card">
             <div className="price-tabs" role="tablist" aria-label="Item details">
-              {[['purchases', `Purchases (${data.history.length})`], ['dealers', `Dealers (${data.dealers.length})`], ['changes', `Manual changes (${data.manualHistory.length})`]].map(([id, label]) => (
+              {[['purchases', `Sales (${data.history.length})`], ['dealers', `Dealers (${data.dealers.length})`], ['changes', `Manual changes (${data.manualHistory.length})`]].map(([id, label]) => (
                 <button key={id} type="button" role="tab" id={`price-tab-${id}`} aria-selected={tab === id} aria-controls={`price-panel-${id}`} className={tab === id ? 'is-active' : ''} onClick={() => setTab(id)}>{label}</button>
               ))}
             </div>
             <div role="tabpanel" id={`price-panel-${tab}`} aria-labelledby={`price-tab-${tab}`}>
               {tab === 'purchases' && !data.history.length && <p className="price-empty-note">No bills include this item yet.</p>}
-              {tab === 'dealers' && !data.dealers.length && <p className="price-empty-note">No dealer has sold this item yet.</p>}
+              {tab === 'dealers' && !data.dealers.length && <p className="price-empty-note">This item has not been sold to any dealer yet.</p>}
               {tab === 'purchases' && data.history.length > 0 && (
                 <div className="price-table-wrap">
                   <table className="price-table">
@@ -473,7 +474,7 @@ function DetailModal({ itemKey, onClose, onChanged, onPhotoChanged, notify }) {
                   {data.dealers.map((row) => (
                     <li key={row.dealer._id}>
                       <span className="price-dealer-avatar" aria-hidden="true">{row.dealer.profileImage ? <img src={row.dealer.profileImage} alt="" /> : row.dealer.name.charAt(0).toUpperCase()}</span>
-                      <span className="price-dealer-text"><strong>{row.dealer.name}</strong><small>{row.lines} purchase{row.lines === 1 ? '' : 's'} · {quantityText(row.quantity, item.unit)}</small></span>
+                      <span className="price-dealer-text"><strong>{row.dealer.name}</strong><small>{row.lines} sale{row.lines === 1 ? '' : 's'} · {quantityText(row.quantity, item.unit)}</small></span>
                       <span className="price-dealer-price"><b>{money(row.lastPaise)}</b><small>Last on {shortDate(row.lastDate)}</small></span>
                     </li>
                   ))}
@@ -527,7 +528,7 @@ function AddItemModal({ categories, units, onClose, onAdded, notify }) {
         <div><span className="payment-eyebrow">NEW ITEM</span><h2 id="price-add-title">Add an item</h2></div>
         <button type="button" className="payment-close" aria-label="Close dialog" onClick={onClose}>×</button>
       </div>
-      <p className="price-add-help">For items you have not bought on a bill yet. When a bill later includes the same name and unit, its bill prices join this item.</p>
+      <p className="price-add-help">For items you have not sold on a bill yet. When a bill later includes the same name and unit, its bill prices join this item.</p>
       <form className="price-add-form" onSubmit={submit}>
         <div className="price-add-photo">
           {form.image
@@ -563,6 +564,209 @@ function AddItemModal({ categories, units, onClose, onAdded, notify }) {
   )
 }
 
+/** Items with a manual price where a newer bill came in at a different price. */
+const needsBillReview = (item) => item.newerBill && item.manual && item.billPaise !== item.manual.pricePaise
+const REVIEW_LATER_KEY = 'kani-price-review-later'
+
+/**
+ * Admin check after new bills: for each item with a manual price, use the new bill
+ * price, keep the manual price, or type a new one.
+ */
+function BillPriceReviewModal({ items, onClose, onSaved, notify }) {
+  const [choices, setChoices] = useState(() => Object.fromEntries(items.map((item) => [item.key, { action: 'bill', price: String(item.billPaise / 100) }])))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const choose = (key, changes) => setChoices((current) => ({ ...current, [key]: { ...current[key], ...changes } }))
+  const setAll = (action) => setChoices((current) => Object.fromEntries(Object.entries(current).map(([key, value]) => [key, { ...value, action }])))
+
+  async function save() {
+    setError('')
+    const edited = items.filter((item) => choices[item.key].action === 'edit')
+    const bad = edited.find((item) => !(Number(choices[item.key].price) > 0))
+    if (bad) { setError(`Enter a price above ₹0 for ${bad.name}.`); return }
+    setBusy(true)
+    try {
+      const useBill = items.filter((item) => choices[item.key].action === 'bill')
+      for (const item of useBill) await apiRequest(`/item-prices/manual?key=${encodeURIComponent(item.key)}`, { method: 'DELETE' })
+      // Keeping the manual price saves it again, so the newer bill no longer asks for a check.
+      const keep = items.filter((item) => choices[item.key].action === 'keep')
+      if (keep.length) await apiRequest('/item-prices/manual/bulk', { method: 'PUT', body: JSON.stringify({ note: 'Kept after new bill', updates: keep.map((item) => ({ key: item.key, price: (item.manual.pricePaise / 100).toFixed(2) })) }) })
+      if (edited.length) await apiRequest('/item-prices/manual/bulk', { method: 'PUT', body: JSON.stringify({ note: 'Updated after new bill', updates: edited.map((item) => ({ key: item.key, price: choices[item.key].price })) }) })
+      const parts = [useBill.length && `${useBill.length} now use the bill price`, keep.length && `${keep.length} kept`, edited.length && `${edited.length} updated`].filter(Boolean)
+      notify(`Prices checked: ${parts.join(', ')}.`)
+      onSaved()
+    } catch (saveError) {
+      // Some items may already be saved; reload so the list shows what is left.
+      setError(saveError.message)
+      setBusy(false)
+      onSaved({ keepOpen: true })
+    }
+  }
+
+  return (
+    <Modal className="payment-modal price-review" backdropClassName="payment-modal-backdrop" busy={busy} onClose={onClose} labelledBy="price-review-title">
+      <div className="payment-modal-heading">
+        <div><span className="payment-eyebrow">NEW BILL PRICES</span><h2 id="price-review-title">Confirm item prices</h2></div>
+        <button type="button" className="payment-close" aria-label="Close dialog" onClick={onClose}>×</button>
+      </div>
+      <p className="price-add-help">New bills came in at a different price for {items.length} {items.length === 1 ? 'item' : 'items'} that {items.length === 1 ? 'has' : 'have'} a manual price. Choose which price to show for each.</p>
+      <div className="price-review-all">
+        <span>Set all:</span>
+        <button type="button" className="dealer-pick-chip" onClick={() => setAll('bill')}>Use bill prices</button>
+        <button type="button" className="dealer-pick-chip" onClick={() => setAll('keep')}>Keep my prices</button>
+      </div>
+      <ul className="price-review-rows">
+        {items.map((item) => {
+          const choice = choices[item.key]
+          const up = item.billPaise > item.manual.pricePaise
+          return (
+            <li key={item.key} className="price-review-row">
+              <div className="price-review-head">
+                <strong>{item.name}{item.unit ? <small> / {item.unit}</small> : null}</strong>
+                <span className={`price-trend ${up ? 'is-up' : 'is-down'}`}>{up ? '▲' : '▼'} {money(Math.abs(item.billPaise - item.manual.pricePaise))}</span>
+              </div>
+              <div className="price-review-compare">
+                <span><small>Your price</small><b>{money(item.manual.pricePaise)}</b><em>Set {shortDate(item.manual.updatedAt)}</em></span>
+                <i className="bi bi-arrow-right" aria-hidden="true" />
+                <span><small>New bill</small><b>{money(item.billPaise)}</b><em>{item.billDealer || 'Dealer'} · {shortDate(item.billDate)}</em></span>
+              </div>
+              <div className="price-review-choice" role="radiogroup" aria-label={`Price for ${item.name}`}>
+                {[['bill', 'Use bill price'], ['keep', 'Keep my price'], ['edit', 'Edit']].map(([id, label]) => (
+                  <button key={id} type="button" role="radio" aria-checked={choice.action === id} className={`dealer-pick-chip${choice.action === id ? ' is-active' : ''}`} onClick={() => choose(item.key, { action: id })}>{label}</button>
+                ))}
+                {choice.action === 'edit' && (
+                  <label className="price-message-price"><span>₹</span><input type="number" inputMode="decimal" min="0.01" step="0.01" value={choice.price} onChange={(event) => choose(item.key, { price: event.target.value })} aria-label={`New price for ${item.name}`} data-autofocus /></label>
+                )}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+      {error && <p className="payment-form-error" role="alert">{error}</p>}
+      <div className="payment-modal-actions">
+        <button type="button" className="back-button" disabled={busy} onClick={onClose}>Later</button>
+        <button type="button" className="continue-btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Confirm prices'}</button>
+      </div>
+    </Modal>
+  )
+}
+
+const MESSAGE_EXAMPLE = 'Copper 780\nBrass 520/kg, Aluminium 185\nIron scrap - Rs 32 per kg'
+
+/** Paste a rate message, check what was read, then save the prices together. */
+function MessagePricesModal({ items, onClose, onSaved, notify }) {
+  const [text, setText] = useState('')
+  const [rows, setRows] = useState(null)
+  const [skipped, setSkipped] = useState([])
+  const [note, setNote] = useState(() => `Rate message ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const itemByKey = useMemo(() => new Map(items.map((item) => [item.key, item])), [items])
+  const sortedItems = useMemo(() => items.slice().sort((a, b) => a.name.localeCompare(b.name)), [items])
+
+  function read() {
+    setError('')
+    const result = readPriceMessage(text, items)
+    if (!result.rows.length) { setError('No prices found. Write one item and price per line, like "Copper 780".'); return }
+    setRows(result.rows.map((row, index) => {
+      const current = itemByKey.get(row.key)
+      return { ...row, id: index, price: String(row.price), include: Boolean(current) && row.confidence !== 'none' && row.pricePaise !== current.currentPaise }
+    }))
+    setSkipped(result.skipped)
+  }
+
+  const update = (id, changes) => setRows((current) => current.map((row) => {
+    if (row.id !== id) return row
+    const next = { ...row, ...changes }
+    // Picking an item by hand means the match is now confirmed.
+    if ('key' in changes) { next.confidence = changes.key ? 'high' : 'none'; next.include = Boolean(changes.key) }
+    return next
+  }))
+
+  const chosen = (rows || []).filter((row) => row.include && row.key)
+  const repeated = chosen.map((row) => row.key).filter((key, index, keys) => keys.indexOf(key) !== index)
+
+  async function save() {
+    setError('')
+    if (repeated.length) { setError(`${itemByKey.get(repeated[0])?.name} is chosen twice. Untick one of them.`); return }
+    const bad = chosen.find((row) => !(Number(row.price) > 0))
+    if (bad) { setError(`Enter a price above ₹0 for ${itemByKey.get(bad.key)?.name}.`); return }
+    setBusy(true)
+    try {
+      const result = await apiRequest('/item-prices/manual/bulk', { method: 'PUT', body: JSON.stringify({ note, updates: chosen.map((row) => ({ key: row.key, price: row.price })) }) })
+      notify(result.message)
+      onSaved()
+    } catch (saveError) { setError(saveError.message); setBusy(false) }
+  }
+
+  return (
+    <Modal className="payment-modal price-message" backdropClassName="payment-modal-backdrop" busy={busy} onClose={onClose} labelledBy="price-message-title">
+      <div className="payment-modal-heading">
+        <div><span className="payment-eyebrow">UPDATE FROM MESSAGE</span><h2 id="price-message-title">{rows ? 'Check the prices' : 'Paste a rate message'}</h2></div>
+        <button type="button" className="payment-close" aria-label="Close dialog" onClick={onClose}>×</button>
+      </div>
+
+      {!rows && (
+        <div className="price-message-step">
+          <p className="price-add-help">Paste a WhatsApp or SMS rate list. Write one item per line, or separate items with commas. You will see every price before anything is saved.</p>
+          <label className="price-message-input">Message
+            <textarea data-autofocus rows="8" value={text} onChange={(event) => setText(event.target.value)} placeholder={MESSAGE_EXAMPLE} />
+          </label>
+          {error && <p className="payment-form-error" role="alert">{error}</p>}
+          <div className="payment-modal-actions">
+            <button type="button" className="back-button" onClick={onClose}>Cancel</button>
+            <button type="button" className="continue-btn" disabled={!text.trim()} onClick={read}><i className="bi bi-magic" aria-hidden="true" /> Read prices</button>
+          </div>
+        </div>
+      )}
+
+      {rows && (
+        <div className="price-message-step">
+          <p className="price-add-help">Ticked rows will be saved as manual prices. Rows marked <b>Check</b> were a close spelling match; make sure the item is right.</p>
+          <ul className="price-message-rows">
+            {rows.map((row) => {
+              const current = itemByKey.get(row.key)
+              const newPaise = Math.round(Number(row.price) * 100) || 0
+              const diff = current ? newPaise - current.currentPaise : 0
+              return (
+                <li key={row.id} className={`price-message-row${row.include ? ' is-on' : ''}${row.confidence !== 'high' ? ' needs-check' : ''}`}>
+                  <input type="checkbox" checked={row.include} disabled={!row.key} onChange={(event) => update(row.id, { include: event.target.checked })} aria-label={`Save price for ${row.name}`} />
+                  <div className="price-message-main">
+                    <span className="price-message-raw" title={row.raw}>“{row.raw}”
+                      {row.confidence === 'low' && <span className="price-message-flag is-check">Check</span>}
+                      {row.confidence === 'none' && <span className="price-message-flag is-none">No match</span>}
+                    </span>
+                    <div className="price-message-fields">
+                      <select value={row.key} onChange={(event) => update(row.id, { key: event.target.value })} aria-label="Item">
+                        <option value="">— Choose item —</option>
+                        {sortedItems.map((item) => <option key={item.key} value={item.key}>{item.name}{item.unit ? ` (${item.unit})` : ''}</option>)}
+                      </select>
+                      <label className="price-message-price"><span>₹</span><input type="number" inputMode="decimal" min="0.01" step="0.01" value={row.price} onChange={(event) => update(row.id, { price: event.target.value })} aria-label="New price" /></label>
+                    </div>
+                    {current && (
+                      <small className="price-message-change">
+                        Now {money(current.currentPaise)}{perUnit(current.unit)} →{' '}
+                        {diff === 0 ? <span>no change</span> : <span className={diff > 0 ? 'is-up' : 'is-down'}>{diff > 0 ? '▲' : '▼'} {money(Math.abs(diff))}</span>}
+                      </small>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+          {skipped.length > 0 && <p className="price-message-skipped"><i className="bi bi-info-circle" aria-hidden="true" /> Not read (no price): {skipped.map((line) => `“${line}”`).join(', ')}</p>}
+          <label className="price-message-note">Note for these prices (optional)<input maxLength="200" value={note} onChange={(event) => setNote(event.target.value)} /></label>
+          {error && <p className="payment-form-error" role="alert">{error}</p>}
+          <div className="payment-modal-actions">
+            <button type="button" className="back-button" disabled={busy} onClick={() => { setRows(null); setError('') }}><i className="bi bi-arrow-left" aria-hidden="true" /> Edit message</button>
+            <button type="button" className="continue-btn" disabled={busy || !chosen.length} onClick={save}>{busy ? 'Saving…' : `Save ${chosen.length} price${chosen.length === 1 ? '' : 's'}`}</button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 const SORTS = [['recent', 'Recently updated'], ['name', 'Name A–Z'], ['high', 'Highest price'], ['low', 'Lowest price'], ['change', 'Biggest change']]
 
 export default function ItemPrices() {
@@ -574,7 +778,20 @@ export default function ItemPrices() {
   const [view, setView] = useState(readView)
   const [openKey, setOpenKey] = useState(null)
   const [adding, setAdding] = useState(false)
+  const [fromMessage, setFromMessage] = useState(false)
   const [toast, notify] = useToast()
+  const { user } = useAuth()
+  const admin = isManager(user)
+  // The bill-price check opens by itself once per session; "Later" hides it until the next visit.
+  const [reviewing, setReviewing] = useState(false)
+  const [reviewLater, setReviewLater] = useState(() => { try { return sessionStorage.getItem(REVIEW_LATER_KEY) === '1' } catch { return false } })
+  const toReview = useMemo(() => (admin ? state.items.filter(needsBillReview) : []), [admin, state.items])
+  useEffect(() => { if (toReview.length && !reviewLater) setReviewing(true) }, [toReview.length, reviewLater])
+  function reviewLaterClose() {
+    setReviewing(false)
+    setReviewLater(true)
+    try { sessionStorage.setItem(REVIEW_LATER_KEY, '1') } catch { /* only for this visit */ }
+  }
 
   const load = useCallback(async () => {
     setState((current) => ({ ...current, loading: true, error: '' }))
@@ -620,7 +837,10 @@ export default function ItemPrices() {
           <h1 className="page-title">Item prices</h1>
           <p className="page-description">Prices come from the latest dealer bill. Tap an item for its full price history.</p>
         </div>
-        <button type="button" className="continue-btn price-add-button" onClick={() => setAdding(true)}><i className="bi bi-plus-lg" aria-hidden="true" />Add item</button>
+        <div className="price-head-actions">
+          {state.items.length > 0 && <button type="button" className="back-button price-message-button" onClick={() => setFromMessage(true)}><i className="bi bi-chat-text" aria-hidden="true" />Update from message</button>}
+          <button type="button" className="continue-btn price-add-button" onClick={() => setAdding(true)}><i className="bi bi-plus-lg" aria-hidden="true" />Add item</button>
+        </div>
       </header>
 
       {!state.loading && state.items.length > 0 && (
@@ -630,6 +850,14 @@ export default function ItemPrices() {
           <li><span className="price-summary-icon is-down"><i className="bi bi-arrow-down-right" aria-hidden="true" /></span><span><b>{counts.down}</b><small>Went down</small></span></li>
           <li><span className="price-summary-icon is-manual"><i className="bi bi-pencil" aria-hidden="true" /></span><span><b>{counts.manual}</b><small>Manual prices</small></span></li>
         </ul>
+      )}
+
+      {toReview.length > 0 && !reviewing && (
+        <button type="button" className="price-review-banner" onClick={() => setReviewing(true)}>
+          <i className="bi bi-receipt" aria-hidden="true" />
+          <span><strong>{toReview.length} new bill {toReview.length === 1 ? 'price' : 'prices'} to confirm</strong><small>New bills differ from your manual prices. Tap to choose which price to keep.</small></span>
+          <i className="bi bi-chevron-right" aria-hidden="true" />
+        </button>
       )}
 
       {/* Category tabs first, then search, sort and layout. */}
@@ -665,7 +893,9 @@ export default function ItemPrices() {
         : <ul className="price-list">{shown.map((item) => <PriceRow key={item.key} item={item} image={images[item.key]} onOpen={setOpenKey} />)}</ul>)}
 
       {openKey && <DetailModal itemKey={openKey} onClose={() => setOpenKey(null)} onChanged={load} onPhotoChanged={setImage} notify={notify} />}
-      {!adding && !openKey && <FloatingActionButton icon="bi-plus-lg" label="Add item" onClick={() => setAdding(true)} />}
+      {reviewing && toReview.length > 0 && !openKey && !adding && !fromMessage && <BillPriceReviewModal key={toReview.map((item) => item.key).join(',')} items={toReview} notify={notify} onClose={reviewLaterClose} onSaved={(options) => { if (!options?.keepOpen) setReviewing(false); load() }} />}
+      {fromMessage && <MessagePricesModal items={state.items} notify={notify} onClose={() => setFromMessage(false)} onSaved={() => { setFromMessage(false); load() }} />}
+      {!adding && !openKey && !fromMessage && !reviewing && <FloatingActionButton icon="bi-plus-lg" label="Add item" onClick={() => setAdding(true)} />}
       {adding && <AddItemModal categories={[...new Set([...lists.itemCategories, ...state.categories])]} units={lists.units} notify={notify} onClose={() => setAdding(false)} onAdded={(key, image) => { setAdding(false); if (image) setImage(key, image); load(); setOpenKey(key) }} />}
     </section>
   )

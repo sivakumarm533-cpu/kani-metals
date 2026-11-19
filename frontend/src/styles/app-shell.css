@@ -642,3 +642,14 @@ html.is-translated body { top: 0 !important; position: static !important; }
   }
   .admin-sidebar.is-collapsed .sidebar-link.is-active::before { display: none; }
 }
+
+/* Dashboard bento: no empty gaps under short panels.
+   Cards in a row stretch to the same height; with the price list shown it runs down the right
+   side beside the stacked panels on the left. */
+.dash-panels { align-items: stretch; }
+.dash-panels > .dash-panel { display: flex; min-width: 0; flex-direction: column; }
+@media (min-width: 992px) {
+  .dash-panels.is-bento { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); grid-auto-flow: row dense; }
+  .dash-panels.is-bento > .dash-panel { grid-column: 1; }
+  .dash-panels.is-bento > .dash-panel-tall { grid-column: 2; grid-row: 1 / span var(--bento-rows, 1); }
+}

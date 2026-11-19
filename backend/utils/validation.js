@@ -75,6 +75,7 @@ export function dealerPayload(body = {}, { partial = false } = {}) {
     category: !partial || category !== undefined ? (optionalText(category, 'dealer category', 60) || 'Regular Dealer') : undefined,
     profileImage: !partial || has('profileImage') ? optionalImage(body.profileImage, 'profile photo') : undefined,
     cardColor: !partial || has('cardColor') ? (/^#[0-9a-f]{6}$/i.test(String(body.cardColor || '')) ? body.cardColor : '#fff3e8') : undefined,
+    topColor: !partial || has('topColor') ? (/^#[0-9a-f]{6}$/i.test(String(body.topColor || '')) ? body.topColor : '') : undefined,
     cardBackground: !partial || has('cardBackground') ? optionalImage(body.cardBackground, 'card background image') : undefined,
     active: has('active') ? activeFlag(body.active) : partial ? undefined : true,
   })

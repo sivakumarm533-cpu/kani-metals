@@ -5,8 +5,8 @@
  */
 export const NAV_ITEMS = [
   { key: 'dashboard', to: '/dashboard', icon: 'bi-house-door', activeIcon: 'bi-house-door-fill', label: 'Home', fullLabel: 'Dashboard', description: 'Pending payments and latest rates at a glance' },
-  { key: 'itemEntry', to: '/itemsentry', icon: 'bi-receipt-cutoff', activeIcon: 'bi-receipt-cutoff', label: 'Bills', fullLabel: 'Item entry', description: 'Add dealers and create purchase bills', feature: 'itemEntry', match: ['/itemsentry', '/dealers/'] },
-  { key: 'dealerPayments', to: '/dealer-payments', icon: 'bi-wallet2', activeIcon: 'bi-wallet-fill', label: 'Payments', fullLabel: 'Dealer payments', description: 'Record and track money paid to dealers', feature: 'dealerPayments' },
+  { key: 'itemEntry', to: '/itemsentry', icon: 'bi-receipt-cutoff', activeIcon: 'bi-receipt-cutoff', label: 'Bills', fullLabel: 'Item entry', description: 'Add dealers and create sales bills', feature: 'itemEntry', match: ['/itemsentry', '/dealers/'] },
+  { key: 'dealerPayments', to: '/dealer-payments', icon: 'bi-wallet2', activeIcon: 'bi-wallet-fill', label: 'Payments', fullLabel: 'Dealer payments', description: 'Record and track money received from dealers', feature: 'dealerPayments' },
   { key: 'itemPrices', to: '/item-prices', icon: 'bi-currency-rupee', activeIcon: 'bi-currency-rupee', label: 'Prices', fullLabel: 'Item prices', description: 'Latest price of every item from dealer bills', feature: 'itemPrices' },
   { key: 'billComparison', to: '/bill-comparison', icon: 'bi-arrow-left-right', activeIcon: 'bi-arrow-left-right', label: 'Compare', fullLabel: 'Bill comparison', description: 'Compare two bills from the same dealer', feature: 'billComparison' },
   { key: 'inventory', to: '/inventory', icon: 'bi-boxes', activeIcon: 'bi-boxes', label: 'Stock', fullLabel: 'Inventory', description: 'Current stock of every item', feature: 'inventory' },

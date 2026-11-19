@@ -3,6 +3,7 @@ import Dealer from '../models/Dealer.js'
 import ItemPrice from '../models/ItemPrice.js'
 import { recordActivity } from '../utils/activity.js'
 import { rupeesToPaise } from '../utils/money.js'
+import { previousRate } from '../utils/priceTrend.js'
 import { optionalImage } from '../utils/validation.js'
 
 /*
@@ -140,7 +141,7 @@ export async function listItemPrices(_req, res, next) {
       const key = `${group._id.name}|${group._id.unit}`
       billKeys.add(key)
       const [latest, ...older] = group.recent
-      const previous = older.find((rate) => String(rate.bill) !== String(latest.bill)) || null
+      const previous = previousRate(latest, older)
       const doc = docByKey.get(key)
       return {
         ...priceRow({ key, latest, previous, doc }),
@@ -226,10 +227,10 @@ export async function getItemPriceDetail(req, res, next) {
     const dealers = await Dealer.find({ _id: { $in: [...new Set(lines.map((line) => String(line.dealer)))] } }).select('name phone location profileImage').lean()
     const dealerById = new Map(dealers.map((dealer) => [String(dealer._id), dealer]))
     const [latest = null, ...older] = lines
-    const previous = latest ? older.find((line) => String(line.bill) !== String(latest.bill)) || null : null
+    const previous = previousRate(latest, older)
     const prices = lines.length ? lines.map((line) => toPaise(line.price)) : [doc.pricePaise]
 
-    // Per dealer: what they charged last and how much was bought from them.
+    // Per dealer: the last price they were charged and how much was sold to them.
     const byDealer = new Map()
     for (const line of lines) {
       const id = String(line.dealer)
@@ -326,6 +327,62 @@ export async function setItemImage(req, res, next) {
   } catch (error) { next(error) }
 }
 
+/** Saves one manual price (with history and activity log) for an item that is already checked to exist. */
+async function saveManualPrice(req, { item, line, before, pricePaise, note }) {
+  const change = { action: 'set', pricePaise, note, changedBy: req.user._id, changedByName: req.user.name, changedAt: new Date() }
+  const saved = await ItemPrice.findOneAndUpdate(
+    { key: item.key },
+    {
+      $set: { pricePaise, note, updatedBy: req.user._id, updatedByName: req.user.name },
+      $setOnInsert: { name: line?.name?.trim() || before?.name, unit: line?.unit || '', category: line?.category || '' },
+      $push: { history: { $each: [change], $slice: -50 } },
+    },
+    { upsert: true, returnDocument: 'after', runValidators: true },
+  ).lean()
+  await recordActivity(req, { action: before ? 'update' : 'create', entity: 'itemPrice', entityId: saved._id, entityLabel: `${saved.name} price`, before: before && { pricePaise: before.pricePaise, note: before.note }, after: { pricePaise, note } })
+  return saved
+}
+
+/**
+ * Many manual prices at once, from a pasted rate message. Every row is checked
+ * first, so nothing is saved when one of them is wrong.
+ */
+export async function setManualPrices(req, res, next) {
+  try {
+    const updates = Array.isArray(req.body?.updates) ? req.body.updates : []
+    if (!updates.length) throw badRequest('Choose at least one price to save.')
+    if (updates.length > 200) throw badRequest('Save up to 200 prices at a time.')
+    const note = String(req.body?.note || '').trim().slice(0, 200)
+    const byKey = new Map()
+    for (const update of updates) {
+      const item = parseKey(update?.key)
+      byKey.set(item.key, { item, pricePaise: parsePrice(update?.price) })
+    }
+    // One lookup for all items (newest bill line and saved price of each), not one scan of every bill per item.
+    const keys = [...byKey.keys()]
+    const [lines, docs] = await Promise.all([
+      Bill.aggregate([
+        ...linesStages,
+        { $addFields: { lineKey: { $concat: [normName, '|', normUnit] } } },
+        { $match: { lineKey: { $in: keys } } },
+        { $sort: newestFirst },
+        { $group: { _id: '$lineKey', name: { $first: '$items.name' }, unit: { $first: '$items.unit' }, category: { $first: '$items.category' } } },
+      ]),
+      ItemPrice.find({ key: { $in: keys } }).lean(),
+    ])
+    const lineByKey = new Map(lines.map((line) => [line._id, line]))
+    const docByKey = new Map(docs.map((doc) => [doc.key, doc]))
+    const rows = [...byKey.values()].map((row) => {
+      const line = lineByKey.get(row.item.key) || null
+      const before = docByKey.get(row.item.key) || null
+      if (!line && !before) throw badRequest(`${row.item.name} is not in the price list.`, 404)
+      return { ...row, line, before }
+    })
+    for (const row of rows) await saveManualPrice(req, { ...row, note })
+    res.json({ message: `${rows.length} price${rows.length === 1 ? '' : 's'} updated. Bills are not changed.`, count: rows.length })
+  } catch (error) { next(error) }
+}
+
 export async function setManualPrice(req, res, next) {
   try {
     const item = parseKey(req.body?.key)
@@ -333,18 +390,7 @@ export async function setManualPrice(req, res, next) {
     const note = String(req.body?.note || '').trim().slice(0, 200)
     const { line, doc: before } = await findItem(item)
     if (!line && !before) throw badRequest('This item is not in the price list.', 404)
-
-    const change = { action: 'set', pricePaise, note, changedBy: req.user._id, changedByName: req.user.name, changedAt: new Date() }
-    const saved = await ItemPrice.findOneAndUpdate(
-      { key: item.key },
-      {
-        $set: { pricePaise, note, updatedBy: req.user._id, updatedByName: req.user.name },
-        $setOnInsert: { name: line?.name?.trim() || before?.name, unit: line?.unit || '', category: line?.category || '' },
-        $push: { history: { $each: [change], $slice: -50 } },
-      },
-      { upsert: true, returnDocument: 'after', runValidators: true },
-    ).lean()
-    await recordActivity(req, { action: before ? 'update' : 'create', entity: 'itemPrice', entityId: saved._id, entityLabel: `${saved.name} price`, before: before && { pricePaise: before.pricePaise, note: before.note }, after: { pricePaise, note } })
+    const saved = await saveManualPrice(req, { item, line, before, pricePaise, note })
     res.json({ message: `Manual price saved for ${saved.name}. Bills are not changed.`, manual: publicManual(saved) })
   } catch (error) { next(error) }
 }

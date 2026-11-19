@@ -16,13 +16,13 @@ import { canUseItem, NAV_ITEMS } from "../config/navigation.js";
 
 // Friendlier names for common units in the unit dropdown; any other unit shows as typed.
 const unitLabels = { kg: "Kilogram (kg)", pcs: "Pieces (pcs)", ton: "Ton", g: "Gram (g)", litre: "Litre", metre: "Metre", bundle: "Bundle" };
-const emptyDealerForm = (type = "Regular Dealer") => ({ name: "", phone: "", location: "", type, image: "", cardColor: "#fff3e8", cardBackground: "", active: true });
+const emptyDealerForm = (type = "Regular Dealer") => ({ name: "", phone: "", location: "", type, image: "", cardColor: "#fff3e8", topColor: "", cardBackground: "", active: true });
 const emptyItemForm = () => ({ name: "", category: "", quantity: "", price: "", unit: "kg", image: "", note: "" });
 // Dealers saved before the status existed count as active.
 const mapDealer = (dealer) => ({ ...dealer, id: dealer._id, type: dealer.category, image: dealer.profileImage, active: dealer.active !== false });
 const statusFilters = [["all", "All"], ["active", "Active"], ["inactive", "Inactive"]];
 const flowSteps = [
-  { label: "Choose dealer", hint: "Who are you buying from?" },
+  { label: "Choose dealer", hint: "Who are you selling to?" },
   { label: "Add items", hint: "What did you buy?" },
   { label: "Done", hint: "Send bill or record payment" },
 ];
@@ -254,6 +254,7 @@ function Itemsentry() {
       category: dealerForm.type,
       profileImage: dealerForm.image,
       cardColor: dealerForm.cardColor,
+      topColor: dealerForm.topColor,
       cardBackground: dealerForm.cardBackground,
       active: dealerForm.active,
     };
@@ -294,6 +295,7 @@ function Itemsentry() {
       type: dealer.type,
       image: dealer.image || "",
       cardColor: dealer.cardColor || "#fff3e8",
+      topColor: dealer.topColor || "",
       cardBackground: dealer.cardBackground || "",
       active: dealer.active,
     });
@@ -368,7 +370,7 @@ function Itemsentry() {
         <div>
           <p className="eyebrow">BILLING</p>
           <h1 className="page-title">Item entry</h1>
-          <p className="page-description">Three simple steps: choose the dealer, add what you bought, save the bill.</p>
+          <p className="page-description">Three simple steps: choose the dealer, add what you sold, save the bill.</p>
         </div>
       </header>
 
@@ -453,6 +455,7 @@ function Itemsentry() {
                 <label>New dealer category<div className="category-add-control"><input className="form-control" value={newDealerCategory} maxLength="60" onChange={(event) => setNewDealerCategory(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addDealerCategory(); } }} placeholder="Add a category" /><button type="button" className="back-button" onClick={addDealerCategory}>Add</button></div></label>
                 <label>Profile photo (optional)<input className="form-control" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => readImageFile(event, "image", setDealerForm, { maxSize: 400 })} /></label>
                 <label>Card background color<input className="form-control form-control-color" type="color" value={dealerForm.cardColor} onChange={(event) => setDealerForm({ ...dealerForm, cardColor: event.target.value })} /></label>
+                <label>Card top color<span className="top-color-control"><input className="form-control form-control-color" type="color" value={dealerForm.topColor || "#b96c35"} onChange={(event) => setDealerForm({ ...dealerForm, topColor: event.target.value })} aria-label="Card top color" />{dealerForm.topColor ? <button type="button" className="link-button" onClick={() => setDealerForm({ ...dealerForm, topColor: "" })}>Use theme color</button> : <small>Using theme color</small>}</span></label>
                 <label>Card background image (optional)<input className="form-control" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => readImageFile(event, "cardBackground", setDealerForm, { maxSize: 900, quality: 0.75 })} /></label>
               </div>
               <label className={`dealer-status-field${dealerForm.active ? "" : " is-off"}`}>
@@ -503,11 +506,12 @@ function Itemsentry() {
               return (
                 <div className="col-xl-4 col-md-6 col-12" key={dealer.id}>
                   <div
-                    className={`dealer-card ${isSelected ? "selected" : ""}${dealer.active ? "" : " is-inactive"}`}
+                    className={`dealer-card ${isSelected ? "selected" : ""}${dealer.active ? "" : " is-inactive"}${dealer.cardBackground ? " has-bg-image" : ""}`}
                     style={{
                       backgroundColor: dealer.cardColor || "var(--color-surface)",
+                      ...(dealer.topColor ? { "--dealer-top": dealer.topColor } : {}),
                       backgroundImage: dealer.cardBackground
-                        ? `linear-gradient(rgb(255 255 255 / 82%), rgb(255 255 255 / 82%)), url("${dealer.cardBackground}")`
+                        ? `linear-gradient(145deg, rgb(255 255 255 / 36%) 0%, rgb(255 255 255 / 45%) 50%, rgb(255 255 255 / 27%) 100%), url("${dealer.cardBackground}")`
                         : undefined,
                     }}
                     onClick={() => selectDealer(dealer)}
@@ -787,7 +791,7 @@ function Itemsentry() {
             </button>
             {canRecordPayment && (
               <Link className="bill-done-action" to={`/dealer-payments/${lastSavedBill.dealerId}?bill=${lastSavedBill.id}&record=1`}>
-                <i className="bi bi-wallet2" aria-hidden="true" /><span><strong>Record payment</strong><small>Money paid for this bill</small></span>
+                <i className="bi bi-wallet2" aria-hidden="true" /><span><strong>Record payment</strong><small>Money received for this bill</small></span>
               </Link>
             )}
             <button type="button" className="bill-done-action" onClick={() => startNewBill(true)}>

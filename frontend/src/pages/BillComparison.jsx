@@ -272,7 +272,7 @@ export default function BillComparison() {
   }
 
   return <section className="boarder-box bill-comparison-page">
-    <header className="bill-compare-page-header"><span className="bill-compare-eyebrow"><i className="bi bi-arrow-left-right" aria-hidden="true" /> PURCHASE ANALYSIS</span><h1 className="page-title">Bill Comparison</h1><p>Compare dealer bills to track changes in product prices, quantities and purchase values.</p></header>
+    <header className="bill-compare-page-header"><span className="bill-compare-eyebrow"><i className="bi bi-arrow-left-right" aria-hidden="true" /> SALES ANALYSIS</span><h1 className="page-title">Bill Comparison</h1><p>Compare dealer bills to track changes in product prices, quantities and sale values.</p></header>
 
     <section className="bill-compare-panel bill-dealer-selector">
       <div className="bill-compare-section-title"><span className="bill-compare-step-number">1</span><div><h2>Select a dealer</h2><p>Choose a dealer to load only their bills.</p></div></div>

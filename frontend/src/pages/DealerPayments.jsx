@@ -6,6 +6,7 @@ import { localDateInputValue } from '../utils/format.js'
 import Modal from '../components/Modal.jsx'
 import BillShareModal from '../components/BillShareModal.jsx'
 import { FloatingActionButton } from '../components/ui.jsx'
+import { oldestFirst } from '../utils/billImage.js'
 
 const methodLabels = { gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', upi_other: 'UPI (Other)', net_banking: 'Net Banking', cheque: 'Cheque', bank_deposit: 'Bank Deposit', cash: 'Cash', other: 'Other', advance: 'From advance' }
 /** Whole rupees, for the compact figures on dealer cards. */
@@ -54,7 +55,7 @@ function PaymentModal({ dealers, initialDealer, initialBill, onClose, onSaved, n
   // Only bills with money still to pay are offered (oldest first), plus the bill this was opened from.
   const billChoices = (chosenDealer?.bills || [])
     .filter((row) => row.pendingPaise > 0 || row._id === initialBill)
-    .sort((a, b) => new Date(a.issuedDate) - new Date(b.issuedDate))
+    .sort(oldestFirst('issuedDate'))
   const unpaidBills = billChoices.filter((row) => row.pendingPaise > 0)
   // "All unpaid bills" pays the oldest bill first, then the next, until the money runs out.
   const canPayAll = unpaidBills.length > 1
@@ -251,7 +252,7 @@ export default function DealerPayments() {
     {toastVisible && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     {error && <div className="payment-error" role="alert"><i className="bi bi-exclamation-circle" />{error}<button type="button" className="back-button" onClick={refresh}>Retry</button></div>}
     {!dealerId ? <>
-      <header className="payment-page-heading"><div><span className="payment-eyebrow"><i className="bi bi-wallet2" /> KANI METALS · ACCOUNTS</span><h1>Dealer Payments</h1><p>Tap a dealer to see what they owe, or tap <strong>Record Payment</strong> to enter money paid.</p></div><button type="button" className="continue-btn" onClick={() => openPayment()}><i className="bi bi-plus-lg" /> Record Payment</button></header>
+      <header className="payment-page-heading"><div><span className="payment-eyebrow"><i className="bi bi-wallet2" /> KANI METALS · ACCOUNTS</span><h1>Dealer Payments</h1><p>Tap a dealer to see what they owe, or tap <strong>Record Payment</strong> to enter money received.</p></div><button type="button" className="continue-btn" onClick={() => openPayment()}><i className="bi bi-plus-lg" /> Record Payment</button></header>
       {!overview && !error ? <div className="dealer-pick-grid">{Array.from({ length: 6 }, (_, index) => <div className="payment-skeleton dealer-pick-skeleton" key={index} />)}</div> : overview && <section className="dealer-pick-panel">
         <div className="dealer-pick-toolbar">
           <label className="dealer-pick-search"><i className="bi bi-search" aria-hidden="true" /><span className="visually-hidden">Search dealer</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name, phone or place" /></label>

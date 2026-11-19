@@ -45,8 +45,8 @@ export async function getPaymentOverview(req, res, next) {
     const [dealers, bills, payments] = await Promise.all([
       Dealer.find().select('name phone location category profileImage advancePaise').lean(),
       // Bill items (with their images) are not needed for the overview, only the totals.
-      Bill.find().select('dealer issuedDate total').sort({ issuedDate: -1 }).lean(),
-      Payment.find().select('-statusHistory').sort({ paymentDate: -1 }).lean(),
+      Bill.find().select('dealer issuedDate total').sort({ issuedDate: -1, createdAt: -1, _id: -1 }).lean(),
+      Payment.find().select('-statusHistory').sort({ paymentDate: -1, createdAt: -1, _id: -1 }).lean(),
     ])
     // Money from a dealer's advance was already counted when it was first paid.
     const receivedPayments = payments.filter((payment) => paymentCountsAsReceived(payment) && payment.paymentMethod !== 'advance')
@@ -81,7 +81,7 @@ export async function getPaymentOverview(req, res, next) {
       const receivedPaise = rows.reduce((sum, row) => sum + row.receivedPaise, 0)
       const pendingPaise = Math.max(0, totalPaise - receivedPaise)
       const dealerPayments = paymentsByDealer.get(String(dealer._id)) || []
-      const latestPayment = dealerPayments.filter(paymentCountsAsReceived).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))[0]
+      const latestPayment = dealerPayments.filter(paymentCountsAsReceived)[0]
       const pendingCount = rows.filter((row) => row.pendingPaise > 0).length
       return { dealer, advancePaise: dealer.advancePaise || 0, billCount: rows.length, totalPaise, receivedPaise, pendingPaise, pendingCount, status: !rows.length ? 'no-bills' : pendingPaise === 0 ? 'paid' : receivedPaise > 0 ? 'partial' : 'unpaid', latestPaymentDate: latestPayment?.paymentDate || null, bills: rows.map(({ bill, ...state }) => ({ _id: bill._id, issuedDate: bill.issuedDate, total: bill.total, ...state })) }
     })
@@ -120,15 +120,15 @@ export async function getDealerPaymentDetails(req, res, next) {
     const dealer = await Dealer.findById(req.params.dealerId).lean()
     if (!dealer) return res.status(404).json({ message: 'Dealer not found.' })
     const [bills, payments] = await Promise.all([
-      Bill.find({ dealer: dealer._id }).sort({ issuedDate: -1 }).lean(),
-      Payment.find({ dealer: dealer._id }).sort({ paymentDate: -1 }).populate('createdBy', 'name').populate('bill', 'issuedDate').lean(),
+      Bill.find({ dealer: dealer._id }).sort({ issuedDate: -1, createdAt: -1, _id: -1 }).lean(),
+      Payment.find({ dealer: dealer._id }).sort({ paymentDate: -1, createdAt: -1, _id: -1 }).populate('createdBy', 'name').populate('bill', 'issuedDate').lean(),
     ])
     const billRows = bills.map((bill) => ({ bill, ...billPaymentState(bill, payments.filter((payment) => String(payment.bill?._id || payment.bill) === String(bill._id))) }))
     const totalPaise = billRows.reduce((sum, row) => sum + row.totalPaise, 0)
     const receivedPaise = billRows.reduce((sum, row) => sum + row.receivedPaise, 0)
     const lastPayment = payments.find(paymentCountsAsReceived)
     const pendingRows = billRows.filter((row) => row.pendingPaise > 0)
-    res.json({ dealer, summary: { advancePaise: dealer.advancePaise || 0, totalPaise, receivedPaise, pendingPaise: Math.max(0, totalPaise - receivedPaise), pendingBills: pendingRows.length, oldestUnpaidBill: pendingRows.sort((a, b) => new Date(a.bill.issuedDate) - new Date(b.bill.issuedDate))[0]?.bill || null, lastPaymentDate: lastPayment?.paymentDate || null }, bills: billRows, payments })
+    res.json({ dealer, summary: { advancePaise: dealer.advancePaise || 0, totalPaise, receivedPaise, pendingPaise: Math.max(0, totalPaise - receivedPaise), pendingBills: pendingRows.length, oldestUnpaidBill: pendingRows.at(-1)?.bill || null, lastPaymentDate: lastPayment?.paymentDate || null }, bills: billRows, payments })
   } catch (error) { next(error) }
 }
 

@@ -8,6 +8,8 @@ const dealerSchema = new mongoose.Schema({
   profileImage: { type: String, default: '' },
   cardColor: { type: String, default: '#fff3e8' },
   cardBackground: { type: String, default: '' },
+  /** Colour of the banner strip at the top of the dealer card; empty means the theme colour. */
+  topColor: { type: String, default: '' },
   /** Money paid beyond a bill's balance, kept for this dealer and used on their next bill. */
   advancePaise: { type: Number, default: 0, min: 0 },
   /** Inactive dealers stay in history but cannot get new bills. */

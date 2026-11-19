@@ -15,13 +15,13 @@ import { EmptyState, PageHeader, StatCard, StatusBadge } from '../components/ui.
  * Keep ids in sync with DASHBOARD_WIDGETS in backend/config/features.js.
  */
 const DASHBOARD_WIDGETS = [
-  { id: 'pendingCard', group: 'Summary cards', icon: 'bi-hourglass-split', label: 'Pending from dealers', text: 'Total balance still to pay dealers', features: ['dealerPayments'] },
-  { id: 'paidCard', group: 'Summary cards', icon: 'bi-cash-coin', label: 'Paid to dealers', text: 'Total paid out of the total billed', features: ['dealerPayments'] },
+  { id: 'pendingCard', group: 'Summary cards', icon: 'bi-hourglass-split', label: 'Pending from dealers', text: 'Total balance dealers still have to pay', features: ['dealerPayments'] },
+  { id: 'paidCard', group: 'Summary cards', icon: 'bi-cash-coin', label: 'Received from dealers', text: 'Total received out of the total billed', features: ['dealerPayments'] },
   { id: 'billedCard', group: 'Summary cards', icon: 'bi-receipt', label: 'Total billed', text: 'Total of all dealer bills', features: ['itemEntry'] },
   { id: 'lowStockCard', group: 'Summary cards', icon: 'bi-exclamation-triangle', label: 'Low stock', text: 'Items with low stock', features: ['inventory'] },
   { id: 'pendingDealers', group: 'Lists', icon: 'bi-people', label: 'Dealer pending amounts', text: 'Dealers with an outstanding balance', features: ['dealerPayments'] },
-  { id: 'rateUpdates', group: 'Lists', icon: 'bi-graph-up', label: 'Item rate updates', text: 'Latest purchase rate of each item', features: ['itemPrices', 'billComparison'] },
-  { id: 'recentPayments', group: 'Lists', icon: 'bi-clock-history', label: 'Recent transactions', text: 'Latest payments to dealers', features: ['dealerPayments'] },
+  { id: 'rateUpdates', group: 'Lists', icon: 'bi-graph-up', label: 'Item rate updates', text: 'Latest selling rate of each item', features: ['itemPrices', 'billComparison'] },
+  { id: 'recentPayments', group: 'Lists', icon: 'bi-clock-history', label: 'Recent transactions', text: 'Latest payments from dealers', features: ['dealerPayments'] },
   { id: 'lowStockList', group: 'Lists', icon: 'bi-box-seam', label: 'Low-stock alerts', text: 'Items that are running out', features: ['inventory'] },
   { id: 'quickActions', group: 'Shortcuts', icon: 'bi-lightning', label: 'Quick actions', text: 'Shortcuts to the screens you use', features: [] },
 ]
@@ -89,8 +89,8 @@ const initials = (name = '') => name.trim().split(/\s+/).slice(0, 2).map((part) 
 
 // Each quick action belongs to a menu screen and only shows when the user can open it.
 const quickLinks = [
-  { feature: 'itemEntry', to: '/itemsentry', icon: 'bi-receipt-cutoff', title: 'New bill', text: 'Choose a dealer and enter purchased items.' },
-  { feature: 'dealerPayments', to: '/dealer-payments', icon: 'bi-wallet2', title: 'Pay dealer', text: 'Record payments and follow up on balances.' },
+  { feature: 'itemEntry', to: '/itemsentry', icon: 'bi-receipt-cutoff', title: 'New bill', text: 'Choose a dealer and enter the items sold.' },
+  { feature: 'dealerPayments', to: '/dealer-payments', icon: 'bi-wallet2', title: 'Receive payment', text: 'Record payments and follow up on balances.' },
   { feature: 'inventory', to: '/inventory', icon: 'bi-boxes', title: 'Stock', text: 'Review stock levels and low-stock items.' },
   { feature: 'itemPrices', to: '/item-prices', icon: 'bi-currency-rupee', title: 'Prices', text: 'Latest price of every item from dealer bills.' },
   { feature: 'billComparison', to: '/bill-comparison', icon: 'bi-arrow-left-right', title: 'Compare', text: 'See price and quantity changes between bills.' },
@@ -232,9 +232,9 @@ function LowStockAlerts({ loading, items }) {
   )
 }
 
-function Panel({ title, text, link, children }) {
+function Panel({ title, text, link, className = '', style, children }) {
   return (
-    <section className="dashboard-card dash-panel">
+    <section className={`dashboard-card dash-panel ${className}`.trim()} style={style}>
       <div className="dash-panel-head">
         <div><h2>{title}</h2>{text && <p>{text}</p>}</div>
         {link && <Link className="dash-panel-link" to={link.to}>{link.label} <i className="bi bi-arrow-right" aria-hidden="true" /></Link>}
@@ -262,16 +262,19 @@ function Dashboard() {
 
   // Only figures for screens this person can open.
   const cards = [
-    shows('pendingCard') && { icon: 'bi-hourglass-split', label: 'Pending to dealers', paise: totals?.totalPendingPaise, note: totals?.dealersWithPending != null ? `${totals.dealersWithPending} dealers · ${totals.pendingBills} bills` : 'Outstanding balance', tone: 'warning', to: '/dealer-payments' },
-    shows('paidCard') && { icon: 'bi-cash-coin', label: 'Paid to dealers', paise: totals?.totalReceivedPaise, note: totals?.totalBilledPaise != null ? `of ${rupees(totals.totalBilledPaise)} billed` : 'All payments recorded', tone: 'success', to: '/dealer-payments' },
+    shows('pendingCard') && { icon: 'bi-hourglass-split', label: 'Pending from dealers', paise: totals?.totalPendingPaise, note: totals?.dealersWithPending != null ? `${totals.dealersWithPending} dealers · ${totals.pendingBills} bills` : 'Outstanding balance', tone: 'warning', to: '/dealer-payments' },
+    shows('paidCard') && { icon: 'bi-cash-coin', label: 'Received from dealers', paise: totals?.totalReceivedPaise, note: totals?.totalBilledPaise != null ? `of ${rupees(totals.totalBilledPaise)} billed` : 'All payments recorded', tone: 'success', to: '/dealer-payments' },
     shows('billedCard') && { icon: 'bi-receipt', label: 'Total billed', paise: totals?.totalBilledPaise, note: 'All dealer bills', tone: 'primary', to: '/itemsentry' },
     shows('lowStockCard') && { icon: 'bi-exclamation-triangle', label: 'Low stock', count: lowStock.length, note: `${LOW_STOCK_LIMIT} units or fewer`, tone: 'danger', to: '/inventory?filter=low', stock: true },
   ].filter(Boolean)
   const links = shows('quickActions') ? quickLinks.filter((link) => can(link.feature)) : []
+  // Bento layout: the price list runs down the right side, the other panels stack on the left beside it.
+  const sideCount = ['pendingDealers', 'recentPayments', 'lowStockList'].filter(shows).length
+  const bento = shows('rateUpdates') && sideCount > 0
   const panels = [
     shows('pendingDealers') && <Panel key="pending" title="Dealer pending amounts" text="Highest balance first." link={{ to: '/dealer-payments', label: 'View all' }}><PendingDealers loading={busy} rows={summary.data?.pendingDealers || []} /></Panel>,
-    shows('rateUpdates') && <Panel key="rates" title="Latest item prices" text="Latest bill price compared with the previous bill." link={can('itemPrices') ? { to: '/item-prices', label: 'All prices' } : { to: '/bill-comparison', label: 'Compare' }}><RateUpdates loading={busy} rows={(summary.data?.rateUpdates || []).slice(0, 6)} /></Panel>,
-    shows('recentPayments') && <Panel key="recent" title="Recent transactions" text="Latest payments to dealers." link={{ to: '/dealer-payments', label: 'Payments' }}><RecentPayments loading={busy} rows={summary.data?.recentPayments || []} /></Panel>,
+    shows('rateUpdates') && <Panel key="rates" className="dash-panel-tall" style={bento ? { '--bento-rows': sideCount } : undefined} title="Latest item prices" text="Latest bill price compared with the previous bill." link={can('itemPrices') ? { to: '/item-prices', label: 'All prices' } : { to: '/bill-comparison', label: 'Compare' }}><RateUpdates loading={busy} rows={(summary.data?.rateUpdates || []).slice(0, bento ? 4 + sideCount * 2 : 6)} /></Panel>,
+    shows('recentPayments') && <Panel key="recent" title="Recent transactions" text="Latest payments from dealers." link={{ to: '/dealer-payments', label: 'Payments' }}><RecentPayments loading={busy} rows={summary.data?.recentPayments || []} /></Panel>,
     shows('lowStockList') && <Panel key="stock" title="Low-stock alerts" text={`Items at ${LOW_STOCK_LIMIT} units or fewer.`} link={{ to: '/inventory?filter=low', label: 'Inventory' }}><LowStockAlerts loading={loading} items={lowStock.slice(0, 5)} /></Panel>,
   ].filter(Boolean)
   const needsSummary = cards.some((card) => !card.stock) || panels.length > 0
@@ -304,7 +307,7 @@ function Dashboard() {
         ))}
       </nav>}
 
-      {panels.length > 0 && <div className={`dash-panels${panels.length === 1 ? ' is-single' : ''}`}>{panels}</div>}
+      {panels.length > 0 && <div className={`dash-panels${panels.length === 1 ? ' is-single' : ''}${bento ? ' is-bento' : ''}`}>{panels}</div>}
 
       {!cards.length && !panels.length && !links.length && (available.length
         ? <EmptyState icon="bi-eye-slash" title="Everything is hidden" text="Choose what to show on your dashboard." action={<button type="button" className="continue-btn" onClick={() => setCustomizing(true)}><i className="bi bi-sliders" aria-hidden="true" /> Customise</button>} />

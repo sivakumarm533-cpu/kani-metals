@@ -1663,7 +1663,10 @@ body {
   /* Dealer card: avatar beside name and tags, contact on one line, actions in the bottom row. */
   :root .dealer-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; column-gap: 12px; row-gap: 4px; align-items: center; height: auto; padding: 12px 14px; }
   :root .dealer-card-top { display: contents; }
-  :root .dealer-card .dealer-avatar { grid-column: 1; grid-row: 1 / span 2; width: 44px; height: 44px; font-size: 14px; }
+  :root .dealer-card .dealer-avatar { grid-column: 1; grid-row: 1 / span 2; width: 44px; height: 44px; margin: 0; border-width: 2px; border-radius: 12px; font-size: 14px; }
+  /* On phones the banner shrinks to a thin accent strip so it doesn't sit behind the name. */
+  :root .dealer-card { padding-top: 16px; }
+  :root .dealer-card::before { height: 5px; }
   :root .dealer-card .selected-icon { display: none; }
   :root .dealer-card-name { grid-column: 2 / -1; grid-row: 1; margin: 0; font-size: 15px; }
   :root .dealer-card-tags { grid-column: 2 / -1; grid-row: 2; }

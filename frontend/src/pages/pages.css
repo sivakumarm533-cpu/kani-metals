@@ -196,14 +196,38 @@
 }
 
 .dealer-card {
+  position: relative;
   height: 100%;
-  padding: 18px;
+  padding: 12px 18px 18px;
+  overflow: hidden;
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 14px;
   background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
   cursor: pointer;
   transition: 0.2s ease;
 }
+
+/* Banner header: a gradient strip in the theme colour across the top of the card. */
+.dealer-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 62px;
+  background:
+    radial-gradient(120px 60px at 90% 0%, rgb(255 255 255 / 22%), transparent 70%),
+    linear-gradient(120deg, var(--color-primary), rgb(var(--color-primary-rgb) / 55%));
+  /* Per-dealer top colour (set as --dealer-top on the card) with the theme colour as fallback. */
+  background:
+    radial-gradient(120px 60px at 90% 0%, rgb(255 255 255 / 22%), transparent 70%),
+    linear-gradient(120deg, var(--dealer-top, var(--color-primary)), color-mix(in srgb, var(--dealer-top, var(--color-primary)) 55%, transparent));
+  pointer-events: none;
+}
+
+.dealer-card > * { position: relative; z-index: 1; }
+
+.top-color-control { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.top-color-control small { color: var(--color-text-muted); font-size: 12px; }
 
 .dealer-card:hover {
   border-color: var(--color-primary);
@@ -213,16 +237,66 @@
 
 .dealer-card.selected {
   border: 2px solid var(--color-primary);
-  background: var(--color-primary-soft);
+  background: linear-gradient(145deg,
+    rgb(var(--color-primary-rgb) / 4%) 0%,
+    rgb(var(--color-primary-rgb) / 12%) 55%,
+    rgb(var(--color-primary-rgb) / 24%) 100%),
+    var(--color-surface);
 }
 
 .dealer-card-top {
   position: relative;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   min-height: 46px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
+}
+
+/* Avatar overlaps the bottom edge of the banner. */
+.dealer-card .dealer-avatar {
+  width: 64px;
+  height: 64px;
+  margin-top: 20px;
+  border: 3px solid var(--color-surface);
+  border-radius: 16px;
+  background: var(--color-primary-soft);
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgb(15 23 42 / 14%);
+}
+
+.dealer-card .selected-icon { top: 12px; left: 50px; }
+
+/* Action icons sit on the banner as frosted buttons. */
+.dealer-card-actions > a,
+.dealer-card-actions > button {
+  border-color: transparent;
+  background: rgb(255 255 255 / 88%);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 12%);
+}
+
+.dealer-card-name { font-size: 17px; }
+
+/* Cards with a background image: white text with a soft shadow so it reads on the photo. */
+.dealer-card.has-bg-image .dealer-card-name,
+.dealer-card.has-bg-image .dealer-info p,
+.dealer-card.has-bg-image .dealer-info i {
+  color: #fff;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 65%), 0 0 10px rgb(0 0 0 / 35%);
+}
+
+.dealer-card .select-dealer-btn {
+  min-height: 42px;
+  margin-top: 12px;
+  border-color: rgb(var(--color-primary-rgb) / 35%);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.dealer-card .select-dealer-btn.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  box-shadow: 0 4px 12px rgb(var(--color-primary-rgb) / 30%);
 }
 
 .dealer-card-actions {
