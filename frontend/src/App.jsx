@@ -42,6 +42,8 @@ const pageImports = {
   MenuSettings: () => import('./pages/MenuSettings.jsx'),
   ListSettings: () => import('./pages/ListSettings.jsx'),
   Profile: () => import('./pages/Profile.jsx'),
+  Employees: () => import('./pages/Employees.jsx'),
+  EmployeeDetail: () => import('./pages/EmployeeDetail.jsx'),
 }
 const Dashboard = lazy(pageImports.Dashboard)
 const Inventory = lazy(pageImports.Inventory)
@@ -58,6 +60,8 @@ const FeatureSettings = lazy(pageImports.FeatureSettings)
 const MenuSettings = lazy(pageImports.MenuSettings)
 const ListSettings = lazy(pageImports.ListSettings)
 const Profile = lazy(pageImports.Profile)
+const Employees = lazy(pageImports.Employees)
+const EmployeeDetail = lazy(pageImports.EmployeeDetail)
 const Login = lazy(() => import('./pages/Login.jsx'))
 const AdminSignup = lazy(() => import('./pages/AdminSignup.jsx'))
 
@@ -151,6 +155,8 @@ function AppLayout() {
                 <Route path="/dealer-payments" element={<FeatureRoute feature="dealerPayments"><DealerPayments /></FeatureRoute>} />
                 <Route path="/dealer-payments/:dealerId" element={<FeatureRoute feature="dealerPayments"><DealerPayments /></FeatureRoute>} />
                 <Route path="/dealers/:dealerId/bills" element={<FeatureRoute feature="itemEntry"><DealerBills /></FeatureRoute>} />
+                <Route path="/employees" element={<RequireAuth adminOnly><Employees /></RequireAuth>} />
+                <Route path="/employees/:employeeId" element={<RequireAuth adminOnly><EmployeeDetail /></RequireAuth>} />
                 <Route path="/settings/theme" element={<RequireAuth adminOnly><ThemeSettings /></RequireAuth>} />
                 <Route path="/settings/bill" element={<RequireAuth adminOnly><BillSettings /></RequireAuth>} />
                 <Route path="/settings/features" element={<RequireAuth adminOnly><FeatureSettings /></RequireAuth>} />

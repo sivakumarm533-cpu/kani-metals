@@ -12,7 +12,9 @@
     "dev": "nodemon server.js",
     "test:payments": "node tests/paymentMoney.test.js",
     "test:admin-setup": "node tests/adminSetup.integration.js",
-    "images:webp": "node scripts/convertImagesToWebp.js"
+    "images:webp": "node scripts/convertImagesToWebp.js",
+    "test:wages": "node --test tests/wages.test.js",
+    "item-prices:cleanup": "node scripts/cleanupItemPrices.js"
   },
   "keywords": [],
   "author": "",

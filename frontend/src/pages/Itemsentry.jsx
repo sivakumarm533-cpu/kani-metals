@@ -13,11 +13,15 @@ import { useAppSettings } from "../settings/appSettingsContext.js";
 import { formatRupees, localDateInputValue as getTodayDate } from "../utils/format.js";
 import { useAuth } from "../auth/authContextValue.js";
 import { canUseItem, NAV_ITEMS } from "../config/navigation.js";
+import { readChoice, saveChoice, useRememberedState } from "../utils/remember.js";
+import { printBillReceipt } from "../utils/posReceipt.js";
 
 // Friendlier names for common units in the unit dropdown; any other unit shows as typed.
 const unitLabels = { kg: "Kilogram (kg)", pcs: "Pieces (pcs)", ton: "Ton", g: "Gram (g)", litre: "Litre", metre: "Metre", bundle: "Bundle" };
-const emptyDealerForm = (type = "Regular Dealer") => ({ name: "", phone: "", location: "", type, image: "", cardColor: "#fff3e8", topColor: "", cardBackground: "", active: true });
-const emptyItemForm = () => ({ name: "", category: "", quantity: "", price: "", unit: "kg", image: "", note: "" });
+// A new dealer starts with the category picked last time on this device (when it is still offered).
+const emptyDealerForm = (categories = []) => ({ name: "", phone: "", location: "", type: readChoice("dealerCategory", categories[0] || "Regular Dealer", categories.length ? categories : undefined), image: "", cardColor: "#fff3e8", topColor: "", cardBackground: "", active: true });
+// A new bill line starts with the category and unit picked last time on this device.
+const emptyItemForm = () => ({ name: "", category: readChoice("billItemCategory", ""), quantity: "", price: "", unit: readChoice("billItemUnit", "kg"), image: "", note: "" });
 // Dealers saved before the status existed count as active.
 const mapDealer = (dealer) => ({ ...dealer, id: dealer._id, type: dealer.category, image: dealer.profileImage, active: dealer.active !== false });
 const statusFilters = [["all", "All"], ["active", "Active"], ["inactive", "Inactive"]];
@@ -45,16 +49,17 @@ function Itemsentry() {
   // What deleting the dealer would also remove: { bills, payments, advancePaise, canDelete } or { error }.
   const [deleteSummary, setDeleteSummary] = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useRememberedState("dealerStatusFilter", "all", ["all", "active", "inactive"]);
   const [editingDealerId, setEditingDealerId] = useState(null);
-  const { lists, features } = useAppSettings();
+  const { lists, features, business, pos } = useAppSettings();
+  const [printing, setPrinting] = useState(false);
   const { user } = useAuth();
   const canRecordPayment = canUseItem(NAV_ITEMS.find((item) => item.key === "dealerPayments"), user, features);
   // Note and photo are optional, so they stay folded away unless needed.
   const [showItemExtras, setShowItemExtras] = useState(false);
   // On-screen Tamil keyboard for the item name and note. While open, the phone's own keyboard stays hidden.
   const [tamilKeyboard, setTamilKeyboard] = useState(false);
-  const [dealerForm, setDealerForm] = useState(() => emptyDealerForm(lists.dealerCategories[0]));
+  const [dealerForm, setDealerForm] = useState(() => emptyDealerForm(lists.dealerCategories));
   // Categories found on saved dealers or added here; the main list comes from Settings → Dropdown lists.
   const [extraDealerCategories, setDealerCategories] = useState([]);
   const [newDealerCategory, setNewDealerCategory] = useState("");
@@ -275,7 +280,7 @@ function Itemsentry() {
         if (updatedDealer.active) setSelectedDealer(updatedDealer);
       }
       setEditingDealerId(null);
-      setDealerForm(emptyDealerForm(dealerCategories[0]));
+      setDealerForm(emptyDealerForm(dealerCategories));
       setShowDealerForm(false);
       notify(wasEditing ? "Dealer updated successfully." : "Dealer added successfully.", wasEditing ? "info" : "success");
     } catch (error) {
@@ -306,7 +311,7 @@ function Itemsentry() {
   function cancelDealerEdit() {
     setShowDealerForm(false);
     setEditingDealerId(null);
-    setDealerForm(emptyDealerForm(dealerCategories[0]));
+    setDealerForm(emptyDealerForm(dealerCategories));
   }
 
   async function deleteDealer() {
@@ -359,6 +364,7 @@ function Itemsentry() {
       setDealerCategories((categories) => [...categories, category]);
     }
     setDealerForm((current) => ({ ...current, type: category }));
+    saveChoice("dealerCategory", category);
     setNewDealerCategory("");
   }
 
@@ -451,7 +457,7 @@ function Itemsentry() {
                 <label>Dealer name<input className="form-control" value={dealerForm.name} maxLength="120" onChange={(event) => setDealerForm({ ...dealerForm, name: event.target.value })} required /></label>
                 <label>Phone number<input className="form-control" type="tel" inputMode="tel" maxLength="30" value={dealerForm.phone} onChange={(event) => setDealerForm({ ...dealerForm, phone: event.target.value })} required /></label>
                 <label>Location<input className="form-control" value={dealerForm.location} maxLength="200" onChange={(event) => setDealerForm({ ...dealerForm, location: event.target.value })} required /></label>
-                <label>Dealer category<select className="form-select" value={dealerForm.type} onChange={(event) => setDealerForm({ ...dealerForm, type: event.target.value })}>{dealerCategories.map((category) => <option key={category}>{category}</option>)}</select></label>
+                <label>Dealer category<select className="form-select" value={dealerForm.type} onChange={(event) => { saveChoice("dealerCategory", event.target.value); setDealerForm({ ...dealerForm, type: event.target.value }); }}>{dealerCategories.map((category) => <option key={category}>{category}</option>)}</select></label>
                 <label>New dealer category<div className="category-add-control"><input className="form-control" value={newDealerCategory} maxLength="60" onChange={(event) => setNewDealerCategory(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addDealerCategory(); } }} placeholder="Add a category" /><button type="button" className="back-button" onClick={addDealerCategory}>Add</button></div></label>
                 <label>Profile photo (optional)<input className="form-control" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => readImageFile(event, "image", setDealerForm, { maxSize: 400 })} /></label>
                 <label>Card background color<input className="form-control form-control-color" type="color" value={dealerForm.cardColor} onChange={(event) => setDealerForm({ ...dealerForm, cardColor: event.target.value })} /></label>
@@ -655,7 +661,7 @@ function Itemsentry() {
                   <div className="col-md-6 col-12">
                     <div className="form-group">
                       <label className="label-title" htmlFor="category">Category</label>
-                      <select id="category" className="form-select" value={itemForm.category} onChange={(event) => setItemForm({ ...itemForm, category: event.target.value })} required>
+                      <select id="category" className="form-select" value={itemForm.category} onChange={(event) => { saveChoice("billItemCategory", event.target.value); setItemForm({ ...itemForm, category: event.target.value }); }} required>
                         <option value="" disabled>Select category</option>
                         {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
                       </select>
@@ -672,7 +678,7 @@ function Itemsentry() {
                   <div className="col-md-4 col-6">
                     <div className="form-group">
                       <label className="label-title" htmlFor="unit">Unit</label>
-                      <select id="unit" className="form-select" value={itemForm.unit} onChange={(event) => setItemForm({ ...itemForm, unit: event.target.value })}>
+                      <select id="unit" className="form-select" value={itemForm.unit} onChange={(event) => { saveChoice("billItemUnit", event.target.value); setItemForm({ ...itemForm, unit: event.target.value }); }}>
                         {unitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                       </select>
                     </div>
@@ -788,6 +794,14 @@ function Itemsentry() {
           <div className="bill-done-actions">
             <button type="button" className="bill-done-action is-whatsapp" onClick={() => setSharingBill(lastSavedBill)}>
               <i className="bi bi-whatsapp" aria-hidden="true" /><span><strong>Send bill on WhatsApp</strong><small>Share it with the dealer</small></span>
+            </button>
+            <button type="button" className="bill-done-action" disabled={printing} onClick={async () => {
+              setPrinting(true);
+              try { await printBillReceipt({ dealerId: lastSavedBill.dealerId, billId: lastSavedBill.id, business, pos }); }
+              catch (printError) { notify(printError.message, "danger"); }
+              finally { setPrinting(false); }
+            }}>
+              <i className="bi bi-printer" aria-hidden="true" /><span><strong>{printing ? "Preparing receipt…" : "Print bill (POS)"}</strong><small>Thermal receipt printer · {pos.paperWidth} mm</small></span>
             </button>
             {canRecordPayment && (
               <Link className="bill-done-action" to={`/dealer-payments/${lastSavedBill.dealerId}?bill=${lastSavedBill.id}&record=1`}>

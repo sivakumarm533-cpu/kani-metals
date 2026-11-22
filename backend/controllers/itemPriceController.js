@@ -59,6 +59,12 @@ async function findItem(item) {
   return { line: line || null, doc }
 }
 
+/**
+ * Whether an item with no bill lines is shown on the Item prices screen: only items added
+ * here with a price. Records left behind after their bills were deleted are not shown.
+ */
+export const isListed = (doc) => Boolean(doc?.addedManually && Number.isFinite(doc.pricePaise))
+
 function trendOf(currentPaise, referencePaise) {
   if (referencePaise === null || referencePaise === undefined) return { changePaise: null, changePercent: null, trend: 'new' }
   const changePaise = currentPaise - referencePaise
@@ -161,7 +167,7 @@ export async function listItemPrices(_req, res, next) {
     })
     // Items added here that are not on any bill yet.
     for (const doc of docs) {
-      if (!doc.addedManually || billKeys.has(doc.key) || !Number.isFinite(doc.pricePaise)) continue
+      if (billKeys.has(doc.key) || !isListed(doc)) continue
       items.push({
         ...priceRow({ key: doc.key, latest: null, previous: null, doc }),
         billDealer: '',
@@ -286,7 +292,12 @@ export async function createItem(req, res, next) {
     const image = optionalImage(req.body?.image, 'item photo')
     const item = parseKey(keyOf(name, unit))
     const { line, doc } = await findItem(item)
-    if (line || doc) throw badRequest(`${line?.name?.trim() || doc.name} (${unit}) is already in the price list. Open it to change the price or photo.`, 409)
+    if (line || (doc && isListed(doc))) throw badRequest(`${line?.name?.trim() || doc.name} (${unit}) is already in the price list. Open it to change the price or photo.`, 409)
+    // A leftover record from bills that were deleted is not shown on the screen; replace it.
+    if (doc) {
+      await ItemPrice.deleteOne({ _id: doc._id })
+      await recordActivity(req, { action: 'delete', entity: 'itemPrice', entityId: doc._id, entityLabel: `${doc.name} price (left over from deleted bills)`, before: { name: doc.name, unit: doc.unit, category: doc.category, pricePaise: doc.pricePaise }, after: null })
+    }
 
     const change = { action: 'set', pricePaise, note, changedBy: req.user._id, changedByName: req.user.name, changedAt: new Date() }
     const created = await ItemPrice.create({ key: item.key, name, unit, category, pricePaise, note, image, addedManually: true, updatedBy: req.user._id, updatedByName: req.user.name, history: [change] })

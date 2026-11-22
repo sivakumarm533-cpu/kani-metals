@@ -459,6 +459,9 @@ a.ui-stat:hover { border-color: var(--color-primary); color: var(--color-text); 
 @media (max-width: 720px) {
   /* Full-screen forms: actions stay at the bottom even when the form is short. */
   .dealer-delete-backdrop:not(.bottom-sheet-backdrop) > section[role="dialog"] { display: flex; flex-direction: column; }
+  /* Long content makes the dialog scroll; parts must never be squeezed (a scrolling bill
+     preview or a list with overflow:hidden would otherwise shrink to a thin strip). */
+  .dealer-delete-backdrop:not(.bottom-sheet-backdrop) > section[role="dialog"] > * { flex-shrink: 0; }
   .dealer-delete-backdrop > section[role="dialog"] > form { display: flex; flex: 1 0 auto; flex-direction: column; }
   .dealer-delete-backdrop > section[role="dialog"] > form > .payment-modal-actions,
   .dealer-delete-backdrop > section[role="dialog"] > form > .dealer-delete-actions { margin-top: auto; }

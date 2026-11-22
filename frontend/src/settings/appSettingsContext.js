@@ -20,6 +20,14 @@ export const DEFAULT_LISTS = {
   units: ['kg', 'pcs', 'ton', 'g', 'litre', 'metre', 'bundle'],
 }
 
+/** POS (thermal receipt) printing. Keep in sync with POS_DEFAULTS in backend/models/AppSetting.js. */
+export const POS_DEFAULTS = {
+  template: 'classic', paperWidth: '80', fontSize: 'normal', copies: 1, feedLines: 3,
+  showLogo: true, showAddress: true, showPhone: true, showGstin: true, showDealer: true,
+  showItemNotes: false, showPayments: true, showPreviousBalance: false, showTerms: false, showGreeting: true,
+  footerNote: '',
+}
+
 export const AppSettingsContext = createContext(null)
 
 export function useAppSettings() {

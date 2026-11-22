@@ -1,4 +1,4 @@
-import AppSetting, { BILL_TEMPLATE_IDS, THEME_IDS } from '../models/AppSetting.js'
+import AppSetting, { BILL_TEMPLATE_IDS, POS_DEFAULTS, POS_FLAGS, POS_FONT_SIZES, POS_PAPER_WIDTHS, POS_TEMPLATES, THEME_IDS } from '../models/AppSetting.js'
 import { DEFAULT_LISTS, FEATURE_KEYS, LIST_KEYS, MENU_KEYS } from '../config/features.js'
 import { forgetFeatureCache } from '../middleware/auth.js'
 import { recordActivity } from '../utils/activity.js'
@@ -36,6 +36,40 @@ function cleanList(key, value) {
   return out
 }
 
+/** Saved POS settings over the defaults (older settings have none). */
+const publicPos = (pos) => ({ ...POS_DEFAULTS, ...(pos?.toObject?.() ?? pos ?? {}) })
+
+/** Validates a (partial) POS settings update on top of the current values. */
+function cleanPos(input, current) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw badRequest('POS printing settings are invalid.')
+  const next = { ...current }
+  if (input.template !== undefined) {
+    if (!POS_TEMPLATES.includes(input.template)) throw badRequest('Choose one of the receipt templates.')
+    next.template = input.template
+  }
+  if (input.paperWidth !== undefined) {
+    if (!POS_PAPER_WIDTHS.includes(String(input.paperWidth))) throw badRequest('Choose 58 mm or 80 mm paper.')
+    next.paperWidth = String(input.paperWidth)
+  }
+  if (input.fontSize !== undefined) {
+    if (!POS_FONT_SIZES.includes(input.fontSize)) throw badRequest('Choose a small, normal or large text size.')
+    next.fontSize = input.fontSize
+  }
+  for (const [key, min, max, label] of [['copies', 1, 3, 'Copies'], ['feedLines', 0, 10, 'Blank lines at the end']]) {
+    if (input[key] === undefined) continue
+    const value = Number(input[key])
+    if (!Number.isInteger(value) || value < min || value > max) throw badRequest(`${label} must be a whole number from ${min} to ${max}.`)
+    next[key] = value
+  }
+  for (const key of POS_FLAGS) {
+    if (input[key] === undefined) continue
+    if (typeof input[key] !== 'boolean') throw badRequest('POS printing settings are invalid.')
+    next[key] = input[key]
+  }
+  if (input.footerNote !== undefined) next.footerNote = optionalText(input.footerNote, 'receipt footer note', 200)
+  return next
+}
+
 const publicSettings = (settings) => ({
   theme: settings.theme,
   allowUserThemes: settings.allowUserThemes !== false,
@@ -46,6 +80,7 @@ const publicSettings = (settings) => ({
   billTemplate: BILL_TEMPLATE_IDS.includes(settings.billTemplate) ? settings.billTemplate : 'classic',
   // Older settings have no show flags yet; treat a missing flag as "on".
   business: { ...(settings.business?.toObject?.() ?? settings.business), showTerms: settings.business?.showTerms !== false, showGreeting: settings.business?.showGreeting !== false, greeting: settings.business?.greeting ?? 'Thank you for your business' },
+  pos: publicPos(settings.pos),
   updatedAt: settings.updatedAt,
 })
 
@@ -59,7 +94,8 @@ export async function getAppSettings(_req, res, next) {
   catch (error) { next(error) }
 }
 
-function activityLabel({ theme, business, features, allowUserThemes, menuOrder, lists, userThemes }) {
+function activityLabel({ theme, business, features, allowUserThemes, menuOrder, lists, userThemes, pos }) {
+  if (pos !== undefined && business === undefined && theme === undefined) return 'POS printing'
   if (userThemes !== undefined && theme === undefined && features === undefined) return 'Theme access'
   if (lists !== undefined && theme === undefined && business === undefined && features === undefined) return 'Dropdown lists'
   if (menuOrder !== undefined && features === undefined && allowUserThemes === undefined) return 'Menu order'
@@ -73,7 +109,8 @@ export async function updateAppSettings(req, res, next) {
   try {
     const settings = await loadSettings()
     const before = settings.toObject()
-    const { theme, business, features, allowUserThemes, menuOrder, billTemplate, lists, userThemes } = req.body || {}
+    const { theme, business, features, allowUserThemes, menuOrder, billTemplate, lists, userThemes, pos } = req.body || {}
+    if (pos !== undefined) settings.pos = cleanPos(pos, publicPos(settings.pos))
     if (userThemes !== undefined) {
       const valid = Array.isArray(userThemes) && userThemes.every((id, index) => THEME_IDS.includes(id) && userThemes.indexOf(id) === index)
       if (!valid) throw badRequest('Theme access list is invalid.')

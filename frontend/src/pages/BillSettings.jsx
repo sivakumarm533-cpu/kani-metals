@@ -4,6 +4,7 @@ import { BILL_TEMPLATES, renderBillImage } from '../utils/billImage.js'
 import { useToast } from '../hooks/useToast.js'
 import Toast from '../components/Toast.jsx'
 import LoadError from '../components/LoadError.jsx'
+import PosSettingsPanel from '../components/PosSettingsPanel.jsx'
 
 const sample = {
   dealer: { name: 'Sample Dealer', phone: '98765 43210', location: 'Chennai', category: 'Regular Dealer' },
@@ -74,7 +75,7 @@ export default function BillSettings() {
     <section className="boarder-box settings-page bill-settings-page">
       <Toast toast={toast} />
       <header className="bill-header settings-page-header">
-        <div><h1 className="page-title">Bill details</h1><p>Bill design and business details printed on the bills you send to dealers on WhatsApp.</p></div>
+        <div><h1 className="page-title">Bill details</h1><p>Bill design and business details printed on the bills you send to dealers on WhatsApp, and <a href="#pos-printing">POS receipt printing</a>.</p></div>
       </header>
       <LoadError message={error} />
       <div className="bill-settings-layout">
@@ -139,6 +140,7 @@ export default function BillSettings() {
           {preview.url ? <img src={preview.url} alt="Sample bill preview" className={preview.key !== previewKey ? 'is-updating' : ''} /> : <div className="skeleton bill-share-skeleton" />}
         </section>
       </div>
+      <PosSettingsPanel business={form} sample={sample} notify={notify} />
     </section>
   )
 }

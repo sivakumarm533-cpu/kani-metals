@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../services/api.js'
 import { applyTheme, THEME_IDS } from '../theme/themes.js'
 import { useAuth } from '../auth/authContextValue.js'
-import { AppSettingsContext, DEFAULT_BUSINESS, DEFAULT_LISTS } from './appSettingsContext.js'
+import { AppSettingsContext, DEFAULT_BUSINESS, DEFAULT_LISTS, POS_DEFAULTS } from './appSettingsContext.js'
 
 const CACHE_KEY = 'kani-app-settings'
 
@@ -24,6 +24,7 @@ function normalize(result) {
     billTemplate: result?.billTemplate || 'classic',
     lists: Object.fromEntries(Object.keys(DEFAULT_LISTS).map((key) => [key, Array.isArray(result?.lists?.[key]) && result.lists[key].length ? result.lists[key] : DEFAULT_LISTS[key]])),
     business: { ...DEFAULT_BUSINESS, ...result?.business },
+    pos: { ...POS_DEFAULTS, ...result?.pos },
   }
 }
 

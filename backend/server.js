@@ -11,7 +11,8 @@ import settingsRoutes from './routes/settingsRoutes.js'
 import dashboardRoutes from './routes/dashboardRoutes.js'
 import itemPriceRoutes from './routes/itemPriceRoutes.js'
 import inventoryRoutes from './routes/inventoryRoutes.js'
-import { authenticate, requireFeature } from './middleware/auth.js'
+import employeeRoutes from './routes/employeeRoutes.js'
+import { authenticate, requireAdmin, requireFeature } from './middleware/auth.js'
 import { apiRateLimit, configuredCorsOrigins, corsMiddleware, securityHeaders } from './middleware/security.js'
 import { totpEncryptionKeyConfigured } from './utils/totp.js'
 import { webpImages } from './utils/webp.js'
@@ -62,6 +63,8 @@ app.use('/api/bills', requireFeature('itemEntry', { readWith: ['billComparison',
 app.use('/api/payments', requireFeature('dealerPayments', { readWith: ['itemEntry'] }), paymentRoutes)
 app.use('/api/item-prices', requireFeature('itemPrices', { readWith: ['itemEntry'] }), itemPriceRoutes)
 app.use('/api/inventory', requireFeature('inventory'), inventoryRoutes)
+// Staff attendance and wages: administrators and sub-admins only.
+app.use('/api/employees', requireAdmin, employeeRoutes)
 app.use('/api/admin/backup', backupRoutes)
 app.use('/api/app-settings', settingsRoutes)
 app.use('/api/dashboard', dashboardRoutes)

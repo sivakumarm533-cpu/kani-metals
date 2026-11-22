@@ -6,13 +6,14 @@
 export const FEATURE_KEYS = ['inventory', 'itemEntry', 'dealerPayments', 'billComparison', 'itemPrices']
 
 /** Screens in the main menu, in their default order. Admins can reorder them. */
-export const MENU_KEYS = ['dashboard', 'itemEntry', 'dealerPayments', 'itemPrices', 'billComparison', 'inventory']
+export const MENU_KEYS = ['dashboard', 'itemEntry', 'dealerPayments', 'itemPrices', 'billComparison', 'inventory', 'employees']
 
 /** Dashboard sections a user can hide. Keep in sync with DASHBOARD_WIDGETS in frontend/src/pages/Dashboard.jsx. */
 export const DASHBOARD_WIDGETS = ['pendingCard', 'paidCard', 'billedCard', 'lowStockCard', 'pendingDealers', 'rateUpdates', 'quickActions', 'recentPayments', 'lowStockList']
 
 /** Screens a user can pin to the mobile bottom bar. */
-export const BOTTOM_NAV_KEYS = ['dashboard', ...FEATURE_KEYS, 'profile', 'settings']
+/** Staff (employees) is for administrators only, so it is not a feature switch, but it can be pinned. */
+export const BOTTOM_NAV_KEYS = ['dashboard', ...FEATURE_KEYS, 'employees', 'profile', 'settings']
 export const DEFAULT_BOTTOM_NAV = ['dashboard', 'itemEntry', 'dealerPayments', 'inventory']
 export const BOTTOM_NAV_MAX = 4
 export const NAV_STYLES = ['light', 'color', 'dark']

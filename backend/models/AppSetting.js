@@ -7,6 +7,33 @@ export const BILL_TEMPLATE_IDS = ['classic', 'modern', 'minimal', 'bold', 'soft'
 /** Keep in sync with THEMES in frontend/src/theme/themes.js (tier: 'premium' there). */
 export const THEME_IDS = ['copper', 'ocean', 'emerald', 'royal', 'crimson', 'teal', 'steel', 'gold', 'rose', 'midnight', 'pongal', 'diwali', 'holi', 'aurora', 'deepsea', 'luxe', 'christmas']
 
+/**
+ * POS (thermal receipt) printing, kept apart from the WhatsApp bill image settings.
+ * Keep in sync with POS_DEFAULTS in frontend/src/settings/appSettingsContext.js.
+ */
+export const POS_DEFAULTS = {
+  template: 'classic', paperWidth: '80', fontSize: 'normal', copies: 1, feedLines: 3,
+  showLogo: true, showAddress: true, showPhone: true, showGstin: true, showDealer: true,
+  showItemNotes: false, showPayments: true, showPreviousBalance: false, showTerms: false, showGreeting: true,
+  footerNote: '',
+}
+/** Receipt designs; keep in sync with POS_TEMPLATES in frontend/src/utils/posReceipt.js. */
+export const POS_TEMPLATES = ['classic', 'compact', 'bold', 'mono', 'invoice']
+export const POS_PAPER_WIDTHS = ['58', '80']
+export const POS_FONT_SIZES = ['small', 'normal', 'large']
+export const POS_FLAGS = Object.keys(POS_DEFAULTS).filter((key) => typeof POS_DEFAULTS[key] === 'boolean')
+
+const posSchema = new mongoose.Schema({
+  template: { type: String, enum: POS_TEMPLATES, default: POS_DEFAULTS.template },
+  paperWidth: { type: String, enum: POS_PAPER_WIDTHS, default: POS_DEFAULTS.paperWidth },
+  fontSize: { type: String, enum: POS_FONT_SIZES, default: POS_DEFAULTS.fontSize },
+  copies: { type: Number, min: 1, max: 3, default: POS_DEFAULTS.copies },
+  /** Blank lines after the receipt so it can be torn off below the last line. */
+  feedLines: { type: Number, min: 0, max: 10, default: POS_DEFAULTS.feedLines },
+  ...Object.fromEntries(POS_FLAGS.map((key) => [key, { type: Boolean, default: POS_DEFAULTS[key] }])),
+  footerNote: { type: String, trim: true, maxlength: 200, default: '' },
+}, { _id: false })
+
 const featureFields = Object.fromEntries(FEATURE_KEYS.map((key) => [key, { type: Boolean, default: true }]))
 
 /** Single application-wide settings document (key "app"). */
@@ -43,6 +70,7 @@ const appSettingSchema = new mongoose.Schema({
     /** Print the greeting on bills. */
     showGreeting: { type: Boolean, default: true },
   },
+  pos: { type: posSchema, default: () => ({}) },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true })
 

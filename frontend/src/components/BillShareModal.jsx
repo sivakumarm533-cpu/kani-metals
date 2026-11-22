@@ -3,6 +3,7 @@ import Modal from './Modal.jsx'
 import { apiRequest } from '../services/api.js'
 import { useAppSettings } from '../settings/appSettingsContext.js'
 import { billMessage, billNumber, oldestFirst, formatPaise, renderBillImage, statusText, whatsappNumber } from '../utils/billImage.js'
+import { printReceipt, receiptData } from '../utils/posReceipt.js'
 
 const shortDate = (value) => new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -22,7 +23,7 @@ function downloadBlob(blob, name) {
  * total, paid (advance/partial) and balance due. The text summary is sent only with "Send as text".
  */
 export default function BillShareModal({ dealerId, billId, onClose }) {
-  const { business, billTemplate } = useAppSettings()
+  const { business, billTemplate, pos } = useAppSettings()
   const [details, setDetails] = useState(null)
   const [error, setError] = useState('')
   const [image, setImage] = useState(null)
@@ -104,6 +105,15 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
   const number = whatsappNumber(phone)
   const chatUrl = `https://wa.me/${number}`
 
+  /** Prints this bill on the POS (thermal) printer, using Settings → Bill details → POS printing. */
+  async function printPos() {
+    const receipt = receiptData(details, billId)
+    if (!receipt) return
+    setNotice('')
+    try { await printReceipt({ ...receipt, business }, pos) }
+    catch (issue) { setError(issue.message) }
+  }
+
   /** Opens the dealer's chat; with `withText` the bill summary is typed in for you. */
   function openChat(withText = false) {
     const url = withText ? `${chatUrl}?text=${encodeURIComponent(message)}` : chatUrl
@@ -143,8 +153,8 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
         <div className="bill-share-preview">
           {image ? <img src={image.url} alt={`Bill ${data ? billNumber(data.bill) : ''} preview`} /> : <div className="skeleton bill-share-skeleton" aria-label="Preparing bill image" />}
         </div>
-        {data && statementRows && <dl className="bill-share-summary">
-          {statementRows.map((row, index) => <div key={row.bill._id}><dt>Bill {index + 1}{row.current ? ' (this bill)' : ''} · {billNumber(row.bill)} · {shortDate(row.bill.issuedDate)}</dt><dd className={row.pendingPaise ? 'is-due' : 'is-paid'}>{formatPaise(row.pendingPaise)}</dd></div>)}
+        {data && statementRows && <dl className="bill-share-summary is-statement">
+          {statementRows.map((row, index) => <div key={row.bill._id}><dt>Bill {index + 1}{row.current ? ' (this bill)' : ''} · {shortDate(row.bill.issuedDate)}<span className="bill-share-bill-no">{billNumber(row.bill)}</span></dt><dd className={row.pendingPaise ? 'is-due' : 'is-paid'}>{formatPaise(row.pendingPaise)}</dd></div>)}
           <div><dt>All bills total</dt><dd>{formatPaise(statementRows.reduce((sum, row) => sum + row.totalPaise, 0))}</dd></div>
           <div><dt>Total received</dt><dd className="is-paid">{formatPaise(statementRows.reduce((sum, row) => sum + row.receivedPaise, 0))}</dd></div>
           <div><dt>Total amount due</dt><dd className="is-due"><strong>{formatPaise(statementRows.reduce((sum, row) => sum + row.pendingPaise, 0))}</strong></dd></div>
@@ -155,7 +165,7 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
           {data.state.receivedPaise > 0 && !extra && <div><dt>Balance due</dt><dd className={data.state.pendingPaise ? 'is-due' : 'is-paid'}>{formatPaise(data.state.pendingPaise)}</dd></div>}
           <div><dt>Status</dt><dd>{statusText(data.state)}</dd></div>
           {extra && <>
-            {extra.bills.map((row) => <div key={row.bill._id}><dt>{billNumber(row.bill)} · {shortDate(row.bill.issuedDate)}</dt><dd className="is-due">{formatPaise(row.pendingPaise)}</dd></div>)}
+            {extra.bills.map((row) => <div key={row.bill._id}><dt>{shortDate(row.bill.issuedDate)}<span className="bill-share-bill-no">{billNumber(row.bill)}</span></dt><dd className="is-due">{formatPaise(row.pendingPaise)}</dd></div>)}
             <div><dt>Total amount due</dt><dd className="is-due"><strong>{formatPaise(data.state.pendingPaise + extra.totalPaise)}</strong></dd></div>
           </>}
         </dl>}
@@ -188,6 +198,7 @@ export default function BillShareModal({ dealerId, billId, onClose }) {
           <button type="button" className="continue-btn whatsapp-btn" onClick={shareOnWhatsApp} disabled={!image || busy}><i className="bi bi-whatsapp" aria-hidden="true" /> Share bill on WhatsApp</button>
           <button type="button" className="back-button" onClick={() => openChat(true)} disabled={!data}><i className="bi bi-chat-text" aria-hidden="true" /> Send as text</button>
           <button type="button" className="back-button" onClick={() => image && downloadBlob(image.blob, fileName)} disabled={!image}><i className="bi bi-download" aria-hidden="true" /> Download image</button>
+          <button type="button" className="back-button" onClick={printPos} disabled={!data}><i className="bi bi-printer" aria-hidden="true" /> Print (POS)</button>
         </div>
       </>}
     </Modal>

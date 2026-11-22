@@ -276,6 +276,18 @@
 .price-message-flag { padding: 1px 8px; border-radius: var(--radius-pill); font-size: 11px; font-style: normal; font-weight: 700; }
 .price-message-flag.is-check { color: #b45309; background: var(--color-warning-soft, #fef3c7); }
 .price-message-flag.is-none { color: var(--color-danger); background: #fef2f2; }
+.price-message-flag.is-new { color: var(--color-primary-strong); background: var(--color-primary-soft); }
+.price-message-flag.is-added { color: var(--color-success-strong); background: var(--color-success-soft); }
+.price-message-row.is-new { border-left: 4px solid var(--color-primary); }
+.price-message-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: var(--radius-sm); color: var(--color-text); background: var(--color-surface-muted); font-size: 13px; }
+.price-message-ask .continue-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 6px 12px; font-size: 13px; }
+.price-message-fields.is-new { grid-template-columns: minmax(0, 1fr) 100px 130px; }
+.price-message-fields.is-new > input, .price-message-fields.is-new > select { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); color: var(--color-text); background: var(--color-surface); font: inherit; }
+.price-message-link { justify-self: start; padding: 0; text-align: left; border: 0; color: var(--color-link, var(--color-primary-strong)); background: none; font-size: 12px; font-weight: 600; text-decoration: underline; }
+@media (max-width: 720px) {
+  .price-message-fields.is-new { grid-template-columns: 1fr 1fr; }
+  .price-message-fields.is-new > input { grid-column: 1 / -1; }
+}
 .price-message-fields { display: grid; grid-template-columns: minmax(0, 1fr) 130px; gap: 8px; }
 .price-message-price { position: relative; display: flex; align-items: center; margin: 0; }
 .price-message-price > span { position: absolute; left: 11px; color: var(--color-text-muted); pointer-events: none; }

@@ -11,6 +11,7 @@ import { formatRupees } from '../utils/format.js'
 import { useMediaQuery } from '../hooks/useMediaQuery.js'
 import { FloatingActionButton, StatusBadge } from '../components/ui.jsx'
 import { useAppSettings } from '../settings/appSettingsContext.js'
+import { readChoice, saveChoice } from '../utils/remember.js'
 import './Inventory.css'
 
 /*
@@ -25,7 +26,7 @@ const isLow = (item) => item.quantity <= LOW_STOCK_LIMIT
 const MODES = [['add', 'Add', 'bi-plus-lg'], ['remove', 'Remove', 'bi-dash-lg'], ['set', 'Set to', 'bi-pencil']]
 
 function AddItemModal({ categories, units, onClose, onAdded, notify }) {
-  const [form, setForm] = useState({ name: '', category: categories[0] || '', unit: units[0] || 'kg', quantity: '', price: '', image: '' })
+  const [form, setForm] = useState({ name: '', category: readChoice('inventoryCategory', categories[0] || ''), unit: readChoice('inventoryUnit', units[0] || 'kg', units.length ? units : undefined), quantity: '', price: '', image: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
@@ -43,6 +44,9 @@ function AddItemModal({ categories, units, onClose, onAdded, notify }) {
     setError('')
     try {
       const result = await apiRequest('/inventory/items', { method: 'POST', body: JSON.stringify(form) })
+      // The next item starts with the same category and unit.
+      saveChoice('inventoryCategory', form.category)
+      saveChoice('inventoryUnit', form.unit)
       notify(result.message)
       onAdded()
     } catch (saveError) { setError(saveError.message); setBusy(false) }

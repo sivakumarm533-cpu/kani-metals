@@ -1406,6 +1406,8 @@
   .user-result-count { margin-left: 0; padding-bottom: 0; }
   .user-add-button { justify-content: center; }
   .activity-filter-panel label, .activity-filter-panel .activity-search-field { min-width: 0; flex-basis: calc(50% - 6px); }
+  /* The search box gets its own full-width row so its placeholder is not cut off. */
+  .activity-filter-panel .activity-search-field { flex-basis: 100%; }
   .activity-row-title { flex-wrap: wrap; }
   .activity-card-header { align-items: flex-start; }
   .dealer-delete-dialog, .payment-modal { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); margin: auto; padding: 16px; }

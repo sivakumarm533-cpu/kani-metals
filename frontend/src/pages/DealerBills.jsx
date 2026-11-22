@@ -9,13 +9,15 @@ import { useToast } from '../hooks/useToast.js'
 import { formatRupees } from '../utils/format.js'
 import { formatPaise } from '../utils/billImage.js'
 import { useAppSettings } from '../settings/appSettingsContext.js'
+import { printBillReceipt } from '../utils/posReceipt.js'
 
 const units = ['kg', 'g', 'ton', 'pcs', 'box', 'meter', 'liter']
 const billDate = (value) => new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 
 function DealerBills() {
   // Item categories from Settings → Dropdown lists.
-  const categories = useAppSettings().lists.itemCategories
+  const { lists, business, pos } = useAppSettings()
+  const categories = lists.itemCategories
   const { dealerId } = useParams()
   const [data, setData] = useState({ key: '', dealer: null, bills: [], error: '' })
   const [retry, setRetry] = useState(0)
@@ -26,11 +28,19 @@ function DealerBills() {
   // Money already paid on a bill being deleted: kept as dealer advance (default) or deleted with it.
   const [paidHandling, setPaidHandling] = useState('advance')
   const [sharingBillId, setSharingBillId] = useState(null)
+  const [printingBillId, setPrintingBillId] = useState(null)
   const [error, setError] = useState('')
   const [toast, notify] = useToast()
   const [busy, setBusy] = useState(false)
   // Bills shown open in the accordion. null = nothing chosen yet, so the newest bill starts open.
   const [openBillIds, setOpenBillIds] = useState(null)
+  /** Prints the bill on the POS (thermal) printer. */
+  async function printBill(bill) {
+    setPrintingBillId(bill._id)
+    try { await printBillReceipt({ dealerId, billId: bill._id, business, pos }) }
+    catch (printError) { notify(printError.message, 'danger') }
+    finally { setPrintingBillId(null) }
+  }
   const requestKey = `${dealerId}:${retry}`
   const loading = data.key !== requestKey
   const { dealer, bills } = data
@@ -132,7 +142,7 @@ function DealerBills() {
       </button></h3>
       {open && <div className="dealer-bill-panel" id={`bill-panel-${bill._id}`} role="region" aria-labelledby={`bill-head-${bill._id}`}>
       <div className="table-responsive"><table className="table align-middle mb-0 responsive-card-table"><thead><tr><th>Item</th><th>Category</th><th>Quantity</th><th>Price / unit</th><th>Amount</th></tr></thead><tbody>{bill.items.map((item, index) => <tr key={`${item.name}-${index}`}><td data-label="Item"><span>{item.name}{item.note && <small className="bill-item-note">{item.note}</small>}</span></td><td data-label="Category">{item.category}</td><td data-label="Quantity">{item.quantity} {item.unit}</td><td data-label="Price / unit">{formatRupees(item.price)}</td><td data-label="Amount">{formatRupees(Number(item.quantity) * Number(item.price))}</td></tr>)}</tbody></table></div>
-      <div className="dealer-bill-actions"><button type="button" className="whatsapp-inline-btn" onClick={() => setSharingBillId(bill._id)}><i className="bi bi-whatsapp" aria-hidden="true" /> Send on WhatsApp</button><Link className="back-button" to={`/dealer-payments/${dealerId}?bill=${bill._id}`}><i className="bi bi-wallet2" aria-hidden="true" /> Payments</Link>{bill.hasPayments ? <span className="bill-locked-note" title="Reverse this bill's payments in Payments to edit it."><i className="bi bi-lock" aria-hidden="true" /> Has payments · reverse them to edit</span> : <button type="button" className="edit-bill-item" onClick={() => beginEdit(bill)}>Edit bill</button>}<button type="button" className="remove-bill-item" onClick={() => askDelete(bill)}><i className="bi bi-trash3" aria-hidden="true" /> Delete bill</button></div>
+      <div className="dealer-bill-actions"><button type="button" className="whatsapp-inline-btn" onClick={() => setSharingBillId(bill._id)}><i className="bi bi-whatsapp" aria-hidden="true" /> Send on WhatsApp</button><button type="button" className="back-button" disabled={printingBillId === bill._id} onClick={() => printBill(bill)}><i className="bi bi-printer" aria-hidden="true" /> {printingBillId === bill._id ? 'Preparing…' : 'Print'}</button><Link className="back-button" to={`/dealer-payments/${dealerId}?bill=${bill._id}`}><i className="bi bi-wallet2" aria-hidden="true" /> Payments</Link>{bill.hasPayments ? <span className="bill-locked-note" title="Reverse this bill's payments in Payments to edit it."><i className="bi bi-lock" aria-hidden="true" /> Has payments · reverse them to edit</span> : <button type="button" className="edit-bill-item" onClick={() => beginEdit(bill)}>Edit bill</button>}<button type="button" className="remove-bill-item" onClick={() => askDelete(bill)}><i className="bi bi-trash3" aria-hidden="true" /> Delete bill</button></div>
       </div>}
     </article>
     })}</div></>)}

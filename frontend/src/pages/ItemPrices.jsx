@@ -7,6 +7,7 @@ import LoadError from '../components/LoadError.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { compressImage } from '../utils/image.js'
 import { readPriceMessage } from '../utils/priceMessage.js'
+import { readChoice, saveChoice, useRememberedState } from '../utils/remember.js'
 import { useAuth } from '../auth/authContextValue.js'
 import { isManager } from '../config/navigation.js'
 import { FloatingActionButton } from '../components/ui.jsx'
@@ -499,7 +500,7 @@ function DetailModal({ itemKey, onClose, onChanged, onPhotoChanged, notify }) {
 
 /** Adds an item that is not on any bill yet, with its price and an optional photo. */
 function AddItemModal({ categories, units, onClose, onAdded, notify }) {
-  const [form, setForm] = useState({ name: '', category: '', unit: units[0] || 'kg', price: '', note: '', image: '' })
+  const [form, setForm] = useState({ name: '', category: readChoice('priceItemCategory', ''), unit: readChoice('priceItemUnit', units[0] || 'kg'), price: '', note: '', image: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
@@ -517,6 +518,8 @@ function AddItemModal({ categories, units, onClose, onAdded, notify }) {
     setError('')
     try {
       const result = await apiRequest('/item-prices/items', { method: 'POST', body: JSON.stringify(form) })
+      saveChoice('priceItemCategory', form.category)
+      saveChoice('priceItemUnit', form.unit)
       notify(result.message)
       onAdded(result.key, form.image)
     } catch (saveError) { setError(saveError.message); setBusy(false) }
@@ -654,7 +657,16 @@ function BillPriceReviewModal({ items, onClose, onSaved, notify }) {
 const MESSAGE_EXAMPLE = 'Copper 780\nBrass 520/kg, Aluminium 185\nIron scrap - Rs 32 per kg'
 
 /** Paste a rate message, check what was read, then save the prices together. */
-function MessagePricesModal({ items, onClose, onSaved, notify }) {
+/** Unit for a new item from a message: the unit written in the message when the list has it, else the first unit. */
+function unitFor(parsedUnit, units) {
+  const list = units.length ? units : ['kg']
+  if (!parsedUnit) return readChoice('priceItemUnit', list[0], list)
+  const aliases = { piece: ['piece', 'pcs', 'pc', 'nos'], litre: ['litre', 'liter', 'ltr', 'l'] }
+  const wanted = aliases[parsedUnit] || [parsedUnit]
+  return list.find((unit) => wanted.includes(unit.toLowerCase())) || list[0]
+}
+
+function MessagePricesModal({ items, units = [], onClose, onSaved, notify }) {
   const [text, setText] = useState('')
   const [rows, setRows] = useState(null)
   const [skipped, setSkipped] = useState([])
@@ -670,7 +682,7 @@ function MessagePricesModal({ items, onClose, onSaved, notify }) {
     if (!result.rows.length) { setError('No prices found. Write one item and price per line, like "Copper 780".'); return }
     setRows(result.rows.map((row, index) => {
       const current = itemByKey.get(row.key)
-      return { ...row, id: index, price: String(row.price), include: Boolean(current) && row.confidence !== 'none' && row.pricePaise !== current.currentPaise }
+      return { ...row, id: index, price: String(row.price), include: Boolean(current) && row.confidence !== 'none' && row.pricePaise !== current.currentPaise, isNew: false, added: false, newName: row.name.replace(/\s+/g, ' ').trim(), newUnit: unitFor(row.unit, units) }
     }))
     setSkipped(result.skipped)
   }
@@ -680,23 +692,51 @@ function MessagePricesModal({ items, onClose, onSaved, notify }) {
     const next = { ...row, ...changes }
     // Picking an item by hand means the match is now confirmed.
     if ('key' in changes) { next.confidence = changes.key ? 'high' : 'none'; next.include = Boolean(changes.key) }
+    // "Add new item" ticks the row; going back to the list unticks it until an item is chosen.
+    if ('isNew' in changes) { if (changes.isNew) next.key = ''; next.include = changes.isNew || Boolean(next.key) }
     return next
   }))
 
-  const chosen = (rows || []).filter((row) => row.include && row.key)
+  const chosen = (rows || []).filter((row) => row.include && !row.isNew && row.key)
+  const newRows = (rows || []).filter((row) => row.include && row.isNew && !row.added)
   const repeated = chosen.map((row) => row.key).filter((key, index, keys) => keys.indexOf(key) !== index)
+  const newKey = (row) => `${row.newName.trim().replace(/\s+/g, ' ').toLowerCase()}|${row.newUnit.trim().toLowerCase()}`
+  const total = chosen.length + newRows.length
 
   async function save() {
     setError('')
     if (repeated.length) { setError(`${itemByKey.get(repeated[0])?.name} is chosen twice. Untick one of them.`); return }
     const bad = chosen.find((row) => !(Number(row.price) > 0))
     if (bad) { setError(`Enter a price above ₹0 for ${itemByKey.get(bad.key)?.name}.`); return }
+    const unnamed = newRows.find((row) => !row.newName.trim())
+    if (unnamed) { setError(`Enter a name for the new item from “${unnamed.raw}”.`); return }
+    const badNew = newRows.find((row) => !(Number(row.price) > 0))
+    if (badNew) { setError(`Enter a price above ₹0 for ${badNew.newName}.`); return }
+    const newKeys = newRows.map(newKey)
+    const twice = newRows.find((row, index) => newKeys.indexOf(newKey(row)) !== index)
+    if (twice) { setError(`${twice.newName} (${twice.newUnit}) is added twice. Untick one of them.`); return }
+    const existing = newRows.find((row) => itemByKey.has(newKey(row)))
+    if (existing) { setError(`${existing.newName} (${existing.newUnit}) is already in the list. Choose it from the list instead.`); return }
     setBusy(true)
+    let addedCount = 0
     try {
-      const result = await apiRequest('/item-prices/manual/bulk', { method: 'PUT', body: JSON.stringify({ note, updates: chosen.map((row) => ({ key: row.key, price: row.price })) }) })
-      notify(result.message)
+      // New items one at a time; each one saved is marked "Added" so trying again does not add it twice.
+      for (const row of newRows) {
+        await apiRequest('/item-prices/items', { method: 'POST', body: JSON.stringify({ name: row.newName.trim(), unit: row.newUnit, price: row.price, note }) })
+        addedCount += 1
+        setRows((current) => current.map((entry) => (entry.id === row.id ? { ...entry, added: true } : entry)))
+      }
+      const messages = addedCount ? [`${addedCount} new item${addedCount === 1 ? '' : 's'} added`] : []
+      if (chosen.length) {
+        const result = await apiRequest('/item-prices/manual/bulk', { method: 'PUT', body: JSON.stringify({ note, updates: chosen.map((row) => ({ key: row.key, price: row.price })) }) })
+        messages.push(result.message)
+      }
+      notify(messages.join('. '))
       onSaved()
-    } catch (saveError) { setError(saveError.message); setBusy(false) }
+    } catch (saveError) {
+      setError(addedCount ? `${saveError.message} The ${addedCount} new item${addedCount === 1 ? ' was' : 's were'} already added.` : saveError.message)
+      setBusy(false)
+    }
   }
 
   return (
@@ -722,33 +762,54 @@ function MessagePricesModal({ items, onClose, onSaved, notify }) {
 
       {rows && (
         <div className="price-message-step">
-          <p className="price-add-help">Ticked rows will be saved as manual prices. Rows marked <b>Check</b> were a close spelling match; make sure the item is right.</p>
+          <p className="price-add-help">Ticked rows will be saved as manual prices. Rows marked <b>Check</b> were a close spelling match; make sure the item is right. Items that are not in your list can be added as new items.</p>
           <ul className="price-message-rows">
             {rows.map((row) => {
               const current = itemByKey.get(row.key)
               const newPaise = Math.round(Number(row.price) * 100) || 0
               const diff = current ? newPaise - current.currentPaise : 0
+              const askNew = !row.isNew && !row.key
               return (
-                <li key={row.id} className={`price-message-row${row.include ? ' is-on' : ''}${row.confidence !== 'high' ? ' needs-check' : ''}`}>
-                  <input type="checkbox" checked={row.include} disabled={!row.key} onChange={(event) => update(row.id, { include: event.target.checked })} aria-label={`Save price for ${row.name}`} />
+                <li key={row.id} className={`price-message-row${row.include ? ' is-on' : ''}${row.isNew ? ' is-new' : row.confidence !== 'high' ? ' needs-check' : ''}`}>
+                  <input type="checkbox" checked={row.include || row.added} disabled={row.added || (!row.key && !row.isNew)} onChange={(event) => update(row.id, { include: event.target.checked })} aria-label={row.isNew ? `Add ${row.newName} as a new item` : `Save price for ${row.name}`} />
                   <div className="price-message-main">
                     <span className="price-message-raw" title={row.raw}>“{row.raw}”
-                      {row.confidence === 'low' && <span className="price-message-flag is-check">Check</span>}
-                      {row.confidence === 'none' && <span className="price-message-flag is-none">No match</span>}
+                      {row.added && <span className="price-message-flag is-added">Added</span>}
+                      {!row.added && row.isNew && <span className="price-message-flag is-new">New item</span>}
+                      {!row.isNew && row.confidence === 'low' && <span className="price-message-flag is-check">Check</span>}
+                      {askNew && <span className="price-message-flag is-none">Not in list</span>}
                     </span>
-                    <div className="price-message-fields">
-                      <select value={row.key} onChange={(event) => update(row.id, { key: event.target.value })} aria-label="Item">
-                        <option value="">— Choose item —</option>
-                        {sortedItems.map((item) => <option key={item.key} value={item.key}>{item.name}{item.unit ? ` (${item.unit})` : ''}</option>)}
-                      </select>
-                      <label className="price-message-price"><span>₹</span><input type="number" inputMode="decimal" min="0.01" step="0.01" value={row.price} onChange={(event) => update(row.id, { price: event.target.value })} aria-label="New price" /></label>
-                    </div>
-                    {current && (
+                    {askNew && (
+                      <div className="price-message-ask">
+                        <span><b>{row.newName}</b> is not in your price list. Do you want to add it as a new item?</span>
+                        <button type="button" className="continue-btn" onClick={() => update(row.id, { isNew: true })}><i className="bi bi-plus-lg" aria-hidden="true" /> Add new item</button>
+                      </div>
+                    )}
+                    {row.isNew ? (
+                      <div className="price-message-fields is-new">
+                        <input value={row.newName} maxLength="120" disabled={row.added} onChange={(event) => update(row.id, { newName: event.target.value })} aria-label="New item name" placeholder="Item name" />
+                        <select value={row.newUnit} disabled={row.added} onChange={(event) => { saveChoice('priceItemUnit', event.target.value); update(row.id, { newUnit: event.target.value }) }} aria-label="Unit">
+                          {[...new Set([...units, row.newUnit])].map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                        </select>
+                        <label className="price-message-price"><span>₹</span><input type="number" inputMode="decimal" min="0.01" step="0.01" value={row.price} disabled={row.added} onChange={(event) => update(row.id, { price: event.target.value })} aria-label="Price" /></label>
+                      </div>
+                    ) : (
+                      <div className="price-message-fields">
+                        <select value={row.key} onChange={(event) => update(row.id, { key: event.target.value })} aria-label="Item">
+                          <option value="">{askNew ? '— Or choose an existing item —' : '— Choose item —'}</option>
+                          {sortedItems.map((item) => <option key={item.key} value={item.key}>{item.name}{item.unit ? ` (${item.unit})` : ''}</option>)}
+                        </select>
+                        <label className="price-message-price"><span>₹</span><input type="number" inputMode="decimal" min="0.01" step="0.01" value={row.price} onChange={(event) => update(row.id, { price: event.target.value })} aria-label="New price" /></label>
+                      </div>
+                    )}
+                    {!row.isNew && current && (
                       <small className="price-message-change">
                         Now {money(current.currentPaise)}{perUnit(current.unit)} →{' '}
                         {diff === 0 ? <span>no change</span> : <span className={diff > 0 ? 'is-up' : 'is-down'}>{diff > 0 ? '▲' : '▼'} {money(Math.abs(diff))}</span>}
                       </small>
                     )}
+                    {row.isNew && !row.added && <button type="button" className="price-message-link" onClick={() => update(row.id, { isNew: false })}>Choose an existing item instead</button>}
+                    {!row.isNew && row.confidence === 'low' && <button type="button" className="price-message-link" onClick={() => update(row.id, { isNew: true })}>Not this item? Add “{row.newName}” as a new item</button>}
                   </div>
                 </li>
               )
@@ -759,7 +820,7 @@ function MessagePricesModal({ items, onClose, onSaved, notify }) {
           {error && <p className="payment-form-error" role="alert">{error}</p>}
           <div className="payment-modal-actions">
             <button type="button" className="back-button" disabled={busy} onClick={() => { setRows(null); setError('') }}><i className="bi bi-arrow-left" aria-hidden="true" /> Edit message</button>
-            <button type="button" className="continue-btn" disabled={busy || !chosen.length} onClick={save}>{busy ? 'Saving…' : `Save ${chosen.length} price${chosen.length === 1 ? '' : 's'}`}</button>
+            <button type="button" className="continue-btn" disabled={busy || !total} onClick={save}>{busy ? 'Saving…' : !chosen.length && newRows.length ? `Add ${newRows.length} new item${newRows.length === 1 ? '' : 's'}` : `Save ${total} price${total === 1 ? '' : 's'}${newRows.length ? ` (${newRows.length} new)` : ''}`}</button>
           </div>
         </div>
       )}
@@ -773,8 +834,10 @@ export default function ItemPrices() {
   const { lists } = useAppSettings()
   const [state, setState] = useState({ loading: true, error: '', items: [], categories: [] })
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('all')
-  const [sort, setSort] = useState('recent')
+  const [savedCategory, setCategory] = useRememberedState('priceCategoryFilter', 'all')
+  const [sort, setSort] = useRememberedState('priceSort', 'recent', SORTS.map(([id]) => id))
+  // A remembered category that no longer has items shows everything.
+  const category = savedCategory !== 'all' && !state.categories.includes(savedCategory) ? 'all' : savedCategory
   const [view, setView] = useState(readView)
   const [openKey, setOpenKey] = useState(null)
   const [adding, setAdding] = useState(false)
@@ -894,7 +957,7 @@ export default function ItemPrices() {
 
       {openKey && <DetailModal itemKey={openKey} onClose={() => setOpenKey(null)} onChanged={load} onPhotoChanged={setImage} notify={notify} />}
       {reviewing && toReview.length > 0 && !openKey && !adding && !fromMessage && <BillPriceReviewModal key={toReview.map((item) => item.key).join(',')} items={toReview} notify={notify} onClose={reviewLaterClose} onSaved={(options) => { if (!options?.keepOpen) setReviewing(false); load() }} />}
-      {fromMessage && <MessagePricesModal items={state.items} notify={notify} onClose={() => setFromMessage(false)} onSaved={() => { setFromMessage(false); load() }} />}
+      {fromMessage && <MessagePricesModal items={state.items} units={lists.units} notify={notify} onClose={() => setFromMessage(false)} onSaved={() => { setFromMessage(false); load() }} />}
       {!adding && !openKey && !fromMessage && !reviewing && <FloatingActionButton icon="bi-plus-lg" label="Add item" onClick={() => setAdding(true)} />}
       {adding && <AddItemModal categories={[...new Set([...lists.itemCategories, ...state.categories])]} units={lists.units} notify={notify} onClose={() => setAdding(false)} onAdded={(key, image) => { setAdding(false); if (image) setImage(key, image); load(); setOpenKey(key) }} />}
     </section>

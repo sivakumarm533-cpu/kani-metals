@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { apiRequest } from '../services/api.js'
+import { useRememberedState } from '../utils/remember.js'
 import {
   billQuantitySummary,
   billTotalCents,
@@ -131,8 +132,8 @@ export default function BillComparison() {
   const [selectionError, setSelectionError] = useState('')
   const [compared, setCompared] = useState(() => Boolean(searchParams.get('dealer') && searchParams.get('previousBill') && searchParams.get('currentBill')))
   const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [sortBy, setSortBy] = useState('name')
+  const [statusFilter, setStatusFilter] = useRememberedState('compareFilter', 'all', ['all', 'price-increased', 'price-decreased', 'price-unchanged', 'quantity-increased', 'quantity-decreased', 'new', 'removed'])
+  const [sortBy, setSortBy] = useRememberedState('compareSort', 'name', ['name', 'price-increase', 'price-decrease', 'quantity', 'amount'])
 
   useEffect(() => {
     let cancelled = false

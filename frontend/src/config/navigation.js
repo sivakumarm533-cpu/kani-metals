@@ -10,6 +10,8 @@ export const NAV_ITEMS = [
   { key: 'itemPrices', to: '/item-prices', icon: 'bi-currency-rupee', activeIcon: 'bi-currency-rupee', label: 'Prices', fullLabel: 'Item prices', description: 'Latest price of every item from dealer bills', feature: 'itemPrices' },
   { key: 'billComparison', to: '/bill-comparison', icon: 'bi-arrow-left-right', activeIcon: 'bi-arrow-left-right', label: 'Compare', fullLabel: 'Bill comparison', description: 'Compare two bills from the same dealer', feature: 'billComparison' },
   { key: 'inventory', to: '/inventory', icon: 'bi-boxes', activeIcon: 'bi-boxes', label: 'Stock', fullLabel: 'Inventory', description: 'Current stock of every item', feature: 'inventory' },
+  // Administrators and sub-admins only; employees do not sign in.
+  { key: 'employees', to: '/employees', icon: 'bi-person-badge', activeIcon: 'bi-person-badge-fill', label: 'Staff', fullLabel: 'Staff & wages', description: 'Daily attendance, wages and salary of employees', managerOnly: true },
 ]
 
 export const PROFILE_ITEM = { key: 'profile', to: '/profile', icon: 'bi-person', activeIcon: 'bi-person-fill', label: 'Profile', fullLabel: 'My profile', description: 'Your photo, password, language and bottom bar' }
@@ -110,6 +112,7 @@ export function routeMeta(pathname) {
   if (pathname.startsWith('/dealer-payments/')) return { title: 'Dealer account', crumbs: [home, { label: 'Dealer payments', to: '/dealer-payments' }, { label: 'Dealer account' }], back: '/dealer-payments' }
   if (pathname.startsWith('/dealers/')) return { title: 'Bill history', crumbs: [home, { label: 'Item entry', to: '/itemsentry' }, { label: 'Bill history' }], back: '/itemsentry' }
   if (pathname.startsWith('/bill-comparison/product/')) return { title: 'Item comparison', crumbs: [home, { label: 'Bill comparison', to: '/bill-comparison' }, { label: 'Item comparison' }], back: -1 }
+  if (pathname.startsWith('/employees/')) return { title: 'Employee', crumbs: [home, { label: 'Staff & wages', to: '/employees' }, { label: 'Employee' }], back: '/employees' }
   if (pathname === '/profile') return { title: 'My profile', crumbs: [home, { label: 'My profile' }], back: null }
   const item = NAV_ITEMS.find((entry) => itemIsActive(entry, pathname))
   if (!item || item.key === 'dashboard') return { title: 'Dashboard', crumbs: [{ label: 'Dashboard' }], back: null }
