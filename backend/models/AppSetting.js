@@ -14,7 +14,7 @@ export const THEME_IDS = ['copper', 'ocean', 'emerald', 'royal', 'crimson', 'tea
 export const POS_DEFAULTS = {
   template: 'classic', paperWidth: '80', fontSize: 'normal', copies: 1, feedLines: 3,
   showLogo: true, showAddress: true, showPhone: true, showGstin: true, showDealer: true,
-  showItemNotes: false, showPayments: true, showPreviousBalance: false, showTerms: false, showGreeting: true,
+  showItemNotes: false, showPayments: true, showStatus: false, showPreviousBalance: false, showTerms: false, showGreeting: true,
   footerNote: '',
 }
 /** Receipt designs; keep in sync with POS_TEMPLATES in frontend/src/utils/posReceipt.js. */

@@ -15,7 +15,7 @@ import { billNumber, formatPaise, oldestFirst, statusText } from './billImage.js
 export const POS_TEMPLATES = [
   { id: 'classic', name: 'Classic', description: 'Centred header, item with quantity × rate below.' },
   { id: 'compact', name: 'Compact table', description: 'One row per item: Item · Qty · Rate · Amount. Uses the least paper.' },
-  { id: 'bold', name: 'Bold', description: 'Black header band, big inverted total and a status stamp.' },
+  { id: 'bold', name: 'Bold', description: 'Black header band and a big inverted total.' },
   { id: 'mono', name: 'Dot-matrix', description: 'Fixed-width text on a 32/48 character grid, like classic POS printers.' },
   { id: 'invoice', name: 'Cash bill', description: 'Formal bill: ruled table, amount in words and signature lines.' },
 ]
@@ -123,7 +123,8 @@ function footer(business, pos) {
   return (parts.length ? `<hr>${parts.join('')}` : '') + `<div class="center tiny">Printed ${escapeHtml(printedAt())}</div>`
 }
 
-const statusLine = (state, pos, className = 'status') => (pos.showPayments ? `<div class="center ${className}">${escapeHtml(statusText(state))}</div>` : '')
+// PAID / UNPAID / PARTIALLY PAID: off unless "Payment status" is switched on in POS settings.
+const statusLine = (state, pos) => (pos.showStatus ? `<div class="center status">${escapeHtml(statusText(state))}</div>` : '')
 const itemNote = (item, pos) => (pos.showItemNotes && item.note ? `<div class="small note">${escapeHtml(item.note)}</div>` : '')
 
 /* ---------- Templates ---------- */
@@ -156,7 +157,7 @@ const TEMPLATES = {
       + (pos.showPayments && state.receivedPaise > 0 ? row('Paid', formatPaise(state.receivedPaise)) : '')
       + (pos.showPayments && (state.receivedPaise > 0 || state.pendingPaise > 0) ? row('Balance', formatPaise(state.pendingPaise), 'strong') : '')
       + (due ? `<hr class="thin">${row(`Previous balance (${data.previousCount})`, formatPaise(data.previousPaise))}${row('TOTAL DUE', formatPaise(data.previousPaise + state.pendingPaise), 'total')}` : '')
-      + (pos.showPayments ? `<div class="center"><span class="stamp">${escapeHtml(statusText(state))}</span></div>` : '')
+      + (pos.showStatus ? `<div class="center"><span class="stamp">${escapeHtml(statusText(state))}</span></div>` : '')
       + footer(business, pos)
   },
 
@@ -230,8 +231,8 @@ function monoReceipt(data, pos, copyLabel, columns) {
   if (pos.showPayments) {
     if (state.receivedPaise > 0) pair('Paid', plainMoney(state.receivedPaise))
     if (state.receivedPaise > 0 || state.pendingPaise > 0) pair('Balance Rs.', plainMoney(state.pendingPaise))
-    center(`*** ${statusText(state)} ***`)
   }
+  if (pos.showStatus) center(`*** ${statusText(state)} ***`)
   if (pos.showPreviousBalance && data.previousPaise > 0) {
     rule('-')
     pair(`Previous bal (${data.previousCount})`, plainMoney(data.previousPaise))
@@ -265,7 +266,7 @@ const TEMPLATE_CSS = {
 .bold-meta { margin-top: 1mm; }
 hr.heavy { border-top: 2px solid #000; }
 .inverse { margin: 1mm 0; padding: 1.2mm 1.5mm; color: #fff; background: #000; font-size: 1.25em; font-weight: 800; }
-.stamp { display: inline-block; margin-top: 1.5mm; padding: .6mm 3mm; border: 2px solid #000; font-weight: 800; letter-spacing: .1em; }`,
+`,
   mono: `
 .mono { margin: 0; font-family: "Courier New", Consolas, "Lucida Console", monospace; white-space: pre; line-height: 1.25; }`,
   invoice: `
@@ -323,8 +324,9 @@ hr.thin { border-top-style: dotted; }
 .item { padding: .6mm 0; }
 .item-name { font-weight: 600; overflow-wrap: anywhere; }
 .note { font-style: italic; }
-.status { margin-top: 1mm; font-weight: 800; letter-spacing: .06em; }
 .terms { white-space: pre-line; }
+.status { margin-top: 1mm; font-weight: 800; letter-spacing: .06em; }
+.stamp { display: inline-block; margin-top: 1.5mm; padding: .6mm 3mm; border: 2px solid #000; font-weight: 800; letter-spacing: .1em; }
 .greeting { margin-top: 1mm; font-weight: 700; }
 .feed { height: ${Number(pos.feedLines) || 0}em; }
 ${TEMPLATE_CSS[template]}
