@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import { useAuth } from './auth/authContextValue.js'
 import RequireAuth from './components/RequireAuth.jsx'
@@ -13,7 +13,7 @@ import { AppSettingsProvider } from './settings/AppSettingsProvider.jsx'
 import { useAppSettings } from './settings/appSettingsContext.js'
 import { syncLanguage } from './utils/translate.js'
 import { applyUiStyle } from './theme/uiStyles.js'
-import { bottomNavItems, canUseItem, NAV_ITEMS } from './config/navigation.js'
+import { bottomNavItems, canUseItem, NAV_ITEMS, startScreenItem } from './config/navigation.js'
 import './App.css'
 import './components/component.css'
 import './pages/pages.css'
@@ -103,6 +103,16 @@ function AppLayout() {
   const sidebarOpen = isDesktop ? desktopOpen : drawerOpen
   const quickItems = bottomNavItems(user?.preferences?.bottomNav, user, features)
   const navStyle = user?.preferences?.navStyle || 'light'
+  // On a phone, opening the app on the home screen jumps once to the chosen start screen.
+  const navigate = useNavigate()
+  const startChecked = useRef(false)
+  const startTo = startScreenItem(user?.preferences?.startScreen, quickItems)?.to
+  useEffect(() => {
+    if (startChecked.current) return
+    startChecked.current = true
+    const onLanding = location.pathname === '/' || location.pathname === '/dashboard'
+    if (isPhone && onLanding && startTo && startTo !== location.pathname) navigate(startTo, { replace: true })
+  }, [isPhone, startTo, location.pathname, navigate])
   // The interface style saved on the profile follows the person to every device.
   const uiStyle = user?.preferences?.uiStyle
   useEffect(() => { if (uiStyle) applyUiStyle(uiStyle) }, [uiStyle])

@@ -9,6 +9,8 @@ const preferencesSchema = new mongoose.Schema({
   theme: { type: String, default: '' },
   /** Screens pinned to the mobile bottom bar, in order. */
   bottomNav: { type: [String], default: () => [...DEFAULT_BOTTOM_NAV] },
+  /** Bottom bar screen the app opens on, on a phone. */
+  startScreen: { type: String, default: 'dashboard' },
   navStyle: { type: String, enum: NAV_STYLES, default: 'light' },
   /** Interface style: the new 'modern' look or the original 'classic' one. */
   uiStyle: { type: String, enum: UI_STYLES, default: 'modern' },

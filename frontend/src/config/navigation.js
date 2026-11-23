@@ -98,6 +98,11 @@ export function bottomNavItems(keys, user, features) {
   return chosen.slice(0, BOTTOM_NAV_MAX)
 }
 
+/** The bottom bar item the app opens on: the saved choice if it is still in the bar, otherwise the first item. */
+export function startScreenItem(startKey, items) {
+  return items.find((item) => item.key === startKey) || items[0] || null
+}
+
 /**
  * Title, breadcrumb trail and "back" target for a route. Used by the desktop
  * breadcrumbs and the phone header (title + back arrow on inner screens).

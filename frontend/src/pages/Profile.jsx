@@ -13,7 +13,7 @@ import Toast from '../components/Toast.jsx'
 import Modal from '../components/Modal.jsx'
 import BottomNav from '../components/BottomNav.jsx'
 import { Avatar } from '../components/Navbar.jsx'
-import { BOTTOM_NAV_CHOICES, BOTTOM_NAV_MAX, bottomNavItems, canUseItem, DEFAULT_BOTTOM_NAV, isManager, NAV_STYLES, roleLabel } from '../config/navigation.js'
+import { BOTTOM_NAV_CHOICES, BOTTOM_NAV_MAX, bottomNavItems, canUseItem, DEFAULT_BOTTOM_NAV, isManager, NAV_STYLES, roleLabel, startScreenItem } from '../config/navigation.js'
 
 function Card({ icon, title, intro, children, id }) {
   return (
@@ -142,8 +142,13 @@ function AppearanceCard({ user, updateUser, notify }) {
   const [error, setError] = useState('')
   const choices = BOTTOM_NAV_CHOICES.filter((item) => canUseItem(item, user, features))
   const previewItems = navKeys.map((key) => choices.find((item) => item.key === key)).filter(Boolean)
-  const savedKeys = bottomNavItems(saved.bottomNav, user, features).map((item) => item.key)
-  const changed = uiStyle !== savedUiStyle || (allowUserThemes && theme !== (saved.theme || '')) || navStyle !== (saved.navStyle || 'light') || navKeys.join() !== savedKeys.join()
+  const savedItems = bottomNavItems(saved.bottomNav, user, features)
+  const savedKeys = savedItems.map((item) => item.key)
+  const savedStart = startScreenItem(saved.startScreen, savedItems)?.key || ''
+  const [startKey, setStartKey] = useState(savedStart)
+  // If the start screen is removed from the bar, the first item in the bar takes over.
+  const activeStart = startScreenItem(startKey, previewItems)?.key || ''
+  const changed = uiStyle !== savedUiStyle || (allowUserThemes && theme !== (saved.theme || '')) || navStyle !== (saved.navStyle || 'light') || navKeys.join() !== savedKeys.join() || activeStart !== savedStart
 
   // Leaving the page without saving puts the saved theme back.
   useEffect(() => () => { applyTheme(cachedThemeId()); applyUiStyle(cachedUiStyle()) }, [])
@@ -183,6 +188,7 @@ function AppearanceCard({ user, updateUser, notify }) {
     pickUiStyle(savedUiStyle)
     setNavStyle(saved.navStyle || 'light')
     setNavKeys(savedKeys)
+    setStartKey(savedStart)
     setError('')
   }
 
@@ -190,6 +196,7 @@ function AppearanceCard({ user, updateUser, notify }) {
     setBusy(true); setError('')
     try {
       const preferences = { uiStyle, navStyle, bottomNav: navKeys.length ? navKeys : DEFAULT_BOTTOM_NAV }
+      if (activeStart) preferences.startScreen = activeStart
       if (allowUserThemes) preferences.theme = theme
       const result = await apiRequest('/auth/profile', { method: 'PATCH', body: JSON.stringify({ preferences }) })
       applyUiStyle(result.user?.preferences?.uiStyle || uiStyle)
@@ -241,7 +248,17 @@ function AppearanceCard({ user, updateUser, notify }) {
       <p className="profile-hint">On a phone, these screens stay at the bottom of the screen. Pick up to {BOTTOM_NAV_MAX}; everything else is under <strong>More</strong>.</p>
       <div className="bottom-nav-preview-frame" aria-label="Bottom bar preview">
         <span className="bottom-nav-preview-label"><i className="bi bi-eye" aria-hidden="true" /> Preview</span>
-        <BottomNav preview items={previewItems} navStyle={navStyle} />
+        <BottomNav preview items={previewItems} navStyle={navStyle} previewActiveKey={activeStart} />
+      </div>
+      <h4 className="profile-theme-tier-title">Open the app on</h4>
+      <p className="profile-hint">This screen is shown and highlighted when you open the app on a phone.</p>
+      <div className="nav-style-grid" role="radiogroup" aria-label="Start screen">
+        {previewItems.map((item) => (
+          <button key={item.key} type="button" role="radio" aria-checked={activeStart === item.key} className={`nav-style-option${activeStart === item.key ? ' is-selected' : ''}`} onClick={() => setStartKey(item.key)}>
+            <i className={`bi ${activeStart === item.key ? item.activeIcon || item.icon : item.icon}`} aria-hidden="true" />
+            <strong>{item.label}</strong><small>{item.fullLabel}</small>
+          </button>
+        ))}
       </div>
       <div className="nav-style-grid" role="radiogroup" aria-label="Bottom bar style">
         {NAV_STYLES.map((style) => (

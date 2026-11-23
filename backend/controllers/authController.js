@@ -27,6 +27,7 @@ const isRetiredDemoAdmin = (email) => retiredDemoAdminEmails.has(String(email ||
 const publicPreferences = (preferences = {}) => ({
   theme: preferences.theme || '',
   bottomNav: Array.isArray(preferences.bottomNav) && preferences.bottomNav.length ? [...preferences.bottomNav] : [...DEFAULT_BOTTOM_NAV],
+  startScreen: BOTTOM_NAV_KEYS.includes(preferences.startScreen) ? preferences.startScreen : 'dashboard',
   navStyle: preferences.navStyle || 'light',
   uiStyle: UI_STYLES.includes(preferences.uiStyle) ? preferences.uiStyle : 'modern',
   dashboardHidden: Array.isArray(preferences.dashboardHidden) ? preferences.dashboardHidden.filter((id) => DASHBOARD_WIDGETS.includes(id)) : [],
@@ -432,6 +433,10 @@ function preferencesFromBody(input, current) {
       return { error: `Pick between 1 and ${BOTTOM_NAV_MAX} bottom bar items.` }
     }
     next.bottomNav = items
+  }
+  if (input.startScreen !== undefined) {
+    if (!BOTTOM_NAV_KEYS.includes(input.startScreen)) return { error: 'Choose a start screen.' }
+    next.startScreen = input.startScreen
   }
   if (input.navStyle !== undefined) {
     if (!NAV_STYLES.includes(input.navStyle)) return { error: 'Choose a bottom bar style.' }
