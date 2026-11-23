@@ -6,11 +6,12 @@
 .staff-avatar { display: grid; flex: 0 0 40px; overflow: hidden; place-items: center; border-radius: 50%; color: var(--color-primary-strong); background: var(--color-primary-soft); font-size: 14px; font-weight: 700; }
 .staff-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Tabs */
-.staff-tabs { display: inline-flex; gap: 4px; margin: 4px 0 16px; padding: 4px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-surface); }
-.staff-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 18px; border: 0; border-radius: var(--radius-pill); color: var(--color-text-muted); background: transparent; font-weight: 600; }
+/* Tabs: two equal halves that grow with the screen, capped on wide screens, full width on phones */
+.staff-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: flex-start; justify-self: start; box-sizing: border-box; width: min(100%, 380px); gap: 4px; margin: 4px 0 16px; padding: 4px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-surface); }
+.staff-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 40px; padding: 6px clamp(10px, 2vw, 18px); border: 0; border-radius: var(--radius-pill); color: var(--color-text-muted); background: transparent; font-size: clamp(13px, 1.2vw + 8px, 15px); font-weight: 600; white-space: nowrap; transition: background .15s, color .15s; }
 .staff-tabs button:hover { color: var(--color-primary-strong); }
 .staff-tabs button.is-active { color: #fff; background: var(--color-primary); }
+@media (max-width: 960px) { .staff-tabs { width: min(100%, 440px); } }
 
 /* Day / month switcher */
 .staff-daybar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
@@ -29,7 +30,14 @@
 .staff-sheet-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); transition: border-color .15s, background .15s; }
 .staff-sheet-row.is-changed { border-color: var(--color-primary); background: var(--color-primary-faint); }
 .staff-sheet-who { display: flex; flex: 1 1 200px; align-items: center; gap: 10px; min-width: 0; color: inherit; text-decoration: none; }
-.staff-sheet-who > span:last-child { display: grid; min-width: 0; }
+.staff-sheet-name { display: grid; gap: 1px; min-width: 0; }
+.staff-status-word { display: none; }
+/* Paid today */
+.staff-sheet-pay { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.staff-paid-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; color: var(--color-success-strong); background: var(--color-success-soft); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.staff-unpaid { color: var(--color-text-subtle); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.staff-pay-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; text-decoration: none; padding: 6px 14px; border: 1px solid rgb(var(--color-primary-rgb) / 35%); border-radius: 999px; color: var(--color-primary-strong); background: var(--color-primary-faint); font-size: 13px; font-weight: 700; white-space: nowrap; }
+.staff-pay-btn:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
 .staff-sheet-who strong { overflow: hidden; color: var(--color-text); text-overflow: ellipsis; white-space: nowrap; }
 .staff-sheet-who small { color: var(--color-text-muted); font-size: 12px; }
 .staff-sheet-who:hover strong { color: var(--color-primary-strong); }
@@ -95,6 +103,13 @@
 .staff-cal-mark { font-size: 15px; font-weight: 800; line-height: 1.3; }
 .is-off .staff-cal-mark { color: var(--color-text-subtle); font-size: 10px; font-weight: 600; }
 .staff-cal-ot { color: var(--color-text-muted); font-size: 9px; font-weight: 700; }
+/* Tick in the top corner: wages or an advance were paid that day. */
+.staff-cal-paid { position: absolute; top: -5px; right: -5px; display: grid; width: 18px; height: 18px; place-items: center; border: 2px solid var(--color-surface); border-radius: 50%; color: #fff; background: var(--color-success); font-size: 10px; line-height: 1; box-shadow: 0 1px 3px rgb(16 24 40 / 20%); }
+.staff-cal-paid i::before { font-weight: 900 !important; }
+.staff-cal-paid.is-legend { position: static; display: inline-grid; width: 16px; height: 16px; border: 0; font-size: 9px; vertical-align: -3px; box-shadow: none; }
+.staff-calendar { padding-top: 5px; padding-right: 5px; }
+.staff-cal-help { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.staff-cal-help > span { display: inline-flex; align-items: center; gap: 6px; }
 .staff-cal-day.is-marked.is-success { border-color: var(--color-success); background: var(--color-success-soft); }
 .staff-cal-day.is-marked.is-success .staff-cal-mark { color: var(--color-success-strong); }
 .staff-cal-day.is-marked.is-warning { border-color: var(--color-warning); background: var(--color-warning-soft); }
@@ -144,20 +159,216 @@
 .staff-confirm-field { display: grid; gap: 5px; margin: 0 0 12px; color: var(--color-text); font-size: 13px; font-weight: 600; text-align: left; }
 .staff-confirm-field input { min-height: 44px; padding: 9px 12px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); color: var(--color-text); background: var(--color-surface); font: inherit; }
 
+/* Total days working (employee page) */
+.staff-total { margin-bottom: 16px; }
+.staff-total-since { color: var(--color-text-muted); font-size: 13px; }
+.staff-total-hero { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.staff-total-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.staff-total-main strong { color: var(--color-primary-strong); font-size: clamp(32px, 4vw, 44px); font-weight: 800; font-variant-numeric: tabular-nums; line-height: .9; }
+.staff-total-main span { display: grid; gap: 2px; color: var(--color-text); font-size: 16px; font-weight: 700; line-height: 1.2; }
+.staff-total-main small { color: var(--color-text-muted); font-size: 13px; font-weight: 500; line-height: 1.3; }
+.staff-total-rate { display: grid; justify-items: center; min-width: 84px; padding: 8px 12px; border-radius: var(--radius-md); color: var(--color-success-strong); background: var(--color-success-soft); }
+.staff-total-rate b { font-size: 20px; line-height: 1.1; }
+.staff-total-rate small { font-size: 11px; font-weight: 600; }
+.staff-total-bar { display: flex; gap: 2px; height: 10px; margin-bottom: 14px; overflow: hidden; border-radius: 999px; background: var(--color-surface-muted); }
+.staff-total-bar span { flex-basis: 0; min-width: 4px; }
+.staff-total-bar .is-success { background: var(--color-success); }
+.staff-total-bar .is-warning { background: var(--color-warning); }
+.staff-total-bar .is-danger { background: var(--color-danger); }
+.staff-total-bar .is-info { background: var(--color-info); }
+.staff-total-bar .is-neutral { background: var(--color-text-subtle); }
+.staff-total-bar .is-empty { background: var(--color-border-strong); }
+.staff-total-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.staff-total-grid li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--color-surface-muted); }
+.staff-total-grid li > i { font-size: 18px; color: var(--color-text-subtle); }
+.staff-total-grid .is-success > i { color: var(--color-success); }
+.staff-total-grid .is-warning > i { color: var(--color-warning); }
+.staff-total-grid .is-danger > i { color: var(--color-danger); }
+.staff-total-grid .is-info > i { color: var(--color-info); }
+.staff-total-grid .is-ot > i { color: var(--color-primary); }
+.staff-total-grid span { display: grid; }
+.staff-total-grid small { color: var(--color-text-muted); font-size: 11px; font-weight: 600; }
+.staff-total-grid b { color: var(--color-text); font-size: 17px; font-variant-numeric: tabular-nums; }
+@media (max-width: 720px) {
+  .staff-total { border-radius: 20px; }
+  .staff-total-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .staff-total-grid li { flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px; border-radius: 12px; }
+  .staff-total-grid b { font-size: 16px; }
+}
+
 @media (max-width: 960px) {
   .staff-columns { grid-template-columns: 1fr; }
 }
+.staff-phone-only { display: none; }
+@media (max-width: 720px) { .staff-phone-only { display: inline-block; } }
+
+/* ---------- Phone: native-app look (desktop above is unchanged) ---------- */
 @media (max-width: 720px) {
-  .staff-stats { grid-template-columns: 1fr 1fr; }
-  .staff-stats > :first-child { grid-column: 1 / -1; }
-  .staff-tabs { display: flex; }
-  .staff-tabs button { flex: 1; justify-content: center; }
-  .staff-sheet-who { flex-basis: 100%; }
-  .staff-status-picker { flex: 1; justify-content: space-between; }
-  .staff-status { width: 44px; height: 44px; }
-  .staff-daypick { flex: 1; min-width: 0; justify-content: center; }
-  .staff-panel { padding: 12px; }
-  .staff-cal-day { min-height: 46px; }
-  .staff-quick-actions button { flex: 1 1 calc(50% - 8px); justify-content: center; }
-  .staff-profile-actions { width: 100%; }
+  /* The phone header already shows the title; drop the desktop intro. */
+  .staff-page .ui-page-header { display: none; }
+
+  /* Segmented control tabs */
+  .staff-tabs { align-self: stretch; width: 100%; margin: 0 0 14px; padding: 3px; border: 0; border-radius: 14px; background: var(--color-surface-muted); box-shadow: inset 0 0 0 1px var(--color-border); }
+  .staff-tabs button { border-radius: 11px; }
+  .staff-tabs button.is-active { color: var(--color-primary-strong); background: var(--color-surface); box-shadow: 0 1px 3px rgb(16 24 40 / 12%), 0 1px 2px rgb(16 24 40 / 6%); }
+
+  /* Date / month switcher as one rounded card */
+  .staff-page .staff-daybar:not(.is-compact) { flex-wrap: nowrap; gap: 4px; margin-bottom: 14px; padding: 6px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); box-shadow: var(--shadow-xs); }
+  .staff-daybar:not(.is-compact) .inventory-icon-btn { flex: 0 0 40px; width: 40px; height: 40px; border: 0; border-radius: 12px; background: var(--color-surface-muted); }
+  .staff-daypick { flex: 1; min-width: 0; justify-content: center; gap: 6px; padding: 6px 8px; border: 0; background: transparent; font-size: 15px; }
+  .staff-daypick > i { color: var(--color-primary); }
+  .staff-daypick:focus-within { border-radius: 12px; }
+  .staff-today-btn { min-height: 40px; padding: 6px 12px; border-radius: 12px; font-size: 13px; }
+
+  /* Attendance: summary chips scroll sideways, rows become cards */
+  .staff-sheet-head { flex-direction: column; align-items: stretch; gap: 10px; }
+  .staff-counts { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; }
+  .staff-counts::-webkit-scrollbar { display: none; }
+  .staff-allpresent { justify-content: center; width: 100%; border-radius: 14px; }
+  .staff-sheet { gap: 10px; }
+  .staff-sheet-row { gap: 12px; padding: 14px; border-radius: 20px; box-shadow: 0 1px 2px rgb(16 24 40 / 5%), 0 4px 12px rgb(16 24 40 / 4%); }
+  .staff-sheet-row.is-changed { box-shadow: inset 0 0 0 1.5px var(--color-primary), 0 4px 12px rgb(var(--color-primary-rgb) / 10%); }
+  .staff-sheet-who { flex-basis: 100%; gap: 12px; }
+  .staff-sheet-name strong { font-size: 16px; line-height: 1.25; }
+  .staff-sheet-name small { overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+  .staff-sheet-go { flex: 0 0 auto; margin-left: auto; color: var(--color-text-subtle); }
+  /* Status picker: coloured letters with a word under each, the chosen one filled */
+  .staff-status-picker { display: grid; flex: 1 1 100%; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; padding: 0; background: transparent; }
+  .staff-status { display: grid; place-items: center; gap: 0; width: 100%; height: 54px; padding: 4px 0; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface-muted); font-size: 17px; line-height: 1.1; }
+  .staff-status-word { display: block; font-size: 10px; font-weight: 600; letter-spacing: .01em; opacity: .85; }
+  .staff-status.is-success:not(.is-active) { color: var(--color-success-strong); }
+  .staff-status.is-warning:not(.is-active) { color: var(--color-warning-strong); }
+  .staff-status.is-danger:not(.is-active) { color: var(--color-danger-strong); }
+  .staff-status.is-info:not(.is-active) { color: var(--color-info); }
+  .staff-status:hover { border-color: var(--color-border-strong); }
+  .staff-status.is-active { box-shadow: 0 4px 10px rgb(16 24 40 / 18%); transform: translateY(-1px); }
+  .staff-status.is-active .staff-status-word { opacity: 1; }
+  .staff-ot { flex: 1 1 100%; justify-content: space-between; padding: 6px 6px 6px 14px; border-radius: 14px; background: var(--color-surface-muted); font-size: 13px; }
+  .staff-ot input { width: 84px; border-radius: 10px; text-align: center; }
+  .staff-sheet-pay { flex: 1 1 100%; justify-content: space-between; margin: 0; padding-top: 12px; border-top: 1px dashed var(--color-border); }
+  .staff-pay-btn { min-height: 40px; padding: 6px 16px; border: 0; color: #fff; background: var(--color-primary); box-shadow: 0 2px 6px rgb(var(--color-primary-rgb) / 30%); }
+  .staff-pay-btn:hover, .staff-pay-btn:active { color: #fff; background: var(--color-primary-hover); }
+  .staff-paid-chip + .staff-pay-btn { color: var(--color-primary-strong); background: var(--color-primary-faint); box-shadow: none; }
+  .staff-savebar { border-radius: 18px; }
+  /* The save bar takes the place of the floating Add button while there are unsaved marks. */
+  body:has(.staff-savebar) .ui-fab { display: none; }
+
+  /* Wages: "Balance to pay" becomes the hero card, the other two sit side by side */
+  .staff-stats { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .staff-stats .ui-stat { gap: 2px; padding: 12px 14px; border-radius: 16px; box-shadow: var(--shadow-xs); }
+  :root .staff-stats .ui-stat-icon { position: static; width: 32px; height: 32px; margin-bottom: 4px; border-radius: 10px; font-size: 15px; }
+  :root .staff-stats .ui-stat-label { padding: 0; font-size: 12px; }
+  :root .staff-stats .ui-stat-value { margin-top: 2px; font-size: 18px; }
+  :root .staff-stats .ui-stat-note { font-size: 11px; white-space: normal; }
+  .staff-wages .staff-stats > :nth-child(3) { order: -1; }
+  .staff-stats > .ui-stat.is-warning, .staff-detail .staff-stats > :first-child { grid-column: 1 / -1; border: 0; color: #fff; background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong)); box-shadow: 0 10px 24px rgb(var(--color-primary-rgb) / 28%); }
+  :root .staff-stats > .ui-stat.is-warning .ui-stat-icon, :root .staff-detail .staff-stats > :first-child .ui-stat-icon { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; color: #fff; background: rgb(255 255 255 / 18%); }
+  .staff-stats > .ui-stat.is-warning, .staff-detail .staff-stats > :first-child { position: relative; padding: 16px 18px; }
+  :root .staff-stats > .ui-stat.is-warning :is(.ui-stat-label, .ui-stat-note, .ui-stat-value), :root .staff-detail .staff-stats > :first-child :is(.ui-stat-label, .ui-stat-note, .ui-stat-value) { color: #fff; }
+  :root .staff-stats > .ui-stat.is-warning .ui-stat-label, :root .staff-detail .staff-stats > :first-child .ui-stat-label { opacity: .85; }
+  :root .staff-stats > .ui-stat.is-warning .ui-stat-value, :root .staff-detail .staff-stats > :first-child .ui-stat-value { font-size: 28px; }
+  :root .staff-stats > .ui-stat.is-warning .ui-stat-note, :root .staff-detail .staff-stats > :first-child .ui-stat-note { opacity: .75; }
+
+  .staff-wages .inventory-toolbar { gap: 10px; }
+  .staff-wages .ui-search { border-radius: 14px; }
+
+  /* Employee list as app rows */
+  .staff-cards { gap: 10px; }
+  .staff-card { gap: 12px; padding: 14px; border-radius: 18px; box-shadow: var(--shadow-xs); transition: transform .12s ease; }
+  .staff-card:active { transform: scale(.985); background: var(--color-surface-muted); }
+  .staff-card-name strong { font-size: 15px; }
+  .staff-card-figures { gap: 6px; padding: 0; border: 0; }
+  .staff-card-figures > span { gap: 1px; padding: 8px 10px; border-radius: 12px; background: var(--color-surface-muted); }
+  .staff-card-figures b { font-size: 14px; font-variant-numeric: tabular-nums; }
+
+  /* Employee page: centred profile like a contact screen */
+  .staff-profile { flex-direction: column; gap: 10px; margin-bottom: 16px; padding: 20px 16px 16px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); box-shadow: var(--shadow-xs); text-align: center; }
+  .staff-profile .staff-avatar { width: 80px !important; height: 80px !important; flex-basis: 80px; font-size: 26px; box-shadow: 0 0 0 4px var(--color-primary-faint); }
+  .staff-profile-text { flex: 0 0 auto; width: 100%; }
+  .staff-profile-text p { font-size: 13px; }
+  .staff-profile-badges { justify-content: center; }
+  .staff-profile-actions { display: grid; grid-template-columns: 1fr 1fr 48px; width: 100%; gap: 8px; }
+  .staff-profile-actions .staff-report-btn { grid-column: 1 / -1; }
+  .staff-profile-actions button { justify-content: center; min-height: 44px; padding: 8px 10px; border-radius: 14px; font-size: 14px; }
+
+  /* Pay / advance / bonus / deduct as icon tiles */
+  .staff-quick-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .staff-quick-actions button { flex-direction: column; justify-content: center; gap: 6px; min-height: 78px; padding: 10px 4px; border-radius: 16px; font-size: 12px; line-height: 1.2; text-align: center; }
+  .staff-quick-actions button i { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: var(--color-primary-soft); color: var(--color-primary-strong); font-size: 17px; }
+  .staff-quick-actions .continue-btn i { background: rgb(255 255 255 / 20%); color: #fff; }
+
+  .staff-panel { padding: 14px; border-radius: 20px; box-shadow: var(--shadow-xs); }
+  .staff-panel h2 { font-size: 16px; }
+  .staff-daybar.is-compact { gap: 2px; }
+  .staff-daybar.is-compact .inventory-icon-btn { width: 36px; height: 36px; border-radius: 10px; }
+  .staff-month-label { min-width: 0; font-size: 14px; }
+  .staff-cal-day { min-height: 46px; border-radius: 10px; }
+  .staff-breakdown > div { border-radius: 12px; }
+  .staff-entries li { padding: 10px 12px; border-radius: 14px; }
 }
+
+/* ---------- Employee page: responsive at every width ---------- */
+/* Long names, numbers and labels never push the page sideways. */
+.staff-detail { min-width: 0; }
+.staff-detail .staff-profile-text .page-title { overflow-wrap: anywhere; }
+.staff-detail .staff-profile-actions { margin-left: auto; }
+.staff-detail .staff-ledger dt { min-width: 0; overflow-wrap: anywhere; }
+.staff-detail .ui-stat-value { overflow: hidden; text-overflow: ellipsis; }
+.staff-detail .staff-panel { min-width: 0; }
+
+/* Wide screens: a little more room between the two columns. */
+@media (min-width: 1280px) {
+  .staff-detail .staff-columns { gap: 20px; }
+  .staff-detail .staff-panel { padding: 20px; }
+  .staff-detail .staff-cal-day { min-height: 60px; }
+}
+
+/* Tablets and small laptops */
+@media (min-width: 721px) and (max-width: 1100px) {
+  .staff-detail .staff-profile { padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+  .staff-detail .staff-profile-actions { display: grid; grid-template-columns: repeat(3, auto) 44px; margin-left: 0; width: 100%; }
+  .staff-detail .staff-profile-actions button { justify-content: center; }
+  .staff-detail .staff-quick-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .staff-detail .staff-quick-actions button { justify-content: center; }
+  .staff-detail .staff-stats { gap: 10px; }
+  :root .staff-detail .ui-stat-value { font-size: clamp(18px, 2.4vw, 24px); }
+  :root .staff-detail .ui-stat-note { white-space: normal; }
+  .staff-detail .staff-total-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 721px) and (max-width: 860px) {
+  .staff-detail .staff-profile-actions { grid-template-columns: 1fr 1fr 1fr 44px; }
+  .staff-detail .staff-stats .ui-stat { padding: 14px; }
+  :root[data-ui-style="modern"] .staff-detail .ui-stat-icon { width: 32px; height: 32px; font-size: 15px; }
+  :root[data-ui-style="modern"] .staff-detail .ui-stat-label { padding-right: 36px; }
+}
+
+/* Phones: tiles adapt to narrow screens */
+@media (max-width: 720px) {
+  .staff-detail .staff-total-hero { align-items: stretch; }
+  .staff-detail .staff-total-rate { justify-content: center; }
+  .staff-detail .staff-panel-head h2 { flex: 1 1 auto; }
+  .staff-detail .staff-entries li { flex-wrap: wrap; }
+  .staff-detail .staff-entry-text { flex: 1 1 140px; }
+}
+
+/* Small phones (iPhone SE, small Androids) */
+@media (max-width: 400px) {
+  .staff-detail .staff-profile { padding: 16px 12px 12px; }
+  .staff-detail .staff-profile-actions { grid-template-columns: 1fr 1fr 44px; gap: 6px; }
+  .staff-detail .staff-profile-actions button { padding: 8px 6px; font-size: 13px; }
+  .staff-detail .staff-quick-actions { gap: 6px; }
+  .staff-detail .staff-quick-actions button { min-height: 72px; padding: 8px 2px; font-size: 11px; }
+  .staff-detail .staff-quick-actions button i { width: 30px; height: 30px; font-size: 15px; }
+  .staff-detail .staff-total-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .staff-detail .staff-total-main strong { font-size: 30px; }
+  :root .staff-detail .staff-stats .ui-stat-value { font-size: 16px; }
+  :root .staff-detail .staff-stats > :first-child .ui-stat-value { font-size: 24px; }
+  .staff-detail .staff-panel { padding: 12px; }
+  .staff-detail .staff-calendar { gap: 3px; }
+  .staff-detail .staff-cal-day { min-height: 40px; padding: 3px 1px; border-radius: 8px; }
+  .staff-detail .staff-cal-num { font-size: 11px; }
+  .staff-detail .staff-cal-mark { font-size: 13px; }
+  .staff-detail .staff-breakdown { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .staff-detail .staff-ledger > div { font-size: 14px; }
+}
+.staff-pay-btn:disabled { opacity: .6; cursor: progress; }

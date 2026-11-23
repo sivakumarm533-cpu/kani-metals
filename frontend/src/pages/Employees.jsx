@@ -9,8 +9,8 @@ import { useToast } from '../hooks/useToast.js'
 import { useMediaQuery } from '../hooks/useMediaQuery.js'
 import { useApiData } from '../hooks/useApiData.js'
 import { EmptyState, FilterChips, FloatingActionButton, PageHeader, SearchInput, SkeletonLoader, StatCard, StatusBadge } from '../components/ui.jsx'
-import { dayLabel, daysWorked, formatPaise, monthLabel, payLabel, shiftDate, shiftMonth, STATUSES, WEEKDAYS, weekdayOf } from '../utils/staff.js'
-import { useRememberedState } from '../utils/remember.js'
+import { dayLabel, daysWorked, formatPaise, monthLabel, PAYMENT_METHODS, payLabel, shiftDate, shiftMonth, STATUSES, WEEKDAYS, weekdayOf } from '../utils/staff.js'
+import { readChoice, useRememberedState } from '../utils/remember.js'
 import './Employees.css'
 
 /*
@@ -30,6 +30,9 @@ function AttendanceSheet({ notify, onAddEmployee, reloadKey }) {
   const draft = draftState.base === data ? draftState.values : NO_DRAFT
   const setDraft = (update) => setDraftState((current) => ({ base: data, values: update(current.base === data ? current.values : {}) }))
   const [saving, setSaving] = useState(false)
+  // Payments made from this sheet, added on top of what the server sent (keyed by day and employee).
+  const [paidHere, setPaidHere] = useState({})
+  const [paying, setPaying] = useState('')
   const date = data?.date || ''
   const loading = fetching && (!data || (requested && data.date !== requested))
 
@@ -79,6 +82,26 @@ function AttendanceSheet({ notify, onAddEmployee, reloadKey }) {
     finally { setSaving(false) }
   }
 
+  /** The assigned amount for the day: daily wage (half for a half day) plus overtime. 0 when there is nothing set to pay. */
+  function dueFor(employee, current) {
+    const factor = current.status === 'present' ? 1 : current.status === 'half_day' ? 0.5 : 0
+    if (!factor || !employee.dailyRatePaise) return 0
+    return Math.round(employee.dailyRatePaise * factor + (Number(current.overtimeHours) || 0) * (employee.overtimeRatePaise || 0))
+  }
+
+  /** Records the payment straight away, with the payment method used last time. */
+  async function payNow(employee, amountPaise) {
+    setPaying(employee._id)
+    try {
+      const paymentMethod = readChoice('wagePaymentMethod', 'cash', PAYMENT_METHODS.map(([id]) => id))
+      await apiRequest(`/employees/${employee._id}/entries`, { method: 'POST', body: JSON.stringify({ type: 'payment', amount: amountPaise / 100, date, paymentMethod }) })
+      const key = `${date}:${employee._id}`
+      setPaidHere((current) => ({ ...current, [key]: (current[key] || 0) + amountPaise }))
+      notify(`${formatPaise(amountPaise)} paid to ${employee.name}.`, 'success', 'bi-cash-coin')
+    } catch (payError) { notify(payError.message, 'danger') }
+    finally { setPaying('') }
+  }
+
   const counts = rows.reduce((map, row) => ({ ...map, [row.current.status || 'none']: (map[row.current.status || 'none'] || 0) + 1 }), {})
   const today = data?.today || ''
   const isFuture = (day) => today && day > today
@@ -88,6 +111,7 @@ function AttendanceSheet({ notify, onAddEmployee, reloadKey }) {
       <div className="staff-daybar">
         <button type="button" className="inventory-icon-btn" aria-label="Previous day" onClick={() => goTo(shiftDate(date, -1))} disabled={!date || loading}><i className="bi bi-chevron-left" aria-hidden="true" /></button>
         <label className="staff-daypick">
+          <i className="bi bi-calendar3 staff-phone-only" aria-hidden="true" />
           <span>{date ? dayLabel(date, today) : 'Loading…'}</span>
           <input type="date" value={date} max={today} onChange={(event) => event.target.value && goTo(event.target.value)} aria-label="Attendance date" />
         </label>
@@ -115,14 +139,17 @@ function AttendanceSheet({ notify, onAddEmployee, reloadKey }) {
           {rows.map(({ employee, saved, current, changed }) => {
             const offToday = employee.weeklyOff === weekdayOf(date)
             const worked = current.status === 'present' || current.status === 'half_day'
+            const due = dueFor(employee, current)
+            const paid = (employee.paidPaise || 0) + (paidHere[`${date}:${employee._id}`] || 0)
             return (
               <li key={employee._id} className={`staff-sheet-row${changed ? ' is-changed' : ''}`}>
                 <Link to={`/employees/${employee._id}`} className="staff-sheet-who">
-                  <Avatar employee={employee} />
-                  <span>
+                  <Avatar employee={employee} size={44} />
+                  <span className="staff-sheet-name">
                     <strong>{employee.name}</strong>
                     <small>{[employee.designation, employee.payType === 'monthly' ? 'Monthly' : 'Daily wage', offToday && `${WEEKDAYS[employee.weeklyOff]} off`].filter(Boolean).join(' · ')}</small>
                   </span>
+                  <i className="bi bi-chevron-right staff-phone-only staff-sheet-go" aria-hidden="true" />
                 </Link>
                 <div className="staff-status-picker" role="radiogroup" aria-label={`Attendance of ${employee.name}`}>
                   {STATUSES.map((status) => (
@@ -135,7 +162,9 @@ function AttendanceSheet({ notify, onAddEmployee, reloadKey }) {
                       className={`staff-status is-${status.tone}${current.status === status.id ? ' is-active' : ''}`}
                       onClick={() => change(employee, saved, { status: current.status === status.id ? null : status.id })}
                     >
-                      <span aria-hidden="true">{status.short}</span><span className="visually-hidden">{status.label}</span>
+                      <span aria-hidden="true">{status.short}</span>
+                      <small className="staff-status-word" aria-hidden="true">{status.id === 'half_day' ? 'Half' : status.label}</small>
+                      <span className="visually-hidden">{status.label}</span>
                     </button>
                   ))}
                 </div>
@@ -145,6 +174,18 @@ function AttendanceSheet({ notify, onAddEmployee, reloadKey }) {
                     <input type="number" inputMode="decimal" min="0" max="24" step="0.5" value={current.overtimeHours || ''} placeholder="0" onChange={(event) => change(employee, saved, { overtimeHours: event.target.value === '' ? 0 : Number(event.target.value) })} />
                   </label>
                 )}
+                <div className="staff-sheet-pay">
+                  {paid > 0
+                    ? <span className="staff-paid-chip"><i className="bi bi-check-circle-fill" aria-hidden="true" />Paid {formatPaise(paid)}</span>
+                    : <span className="staff-unpaid">{date === today ? 'Not paid today' : 'Not paid this day'}</span>}
+                  {due > 0 && !paid
+                    ? <button type="button" className="staff-pay-btn" disabled={paying === employee._id} onClick={() => payNow(employee, due)}>
+                        <i className="bi bi-cash-coin" aria-hidden="true" />{paying === employee._id ? 'Paying…' : `Pay ${formatPaise(due)}`}
+                      </button>
+                    : <Link className="staff-pay-btn" to={`/employees/${employee._id}`}>
+                        <i className={`bi ${paid ? 'bi-plus-lg' : 'bi-cash-coin'}`} aria-hidden="true" />{paid ? 'Pay more' : 'Pay'}
+                      </Link>}
+                </div>
               </li>
             )
           })}
@@ -195,6 +236,7 @@ function WagesView({ onAddEmployee, reloadKey }) {
       <div className="staff-daybar">
         <button type="button" className="inventory-icon-btn" aria-label="Previous month" onClick={() => load(shiftMonth(month, -1))} disabled={!month || loading}><i className="bi bi-chevron-left" aria-hidden="true" /></button>
         <label className="staff-daypick">
+          <i className="bi bi-calendar3 staff-phone-only" aria-hidden="true" />
           <span>{month ? monthLabel(month) : 'Loading…'}</span>
           <input type="month" value={month} max={currentMonth} onChange={(event) => event.target.value && load(event.target.value)} aria-label="Month" />
         </label>
@@ -296,7 +338,7 @@ export default function Employees() {
         ))}
       </div>
       {tab === 'attendance' ? <AttendanceSheet notify={notify} onAddEmployee={() => setAdding(true)} reloadKey={reloadKey} /> : <WagesView onAddEmployee={() => setAdding(true)} reloadKey={reloadKey} />}
-      {isPhone && !adding && tab === 'wages' && <FloatingActionButton icon="bi-person-plus" label="Add employee" onClick={() => setAdding(true)} />}
+      {isPhone && !adding &&<FloatingActionButton icon="bi-person-plus" label="Add employee" onClick={() => setAdding(true)} />}
       {adding && <EmployeeFormModal onClose={() => setAdding(false)} onSaved={(_saved, message) => { setAdding(false); notify(message); setReloadKey((key) => key + 1) }} />}
     </section>
   )

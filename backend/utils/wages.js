@@ -122,6 +122,18 @@ export function totalEarnings(employee, records, today = todayKey()) {
   return monthsWorked(employee, today).reduce((total, month) => total + monthEarnings(employee, records, month, today).earnedPaise, 0)
 }
 
+/** Day counts since joining (up to today or the leaving date), added up month by month. */
+export function totalSummary(employee, records, today = todayKey()) {
+  const months = monthsWorked(employee, today)
+  const total = { ...emptySummary(), months: months.length, calendarDays: 0 }
+  for (const month of months) {
+    const summary = monthEarnings(employee, records, month, today)
+    for (const key of ['present', 'halfDay', 'absent', 'leave', 'holiday', 'unmarked', 'overtimeHours', 'basePaise', 'overtimePaise', 'earnedPaise']) total[key] += summary[key]
+  }
+  total.calendarDays = total.present + total.halfDay + total.absent + total.leave + total.holiday + total.unmarked
+  return total
+}
+
 /** Sums the wage account entries by type. */
 export function ledgerTotals(entries) {
   const totals = { payment: 0, advance: 0, bonus: 0, deduction: 0 }

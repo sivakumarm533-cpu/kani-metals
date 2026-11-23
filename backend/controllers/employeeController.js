@@ -5,7 +5,7 @@ import EmployeePayment, { EMPLOYEE_ENTRY_TYPES, EMPLOYEE_PAYMENT_METHODS } from 
 import { recordActivity } from '../utils/activity.js'
 import { rupeesToPaise } from '../utils/money.js'
 import { badRequest, objectId, optionalImage, optionalText, requiredText } from '../utils/validation.js'
-import { balanceDue, currentRate, isDateKey, isMonthKey, ledgerTotals, monthEarnings, monthEnd, monthStart, todayKey, totalEarnings } from '../utils/wages.js'
+import { balanceDue, currentRate, isDateKey, isMonthKey, ledgerTotals, monthEarnings, monthEnd, monthStart, todayKey, totalEarnings, totalSummary } from '../utils/wages.js'
 
 /*
  * Staff attendance and wages. Administrators and sub-admins only (see server.js);
@@ -125,6 +125,7 @@ export async function getEmployee(req, res, next) {
       today,
       employee: publicEmployee(employee, today),
       ...account,
+      totalSummary: totalSummary(employee, records, today),
       attendance: records.filter((record) => record.date >= monthStart(month) && record.date <= monthEnd(month)),
       entries,
     })
@@ -219,17 +220,20 @@ export async function deleteEmployee(req, res, next) {
 export async function getAttendanceSheet(req, res, next) {
   try {
     const date = req.query.date ? dateParam(req.query.date, 'date') : todayKey()
-    const [employees, records] = await Promise.all([
+    const [employees, records, payments] = await Promise.all([
       Employee.find({ joinDate: { $lte: date }, $or: [{ leftDate: '' }, { leftDate: { $gte: date } }] }).select('name designation photo weeklyOff payHistory joinDate leftDate active').sort({ name: 1 }).lean(),
       Attendance.find({ date }).lean(),
+      EmployeePayment.find({ date, type: { $in: ['payment', 'advance'] } }).select('employee amountPaise').lean(),
     ])
     const byEmployee = new Map(records.map((record) => [String(record.employee), record]))
+    // Money paid out (wages + advances) on this day, per employee.
+    const paidBy = payments.reduce((map, payment) => map.set(String(payment.employee), (map.get(String(payment.employee)) || 0) + payment.amountPaise), new Map())
     res.json({
       date,
       today: todayKey(),
       employees: employees.map((employee) => {
         const rate = currentRate(employee, date)
-        return { _id: employee._id, name: employee.name, designation: employee.designation, photo: employee.photo, weeklyOff: employee.weeklyOff, payType: rate?.payType, hasOvertimeRate: Boolean(rate?.overtimeRatePaise), record: byEmployee.get(String(employee._id)) || null }
+        return { _id: employee._id, name: employee.name, designation: employee.designation, photo: employee.photo, weeklyOff: employee.weeklyOff, payType: rate?.payType, hasOvertimeRate: Boolean(rate?.overtimeRatePaise), dailyRatePaise: rate?.payType === 'daily' ? rate.ratePaise : 0, overtimeRatePaise: rate?.overtimeRatePaise || 0, paidPaise: paidBy.get(String(employee._id)) || 0, record: byEmployee.get(String(employee._id)) || null }
       }),
     })
   } catch (error) { next(error) }

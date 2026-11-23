@@ -5,13 +5,14 @@ import LoadError from '../components/LoadError.jsx'
 import Modal from '../components/Modal.jsx'
 import Toast from '../components/Toast.jsx'
 import EmployeeFormModal from '../components/EmployeeFormModal.jsx'
+import StaffReportModal from '../components/StaffReportModal.jsx'
+import EntryModal from '../components/StaffEntryModal.jsx'
 import Avatar from '../components/StaffAvatar.jsx'
 import { useToast } from '../hooks/useToast.js'
 import { useApiData } from '../hooks/useApiData.js'
 import { ConfirmDialog, SkeletonLoader, StatCard, StatusBadge } from '../components/ui.jsx'
 import { localDateInputValue } from '../utils/format.js'
-import { daysWorked, ENTRY_TYPES, entryInfo, formatPaise, methodLabel, monthLabel, PAYMENT_METHODS, payLabel, shiftMonth, shortDate, STATUSES, statusInfo, WEEKDAYS } from '../utils/staff.js'
-import { readChoice, saveChoice } from '../utils/remember.js'
+import { daysWorked, ENTRY_TYPES, entryInfo, formatPaise, methodLabel, monthLabel, payLabel, shiftMonth, shortDate, STATUSES, statusInfo, WEEKDAYS } from '../utils/staff.js'
 import './Employees.css'
 
 /** Mark or change one day from the calendar. */
@@ -58,51 +59,8 @@ function DayModal({ employee, date, record, onClose, onSaved }) {
   )
 }
 
-/** Payment, advance, bonus or deduction. */
-function EntryModal({ employee, type, balanceDuePaise, onClose, onSaved }) {
-  const info = entryInfo(type)
-  const paidOut = type === 'payment' || type === 'advance'
-  const [form, setForm] = useState({ amount: type === 'payment' && balanceDuePaise > 0 ? String(balanceDuePaise / 100) : '', date: localDateInputValue(), paymentMethod: readChoice('wagePaymentMethod', 'cash', PAYMENT_METHODS.map(([id]) => id)), notes: '' })
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const set = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
-
-  async function submit(event) {
-    event.preventDefault()
-    setBusy(true)
-    setError('')
-    try {
-      await apiRequest(`/employees/${employee._id}/entries`, { method: 'POST', body: JSON.stringify({ ...form, type, paymentMethod: paidOut ? form.paymentMethod : undefined }) })
-      onSaved(`${info.label} of ${formatPaise(Math.round(Number(form.amount) * 100))} saved.`)
-    } catch (saveError) { setError(saveError.message); setBusy(false) }
-  }
-
-  return (
-    <Modal className="payment-modal stock-modal staff-modal" backdropClassName="payment-modal-backdrop" busy={busy} onClose={onClose} labelledBy="staff-entry-title">
-      <div className="payment-modal-heading">
-        <div><span className="payment-eyebrow">{employee.name.toUpperCase()}</span><h2 id="staff-entry-title">{info.verb}</h2></div>
-        <button type="button" className="payment-close" aria-label="Close dialog" onClick={onClose}>×</button>
-      </div>
-      <p className="stock-help">{info.help} Balance to pay now: <b>{formatPaise(balanceDuePaise)}</b>.</p>
-      <form className="stock-form" onSubmit={submit}>
-        <div className="stock-grid">
-          <label>Amount (₹)<input data-autofocus type="number" inputMode="decimal" required min="0.01" step="0.01" value={form.amount} onChange={set('amount')} placeholder="0" /></label>
-          <label>Date<input type="date" required max={localDateInputValue()} value={form.date} onChange={set('date')} /></label>
-        </div>
-        {paidOut && <label>Paid by<select value={form.paymentMethod} onChange={(event) => { saveChoice('wagePaymentMethod', event.target.value); set('paymentMethod')(event) }}>{PAYMENT_METHODS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>}
-        <label>Note<input maxLength="500" value={form.notes} onChange={set('notes')} placeholder={type === 'deduction' ? 'Reason' : 'Optional'} /></label>
-        {error && <p className="payment-form-error" role="alert">{error}</p>}
-        <div className="payment-modal-actions">
-          <button type="button" className="back-button" disabled={busy} onClick={onClose}>Cancel</button>
-          <button className="continue-btn" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
 /** Month grid, Sunday first. Days outside the working period cannot be tapped. */
-function MonthCalendar({ month, today, employee, records, onPick }) {
+function MonthCalendar({ month, today, employee, records, paidByDate = new Map(), onPick }) {
   const [year, monthNumber] = month.split('-').map(Number)
   const firstWeekday = new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay()
   const days = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate()
@@ -118,7 +76,8 @@ function MonthCalendar({ month, today, employee, records, onPick }) {
         const status = record && statusInfo(record.status)
         const outside = date > today || date < employee.joinDate || (employee.leftDate && date > employee.leftDate)
         const weeklyOff = employee.weeklyOff === new Date(`${date}T00:00:00Z`).getUTCDay()
-        const label = `${shortDate(date)}: ${status ? status.label : outside ? 'not working' : 'not marked'}${record?.overtimeHours ? `, ${record.overtimeHours} h overtime` : ''}`
+        const paid = paidByDate.get(date) || 0
+        const label = `${shortDate(date)}: ${status ? status.label : outside ? 'not working' : 'not marked'}${record?.overtimeHours ? `, ${record.overtimeHours} h overtime` : ''}${paid ? `, paid ${formatPaise(paid)}` : ''}`
         return (
           <button
             key={date}
@@ -126,9 +85,10 @@ function MonthCalendar({ month, today, employee, records, onPick }) {
             disabled={outside}
             aria-label={label}
             title={record?.note || label}
-            className={`staff-cal-day${status ? ` is-${status.tone} is-marked` : ''}${date === today ? ' is-today' : ''}${weeklyOff && !status ? ' is-off' : ''}`}
+            className={`staff-cal-day${status ? ` is-${status.tone} is-marked` : ''}${date === today ? ' is-today' : ''}${weeklyOff && !status ? ' is-off' : ''}${paid ? ' is-paid' : ''}`}
             onClick={() => onPick(date, record)}
           >
+            {paid > 0 && <span className="staff-cal-paid" aria-hidden="true"><i className="bi bi-check-lg" /></span>}
             <span className="staff-cal-num">{Number(date.slice(8))}</span>
             <span className="staff-cal-mark" aria-hidden="true">{status ? status.short : weeklyOff && !outside ? 'off' : ''}</span>
             {record?.overtimeHours > 0 && <span className="staff-cal-ot" aria-hidden="true">+{record.overtimeHours}h</span>}
@@ -136,6 +96,49 @@ function MonthCalendar({ month, today, employee, records, onPick }) {
         )
       })}
     </div>
+  )
+}
+
+/** All-time attendance since joining: days worked, a stacked bar of every status, and the counts. */
+function TotalDays({ employee, total }) {
+  const worked = daysWorked(total)
+  const marked = total.present + total.halfDay + total.absent
+  const rate = marked ? Math.round((worked / marked) * 100) : null
+  const parts = [
+    ...STATUSES.map((status) => ({ id: status.id, label: status.label, tone: status.tone, icon: status.icon, count: total[status.id === 'half_day' ? 'halfDay' : status.id] })),
+    { id: 'unmarked', label: 'Not marked', tone: 'empty', icon: 'bi-dash-circle', count: total.unmarked },
+  ]
+  return (
+    <section className="staff-panel staff-total" aria-labelledby="staff-total-title">
+      <div className="staff-panel-head">
+        <h2 id="staff-total-title">Total days working</h2>
+        <span className="staff-total-since">Since {shortDate(employee.joinDate)}{employee.leftDate ? ` to ${shortDate(employee.leftDate)}` : ''}</span>
+      </div>
+      <div className="staff-total-hero">
+        <div className="staff-total-main">
+          <strong>{worked}</strong>
+          <span>days worked<small>of {total.calendarDays} days · {total.months} {total.months === 1 ? 'month' : 'months'}</small></span>
+        </div>
+        {rate !== null && <div className="staff-total-rate"><b>{rate}%</b><small>attendance</small></div>}
+      </div>
+      {total.calendarDays > 0 && (
+        <div className="staff-total-bar" aria-hidden="true">
+          {parts.filter((part) => part.count > 0).map((part) => <span key={part.id} className={`is-${part.tone}`} style={{ flexGrow: part.count }} title={`${part.label}: ${part.count}`} />)}
+        </div>
+      )}
+      <ul className="staff-total-grid">
+        {parts.map((part) => (
+          <li key={part.id} className={`is-${part.tone}`}>
+            <i className={`bi ${part.icon}`} aria-hidden="true" />
+            <span><small>{part.label}</small><b>{part.count}</b></span>
+          </li>
+        ))}
+        <li className="is-ot">
+          <i className="bi bi-clock-history" aria-hidden="true" />
+          <span><small>Overtime</small><b>{total.overtimeHours} h</b></span>
+        </li>
+      </ul>
+    </section>
   )
 }
 
@@ -192,6 +195,8 @@ export default function EmployeeDetail() {
   const shownMonth = data.month
   const currentMonth = today.slice(0, 7)
   const entries = allEntries ? data.entries : data.entries.filter((entry) => entry.date.startsWith(shownMonth))
+  // Days with money paid out (wages or advance), for the calendar ticks.
+  const paidByDate = data.entries.filter((entry) => entry.type === 'payment' || entry.type === 'advance').reduce((map, entry) => map.set(entry.date, (map.get(entry.date) || 0) + entry.amountPaise), new Map())
   const goMonth = (value) => setSearchParams({ month: value }, { replace: true })
 
   return (
@@ -211,6 +216,7 @@ export default function EmployeeDetail() {
           </div>
         </div>
         <div className="staff-profile-actions">
+          <button type="button" className="continue-btn whatsapp-btn staff-report-btn" onClick={() => setModal({ type: 'report' })}><i className="bi bi-whatsapp" aria-hidden="true" />Send report</button>
           <button type="button" className="back-button" onClick={() => setModal({ type: 'edit' })}><i className="bi bi-pencil" aria-hidden="true" />Edit</button>
           {employee.active
             ? <button type="button" className="back-button" onClick={() => setModal({ type: 'leave' })}><i className="bi bi-box-arrow-right" aria-hidden="true" />Mark as left</button>
@@ -229,6 +235,8 @@ export default function EmployeeDetail() {
         {ENTRY_TYPES.map((type) => <button key={type.id} type="button" className={type.id === 'payment' ? 'continue-btn' : 'back-button'} onClick={() => setModal({ type: 'entry', entryType: type.id })}><i className={`bi ${type.icon}`} aria-hidden="true" />{type.verb}</button>)}
       </div>
 
+      {data.totalSummary && <TotalDays employee={employee} total={data.totalSummary} />}
+
       <div className="staff-columns">
         <section className="staff-panel" aria-labelledby="staff-cal-title">
           <div className="staff-panel-head">
@@ -240,8 +248,8 @@ export default function EmployeeDetail() {
             </div>
           </div>
           {loading && <span className="visually-hidden" role="status">Loading</span>}
-          <MonthCalendar month={shownMonth} today={today} employee={employee} records={data.attendance} onPick={(date, record) => setModal({ type: 'day', date, record })} />
-          <p className="stock-help">Tap a day to mark or change it.</p>
+          <MonthCalendar month={shownMonth} today={today} employee={employee} records={data.attendance} paidByDate={paidByDate} onPick={(date, record) => setModal({ type: 'day', date, record })} />
+          <p className="stock-help staff-cal-help">Tap a day to mark or change it.<span><span className="staff-cal-paid is-legend" aria-hidden="true"><i className="bi bi-check-lg" /></span> Wages paid that day</span></p>
           <dl className="staff-breakdown">
             {STATUSES.map((status) => <div key={status.id}><dt>{status.label}</dt><dd>{summary[status.id === 'half_day' ? 'halfDay' : status.id]}</dd></div>)}
             <div><dt>Not marked</dt><dd>{summary.unmarked}</dd></div>
@@ -289,6 +297,7 @@ export default function EmployeeDetail() {
         </section>
       </div>
 
+      {modal?.type === 'report' && <StaffReportModal data={data} onClose={() => setModal(null)} />}
       {modal?.type === 'edit' && <EmployeeFormModal employee={employee} onClose={() => setModal(null)} onSaved={(_saved, message) => done(message)} />}
       {modal?.type === 'day' && <DayModal employee={employee} date={modal.date} record={modal.record} onClose={() => setModal(null)} onSaved={done} />}
       {modal?.type === 'entry' && <EntryModal employee={employee} type={modal.entryType} balanceDuePaise={balanceDuePaise} onClose={() => setModal(null)} onSaved={done} />}
