@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import { DEFAULT_LISTS, FEATURE_KEYS } from '../config/features.js'
+import { DEFAULT_LISTS, FEATURE_KEYS, FEATURES_OFF_BY_DEFAULT } from '../config/features.js'
 
 /** Bill image designs; keep in sync with BILL_TEMPLATES in frontend/src/utils/billImage.js. */
 export const BILL_TEMPLATE_IDS = ['classic', 'modern', 'minimal', 'bold', 'soft']
@@ -34,7 +34,7 @@ const posSchema = new mongoose.Schema({
   footerNote: { type: String, trim: true, maxlength: 200, default: '' },
 }, { _id: false })
 
-const featureFields = Object.fromEntries(FEATURE_KEYS.map((key) => [key, { type: Boolean, default: true }]))
+const featureFields = Object.fromEntries(FEATURE_KEYS.map((key) => [key, { type: Boolean, default: !FEATURES_OFF_BY_DEFAULT.includes(key) }]))
 
 /** Single application-wide settings document (key "app"). */
 const appSettingSchema = new mongoose.Schema({

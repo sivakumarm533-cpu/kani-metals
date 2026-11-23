@@ -3,10 +3,14 @@
  * Administrators and sub-admins always have every feature.
  * Keep the keys in sync with frontend/src/config/navigation.js.
  */
-export const FEATURE_KEYS = ['inventory', 'itemEntry', 'dealerPayments', 'billComparison', 'itemPrices']
+export const FEATURE_KEYS = ['inventory', 'itemEntry', 'dealerPayments', 'billComparison', 'itemPrices', 'attendance', 'vehicles']
+/** Features that stay off for regular users until an administrator switches them on. */
+export const FEATURES_OFF_BY_DEFAULT = ['attendance', 'vehicles']
+/** A saved true/false wins; otherwise the feature's default. */
+export const featureIsOn = (features, key) => (typeof features?.[key] === 'boolean' ? features[key] : !FEATURES_OFF_BY_DEFAULT.includes(key))
 
 /** Screens in the main menu, in their default order. Admins can reorder them. */
-export const MENU_KEYS = ['dashboard', 'itemEntry', 'dealerPayments', 'itemPrices', 'billComparison', 'inventory', 'employees']
+export const MENU_KEYS = ['dashboard', 'itemEntry', 'dealerPayments', 'itemPrices', 'billComparison', 'inventory', 'employees', 'vehicles', 'attendance']
 
 /** Dashboard sections a user can hide. Keep in sync with DASHBOARD_WIDGETS in frontend/src/pages/Dashboard.jsx. */
 export const DASHBOARD_WIDGETS = ['pendingCard', 'paidCard', 'billedCard', 'lowStockCard', 'pendingDealers', 'rateUpdates', 'quickActions', 'recentPayments', 'lowStockList']

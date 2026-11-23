@@ -373,3 +373,67 @@
   .staff-detail .staff-ledger > div { font-size: 14px; }
 }
 .staff-pay-btn:disabled { opacity: .6; cursor: progress; }
+
+/* ---------- Mobile spacing scale: one rhythm for every Staff & wages screen ----------
+ * --sp-gap    space between cards / sections
+ * --sp-pad    padding inside every card
+ * --sp-inner  space between things inside a card
+ * --sp-tile   gap between small tiles in a grid
+ */
+@media (max-width: 720px) {
+  .staff-page { --sp-gap: 12px; --sp-pad: 16px; --sp-inner: 12px; --sp-tile: 8px; --sp-radius: 18px; }
+
+  /* Between sections: the page and each tab use one grid gap, so nothing adds up twice. */
+  .staff-page.page-container,
+  .staff-page .staff-attendance,
+  .staff-page .staff-wages,
+  .staff-page .staff-columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-gap); }
+  .staff-page > *,
+  .staff-page .staff-attendance > *,
+  .staff-page .staff-wages > *,
+  .staff-page .staff-columns > * { margin: 0; }
+  .staff-page .staff-attendance > .staff-daybar:not(.is-compact),
+  .staff-page .staff-wages > .staff-daybar:not(.is-compact) { margin: 0; }
+  .staff-page .staff-stats,
+  .staff-page .staff-sheet,
+  .staff-page .staff-cards,
+  .staff-page .staff-wages .inventory-toolbar,
+  .staff-page .staff-sheet-head { gap: var(--sp-gap); }
+
+  /* Inside every card */
+  .staff-page .staff-sheet-row,
+  .staff-page .staff-card,
+  .staff-page .staff-panel,
+  .staff-page .staff-profile,
+  .staff-page .staff-stats .ui-stat { padding: var(--sp-pad); border-radius: var(--sp-radius); }
+  .staff-page .staff-sheet-row,
+  .staff-page .staff-card,
+  .staff-page .staff-profile { gap: var(--sp-inner); }
+  .staff-page .staff-sheet-pay { padding-top: var(--sp-inner); }
+  :root .staff-page .staff-stats .ui-stat-icon { top: var(--sp-pad); right: var(--sp-pad); }
+
+  /* Tile grids inside cards */
+  .staff-page .staff-card-figures,
+  .staff-page .staff-quick-actions,
+  .staff-page .staff-total-grid,
+  .staff-page .staff-breakdown,
+  .staff-page .staff-profile-actions { gap: var(--sp-tile); }
+  .staff-page .staff-status-picker { gap: 6px; }
+
+  /* Employee page panels */
+  .staff-page .staff-panel-head { margin-bottom: var(--sp-inner); }
+  .staff-page .staff-total-hero { margin-bottom: var(--sp-inner); }
+  .staff-page .staff-total-bar { margin-bottom: var(--sp-inner); }
+  .staff-page .staff-breakdown { margin-top: var(--sp-inner); }
+  .staff-page .staff-subhead { margin: calc(var(--sp-inner) * 1.5) 0 var(--sp-tile); }
+  .staff-page .staff-entries-head { margin: calc(var(--sp-inner) * 1.5) 0 var(--sp-tile); }
+  .staff-page .staff-entries-head .staff-subhead { margin: 0; }
+  .staff-page .staff-ledger > div { padding: 9px 0; }
+  .staff-page .staff-entries { gap: var(--sp-tile); }
+  .staff-page .staff-entries li { padding: 10px 12px; border-radius: 14px; }
+  .staff-page .staff-profile-badges { gap: 6px; }
+  .staff-page .staff-profile-text p { margin: 4px 0 var(--sp-tile); }
+}
+@media (max-width: 400px) {
+  .staff-page { --sp-gap: 10px; --sp-pad: 14px; --sp-inner: 10px; --sp-tile: 6px; --sp-radius: 16px; }
+}

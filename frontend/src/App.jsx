@@ -13,7 +13,7 @@ import { AppSettingsProvider } from './settings/AppSettingsProvider.jsx'
 import { useAppSettings } from './settings/appSettingsContext.js'
 import { syncLanguage } from './utils/translate.js'
 import { applyUiStyle } from './theme/uiStyles.js'
-import { bottomNavItems, canUseItem, NAV_ITEMS, startScreenItem } from './config/navigation.js'
+import { bottomNavItems, canUseItem, isManager, NAV_ITEMS, startScreenItem } from './config/navigation.js'
 import './App.css'
 import './components/component.css'
 import './pages/pages.css'
@@ -44,6 +44,9 @@ const pageImports = {
   Profile: () => import('./pages/Profile.jsx'),
   Employees: () => import('./pages/Employees.jsx'),
   EmployeeDetail: () => import('./pages/EmployeeDetail.jsx'),
+  Attendance: () => import('./pages/Attendance.jsx'),
+  Vehicles: () => import('./pages/Vehicles.jsx'),
+  VehicleDetail: () => import('./pages/VehicleDetail.jsx'),
 }
 const Dashboard = lazy(pageImports.Dashboard)
 const Inventory = lazy(pageImports.Inventory)
@@ -62,6 +65,9 @@ const ListSettings = lazy(pageImports.ListSettings)
 const Profile = lazy(pageImports.Profile)
 const Employees = lazy(pageImports.Employees)
 const EmployeeDetail = lazy(pageImports.EmployeeDetail)
+const Attendance = lazy(pageImports.Attendance)
+const Vehicles = lazy(pageImports.Vehicles)
+const VehicleDetail = lazy(pageImports.VehicleDetail)
 const Login = lazy(() => import('./pages/Login.jsx'))
 const AdminSignup = lazy(() => import('./pages/AdminSignup.jsx'))
 
@@ -86,6 +92,13 @@ function FeatureRoute({ feature, children }) {
   const item = NAV_ITEMS.find((entry) => entry.key === feature)
   if (!canUseItem(item, user, features)) return <Navigate to="/dashboard" replace state={{ blockedFeature: item?.fullLabel }} />
   return children
+}
+
+/** Team members with "Employee attendance" mark attendance here; managers use the full Staff & wages screen. */
+function AttendanceRoute({ children }) {
+  const { user } = useAuth()
+  if (isManager(user)) return <Navigate to="/employees" replace />
+  return <FeatureRoute feature="attendance">{children}</FeatureRoute>
 }
 
 function AppLayout() {
@@ -165,6 +178,9 @@ function AppLayout() {
                 <Route path="/dealer-payments" element={<FeatureRoute feature="dealerPayments"><DealerPayments /></FeatureRoute>} />
                 <Route path="/dealer-payments/:dealerId" element={<FeatureRoute feature="dealerPayments"><DealerPayments /></FeatureRoute>} />
                 <Route path="/dealers/:dealerId/bills" element={<FeatureRoute feature="itemEntry"><DealerBills /></FeatureRoute>} />
+                <Route path="/vehicles" element={<FeatureRoute feature="vehicles"><Vehicles /></FeatureRoute>} />
+                <Route path="/vehicles/:vehicleId" element={<FeatureRoute feature="vehicles"><VehicleDetail /></FeatureRoute>} />
+                <Route path="/attendance" element={<AttendanceRoute><Attendance /></AttendanceRoute>} />
                 <Route path="/employees" element={<RequireAuth adminOnly><Employees /></RequireAuth>} />
                 <Route path="/employees/:employeeId" element={<RequireAuth adminOnly><EmployeeDetail /></RequireAuth>} />
                 <Route path="/settings/theme" element={<RequireAuth adminOnly><ThemeSettings /></RequireAuth>} />

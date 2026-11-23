@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Modal from './Modal.jsx'
 import { apiRequest } from '../services/api.js'
 import { useAppSettings } from '../settings/appSettingsContext.js'
-import { FEATURE_ITEMS, featureAllowed } from '../config/navigation.js'
+import { FEATURE_ITEMS, featureAllowed, workspaceFeatureOn } from '../config/navigation.js'
 
 /**
  * Admins and sub-admins switch screens on or off for one team member.
@@ -39,7 +39,7 @@ export default function UserMenuAccessModal({ user, onClose, onSaved }) {
         {FEATURE_ITEMS.map((item) => {
           const value = access[item.feature]
           const on = featureAllowed(item.feature, access, features)
-          const workspaceOn = features?.[item.feature] !== false
+          const workspaceOn = workspaceFeatureOn(item.feature, features)
           return (
             <li key={item.key} className={`feature-row${on ? '' : ' is-off'}`}>
               <span className="feature-row-icon" aria-hidden="true"><i className={`bi ${item.icon}`} /></span>

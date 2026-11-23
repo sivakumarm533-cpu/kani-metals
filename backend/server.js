@@ -11,7 +11,8 @@ import settingsRoutes from './routes/settingsRoutes.js'
 import dashboardRoutes from './routes/dashboardRoutes.js'
 import itemPriceRoutes from './routes/itemPriceRoutes.js'
 import inventoryRoutes from './routes/inventoryRoutes.js'
-import employeeRoutes from './routes/employeeRoutes.js'
+import employeeRoutes, { attendanceRouter } from './routes/employeeRoutes.js'
+import vehicleRoutes from './routes/vehicleRoutes.js'
 import { authenticate, requireAdmin, requireFeature } from './middleware/auth.js'
 import { apiRateLimit, configuredCorsOrigins, corsMiddleware, securityHeaders } from './middleware/security.js'
 import { totpEncryptionKeyConfigured } from './utils/totp.js'
@@ -64,7 +65,10 @@ app.use('/api/payments', requireFeature('dealerPayments', { readWith: ['itemEntr
 app.use('/api/item-prices', requireFeature('itemPrices', { readWith: ['itemEntry'] }), itemPriceRoutes)
 app.use('/api/inventory', requireFeature('inventory'), inventoryRoutes)
 // Staff attendance and wages: administrators and sub-admins only.
+// Attendance only: team members with the "Employee attendance" feature may read and mark it.
+app.use('/api/employees/attendance', requireFeature('attendance'), attendanceRouter)
 app.use('/api/employees', requireAdmin, employeeRoutes)
+app.use('/api/vehicles', requireFeature('vehicles'), vehicleRoutes)
 app.use('/api/admin/backup', backupRoutes)
 app.use('/api/app-settings', settingsRoutes)
 app.use('/api/dashboard', dashboardRoutes)

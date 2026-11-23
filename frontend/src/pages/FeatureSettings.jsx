@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAppSettings } from '../settings/appSettingsContext.js'
-import { FEATURE_ITEMS } from '../config/navigation.js'
+import { FEATURE_ITEMS, workspaceFeatureOn } from '../config/navigation.js'
 import { useToast } from '../hooks/useToast.js'
 import Toast from '../components/Toast.jsx'
 import LoadError from '../components/LoadError.jsx'
@@ -22,7 +22,7 @@ export default function FeatureSettings() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [toast, notify] = useToast()
-  const current = draft || { features: Object.fromEntries(FEATURE_ITEMS.map((item) => [item.feature, features[item.feature] !== false])), allowUserThemes }
+  const current = draft || { features: Object.fromEntries(FEATURE_ITEMS.map((item) => [item.feature, workspaceFeatureOn(item.feature, features)])), allowUserThemes }
   const enabledCount = FEATURE_ITEMS.filter((item) => current.features[item.feature]).length
 
   function update(changes) { setDraft({ ...current, ...changes, features: { ...current.features, ...changes.features } }) }

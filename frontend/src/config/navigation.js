@@ -10,6 +10,9 @@ export const NAV_ITEMS = [
   { key: 'itemPrices', to: '/item-prices', icon: 'bi-currency-rupee', activeIcon: 'bi-currency-rupee', label: 'Prices', fullLabel: 'Item prices', description: 'Latest price of every item from dealer bills', feature: 'itemPrices' },
   { key: 'billComparison', to: '/bill-comparison', icon: 'bi-arrow-left-right', activeIcon: 'bi-arrow-left-right', label: 'Compare', fullLabel: 'Bill comparison', description: 'Compare two bills from the same dealer', feature: 'billComparison' },
   { key: 'inventory', to: '/inventory', icon: 'bi-boxes', activeIcon: 'bi-boxes', label: 'Stock', fullLabel: 'Inventory', description: 'Current stock of every item', feature: 'inventory' },
+  { key: 'vehicles', to: '/vehicles', icon: 'bi-truck', activeIcon: 'bi-truck-front-fill', label: 'Vehicles', fullLabel: 'Vehicles', description: 'Fuel, repairs and running cost per km of each vehicle', feature: 'vehicles' },
+  // Team members only (managers use Staff & wages). Off until an administrator switches it on.
+  { key: 'attendance', to: '/attendance', icon: 'bi-calendar-check', activeIcon: 'bi-calendar-check-fill', label: 'Attendance', fullLabel: 'Employee attendance', description: 'Mark daily attendance of employees (no wages or payments)', feature: 'attendance', memberOnly: true },
   // Administrators and sub-admins only; employees do not sign in.
   { key: 'employees', to: '/employees', icon: 'bi-person-badge', activeIcon: 'bi-person-badge-fill', label: 'Staff', fullLabel: 'Staff & wages', description: 'Daily attendance, wages and salary of employees', managerOnly: true },
 ]
@@ -70,9 +73,15 @@ export function settingsGroupsFor(user) {
 export const isManager = (user) => user?.role === 'admin' || user?.role === 'subadmin'
 export const roleLabel = (role) => (role === 'admin' ? 'Administrator' : role === 'subadmin' ? 'Sub-admin' : 'Team member')
 
-/** True when `user` may open the screen. Managers always can. */
+/** Features that stay off for team members until an administrator switches them on. Keep in sync with backend FEATURES_OFF_BY_DEFAULT. */
+export const FEATURES_OFF_BY_DEFAULT = ['attendance', 'vehicles']
+/** The workspace setting for a feature: the saved value, otherwise its default. */
+export const workspaceFeatureOn = (feature, features) => (typeof features?.[feature] === 'boolean' ? features[feature] : !FEATURES_OFF_BY_DEFAULT.includes(feature))
+
+/** True when `user` may open the screen. Managers always can, except member-only screens they have a fuller version of. */
 export function canUseItem(item, user, features) {
   if (!item) return false
+  if (item.memberOnly) return !isManager(user) && featureAllowed(item.feature, user?.featureAccess, features)
   if (item.managerOnly) return isManager(user)
   if (!item.feature || isManager(user)) return true
   return featureAllowed(item.feature, user?.featureAccess, features)
@@ -82,7 +91,7 @@ export function canUseItem(item, user, features) {
 export function featureAllowed(feature, featureAccess, features) {
   const own = featureAccess?.[feature]
   if (typeof own === 'boolean') return own
-  return features?.[feature] !== false
+  return workspaceFeatureOn(feature, features)
 }
 
 export function itemIsActive(item, pathname) {
@@ -117,6 +126,7 @@ export function routeMeta(pathname) {
   if (pathname.startsWith('/dealer-payments/')) return { title: 'Dealer account', crumbs: [home, { label: 'Dealer payments', to: '/dealer-payments' }, { label: 'Dealer account' }], back: '/dealer-payments' }
   if (pathname.startsWith('/dealers/')) return { title: 'Bill history', crumbs: [home, { label: 'Item entry', to: '/itemsentry' }, { label: 'Bill history' }], back: '/itemsentry' }
   if (pathname.startsWith('/bill-comparison/product/')) return { title: 'Item comparison', crumbs: [home, { label: 'Bill comparison', to: '/bill-comparison' }, { label: 'Item comparison' }], back: -1 }
+  if (pathname.startsWith('/vehicles/')) return { title: 'Vehicle', crumbs: [home, { label: 'Vehicles', to: '/vehicles' }, { label: 'Vehicle' }], back: '/vehicles' }
   if (pathname.startsWith('/employees/')) return { title: 'Employee', crumbs: [home, { label: 'Staff & wages', to: '/employees' }, { label: 'Employee' }], back: '/employees' }
   if (pathname === '/profile') return { title: 'My profile', crumbs: [home, { label: 'My profile' }], back: null }
   const item = NAV_ITEMS.find((entry) => itemIsActive(entry, pathname))

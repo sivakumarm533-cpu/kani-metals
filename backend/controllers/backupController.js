@@ -5,6 +5,8 @@ import Payment from '../models/Payment.js'
 import Employee from '../models/Employee.js'
 import Attendance from '../models/Attendance.js'
 import EmployeePayment from '../models/EmployeePayment.js'
+import Vehicle from '../models/Vehicle.js'
+import VehicleEntry from '../models/VehicleEntry.js'
 import { appliedPaise, paymentCountsAsReceived } from '../utils/money.js'
 import { recordActivity } from '../utils/activity.js'
 import { toWebpDataUrl } from '../utils/webp.js'
@@ -12,7 +14,8 @@ import { toWebpDataUrl } from '../utils/webp.js'
 const coreModels = { dealers: Dealer, products: Product, bills: Bill, payments: Payment }
 /** Staff records. Backups made before staff tracking existed leave the current staff data as it is. */
 const staffModels = { employees: Employee, attendance: Attendance, employeePayments: EmployeePayment }
-const allModels = { ...coreModels, ...staffModels }
+/** Vehicle records. Backups made before vehicles existed leave the current vehicle data as it is. */
+const vehicleModels = { vehicles: Vehicle, vehicleEntries: VehicleEntry }
 const backupFormat = 'kani-metals-backup'
 
 /**
@@ -22,6 +25,7 @@ const backupFormat = 'kani-metals-backup'
 async function convertBackupImages(data) {
   for (const dealer of data.dealers) for (const field of ['profileImage', 'cardBackground']) if (dealer[field]) dealer[field] = await toWebpDataUrl(dealer[field])
   for (const employee of data.employees || []) if (employee.photo) employee.photo = await toWebpDataUrl(employee.photo)
+  for (const vehicle of data.vehicles || []) if (vehicle.photo) vehicle.photo = await toWebpDataUrl(vehicle.photo)
   for (const product of data.products) if (product.image) product.image = await toWebpDataUrl(product.image)
   for (const bill of data.bills) {
     if (bill.image) bill.image = await toWebpDataUrl(bill.image)
@@ -31,12 +35,13 @@ async function convertBackupImages(data) {
 
 export async function exportBackup(_req, res, next) {
   try {
-    const [dealers, products, bills, payments, employees, attendance, employeePayments] = await Promise.all([
+    const [dealers, products, bills, payments, employees, attendance, employeePayments, vehicles, vehicleEntries] = await Promise.all([
       Dealer.find().lean(), Product.find().lean(), Bill.find().lean(), Payment.find().lean(),
       Employee.find().lean(), Attendance.find().lean(), EmployeePayment.find().lean(),
+      Vehicle.find().lean(), VehicleEntry.find().lean(),
     ])
     res.setHeader('Content-Disposition', `attachment; filename=kani-metals-backup-${new Date().toISOString().slice(0, 10)}.json`)
-    res.json({ format: backupFormat, version: 1, exportedAt: new Date().toISOString(), data: { dealers, products, bills, payments, employees, attendance, employeePayments } })
+    res.json({ format: backupFormat, version: 1, exportedAt: new Date().toISOString(), data: { dealers, products, bills, payments, employees, attendance, employeePayments, vehicles, vehicleEntries } })
   } catch (error) { next(error) }
 }
 
@@ -46,12 +51,14 @@ export async function importBackup(req, res, next) {
     if (backup?.format !== backupFormat || backup?.version !== 1 || !backup?.data || ['dealers', 'products', 'bills'].some((key) => !Array.isArray(backup.data[key])) || (backup.data.payments !== undefined && !Array.isArray(backup.data.payments))) {
       return res.status(400).json({ message: 'This is not a valid Kani Metals backup file.' })
     }
-    if (Object.keys(staffModels).some((key) => backup.data[key] !== undefined && !Array.isArray(backup.data[key]))) return res.status(400).json({ message: 'This is not a valid Kani Metals backup file.' })
+    if ([...Object.keys(staffModels), ...Object.keys(vehicleModels)].some((key) => backup.data[key] !== undefined && !Array.isArray(backup.data[key]))) return res.status(400).json({ message: 'This is not a valid Kani Metals backup file.' })
     const backupData = { ...backup.data, payments: backup.data.payments || [] }
     // Restore staff data only when the backup has it; replace all three staff collections together.
     const hasStaff = Object.keys(staffModels).every((key) => Array.isArray(backup.data[key]))
     if (!hasStaff) for (const key of Object.keys(staffModels)) delete backupData[key]
-    const models = hasStaff ? allModels : coreModels
+    const hasVehicles = Object.keys(vehicleModels).every((key) => Array.isArray(backup.data[key]))
+    if (!hasVehicles) for (const key of Object.keys(vehicleModels)) delete backupData[key]
+    const models = { ...coreModels, ...(hasStaff ? staffModels : {}), ...(hasVehicles ? vehicleModels : {}) }
     if (!Array.isArray(backup.data.payments) && await Payment.exists({})) return res.status(409).json({ message: 'This older backup has no payment history. Export a current backup before restoring it so payment records are not lost.' })
     for (const collection of Object.keys(models)) {
       if (backupData[collection].length > 50000) return res.status(413).json({ message: 'Backup contains too many records.' })

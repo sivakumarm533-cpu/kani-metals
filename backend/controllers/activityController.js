@@ -3,7 +3,8 @@ import mongoose from 'mongoose'
 import { recordActivity } from '../utils/activity.js'
 
 const actions = new Set(['create', 'update', 'delete'])
-const entities = new Set(['dealer', 'product', 'bill', 'payment', 'user', 'backup', 'settings', 'itemPrice'])
+// Same list as the ActivityLog model, so new record types can be filtered too.
+const entities = new Set(ActivityLog.schema.path('entity').enumValues)
 
 export async function listActivity(req, res, next) {
   try {

@@ -1456,6 +1456,9 @@
 /* Wider than the default 420px dialog so each row fits its Workspace / On / Off choice. */
 .dealer-delete-dialog.user-access-dialog { display: flex; flex-direction: column; width: min(820px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: hidden; text-align: left; }
 .user-access-dialog .user-access-body { flex: 1 1 auto; min-height: 0; margin: 0 -6px; padding: 0 6px; overflow-y: auto; }
+/* Phones open dialogs full screen and stop their parts from shrinking; this list must still
+   shrink to the space between the heading and the buttons and scroll inside it. */
+.dealer-delete-backdrop:not(.bottom-sheet-backdrop) > section.user-access-dialog[role="dialog"] > .user-access-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .user-access-intro { margin: 0 0 12px; color: var(--color-text-muted); font-size: 13px; }
 .user-access-dialog .feature-list { margin-bottom: 4px; }
 .user-access-dialog .feature-row { flex-wrap: wrap; row-gap: 10px; }

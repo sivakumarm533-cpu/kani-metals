@@ -3,7 +3,7 @@ import User from '../models/User.js'
 import AuthSession from '../models/AuthSession.js'
 import AppSetting from '../models/AppSetting.js'
 import { getJwtSecret } from '../config/secrets.js'
-import { isManagerRole } from '../config/features.js'
+import { featureIsOn, isManagerRole } from '../config/features.js'
 
 /**
  * Short-lived in-memory cache of verified sessions. Every API call used to make two
@@ -104,6 +104,6 @@ export async function userFeatureCheck(user) {
   return (feature) => {
     const own = user?.featureAccess?.[feature]
     if (typeof own === 'boolean') return own
-    return features[feature] !== false
+    return featureIsOn(features, feature)
   }
 }

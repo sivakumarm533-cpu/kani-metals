@@ -1,10 +1,10 @@
 import AppSetting, { BILL_TEMPLATE_IDS, POS_DEFAULTS, POS_FLAGS, POS_FONT_SIZES, POS_PAPER_WIDTHS, POS_TEMPLATES, THEME_IDS } from '../models/AppSetting.js'
-import { DEFAULT_LISTS, FEATURE_KEYS, LIST_KEYS, MENU_KEYS } from '../config/features.js'
+import { DEFAULT_LISTS, FEATURE_KEYS, featureIsOn, LIST_KEYS, MENU_KEYS } from '../config/features.js'
 import { forgetFeatureCache } from '../middleware/auth.js'
 import { recordActivity } from '../utils/activity.js'
 import { badRequest, optionalText } from '../utils/validation.js'
 
-const publicFeatures = (features = {}) => Object.fromEntries(FEATURE_KEYS.map((key) => [key, features?.[key] !== false]))
+const publicFeatures = (features = {}) => Object.fromEntries(FEATURE_KEYS.map((key) => [key, featureIsOn(features, key)]))
 
 /** Saved order first, then any screen missing from it (e.g. added later) in default order. */
 function publicMenuOrder(order = []) {

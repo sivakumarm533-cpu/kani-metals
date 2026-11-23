@@ -3,6 +3,7 @@ import Employee from '../models/Employee.js'
 import Attendance, { ATTENDANCE_STATUSES } from '../models/Attendance.js'
 import EmployeePayment, { EMPLOYEE_ENTRY_TYPES, EMPLOYEE_PAYMENT_METHODS } from '../models/EmployeePayment.js'
 import { recordActivity } from '../utils/activity.js'
+import { isManagerRole } from '../config/features.js'
 import { rupeesToPaise } from '../utils/money.js'
 import { badRequest, objectId, optionalImage, optionalText, requiredText } from '../utils/validation.js'
 import { balanceDue, currentRate, isDateKey, isMonthKey, ledgerTotals, monthEarnings, monthEnd, monthStart, todayKey, totalEarnings, totalSummary } from '../utils/wages.js'
@@ -228,11 +229,15 @@ export async function getAttendanceSheet(req, res, next) {
     const byEmployee = new Map(records.map((record) => [String(record.employee), record]))
     // Money paid out (wages + advances) on this day, per employee.
     const paidBy = payments.reduce((map, payment) => map.set(String(payment.employee), (map.get(String(payment.employee)) || 0) + payment.amountPaise), new Map())
+    // Team members marking attendance do not see pay rates or payments.
+    const manager = isManagerRole(req.user?.role)
     res.json({
       date,
       today: todayKey(),
+      canPay: manager,
       employees: employees.map((employee) => {
         const rate = currentRate(employee, date)
+        if (!manager) return { _id: employee._id, name: employee.name, designation: employee.designation, photo: employee.photo, weeklyOff: employee.weeklyOff, payType: rate?.payType, record: byEmployee.get(String(employee._id)) || null }
         return { _id: employee._id, name: employee.name, designation: employee.designation, photo: employee.photo, weeklyOff: employee.weeklyOff, payType: rate?.payType, hasOvertimeRate: Boolean(rate?.overtimeRatePaise), dailyRatePaise: rate?.payType === 'daily' ? rate.ratePaise : 0, overtimeRatePaise: rate?.overtimeRatePaise || 0, paidPaise: paidBy.get(String(employee._id)) || 0, record: byEmployee.get(String(employee._id)) || null }
       }),
     })
